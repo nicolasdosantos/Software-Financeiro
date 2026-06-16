@@ -74,7 +74,7 @@ export function Sidebar({
         </div>
         {showLabels && (
           <div className="overflow-hidden">
-            <p className="text-white font-semibold leading-none whitespace-nowrap">FinanceOS</p>
+            <p className="text-white font-semibold leading-none whitespace-nowrap">Nexo</p>
             <p className="text-xs mt-0.5 whitespace-nowrap" style={{ color: "var(--muted-foreground)" }}>
               Controle financeiro
             </p>

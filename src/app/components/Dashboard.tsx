@@ -80,7 +80,7 @@ export function Dashboard() {
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-white" style={{ fontSize: "clamp(1.2rem, 4vw, 1.5rem)", fontWeight: 700 }}>
-            Bem-vindo, Teste! 👋
+            Bem-vindo,! 👋
           </h1>
           <p style={{ color: "var(--muted-foreground)", fontSize: "0.875rem" }}>
             Aqui está seu resumo financeiro de junho.

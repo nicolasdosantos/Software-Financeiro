@@ -165,50 +165,84 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     loadTransactions();
   }, []);
 
+  async function getCurrentUser() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    return user;
+  }
+
   async function loadTransactions() {
+    const user = await getCurrentUser();
+
+    if (!user) return;
+
     const { data, error } = await supabase
       .from("transactions")
       .select("*")
+      .eq("user_id", user.id)
       .order("date", { ascending: false });
 
     if (error) {
-      console.error(error);
+      console.error("Erro ao carregar transações:", error);
       return;
     }
 
     setTransactions(data || []);
   }
-  addTransaction: async (t) => {
-    const { data, error } = await supabase
-      .from("transactions")
-      .insert(t)
-      .select()
-      .single();
 
-    if (error) {
-      console.error(error);
-      return;
-    }
+  useEffect(() => {
+    localStorage.setItem(
+      "fp_categories",
+      JSON.stringify(categories)
+    );
+  }, [categories]);
 
-    setTransactions(prev => [
-      data,
-      ...prev
-    ]);
-  }, useEffect(() => { localStorage.setItem("fp_categories", JSON.stringify(categories)); }, [categories]);
-  useEffect(() => { localStorage.setItem("fp_goals", JSON.stringify(goals)); }, [goals]);
-  useEffect(() => { localStorage.setItem("fp_investments", JSON.stringify(investments)); }, [investments]);
-  useEffect(() => { localStorage.setItem("fp_budgets", JSON.stringify(budgets)); }, [budgets]);
+  useEffect(() => {
+    localStorage.setItem(
+      "fp_goals",
+      JSON.stringify(goals)
+    );
+  }, [goals]);
 
-  const uid = () => Math.random().toString(36).slice(2, 10);
+  useEffect(() => {
+    localStorage.setItem(
+      "fp_investments",
+      JSON.stringify(investments)
+    );
+  }, [investments]);
+
+  useEffect(() => {
+    localStorage.setItem(
+      "fp_budgets",
+      JSON.stringify(budgets)
+    );
+  }, [budgets]);
+
+  const uid = () =>
+    Math.random().toString(36).slice(2, 10);
+
 
   return (
     <FinanceContext.Provider value={{
-      transactions, categories, goals, investments, budgets, currentMonth, setCurrentMonth,
+      transactions,
+      categories,
+      goals,
+      investments,
+      budgets,
+      currentMonth,
+      setCurrentMonth,
 
       addTransaction: async (t) => {
+        const user = await getCurrentUser();
+
+        if (!user) return;
+
         const { data, error } = await supabase
           .from("transactions")
           .insert({
+            user_id: user.id,
             type: t.type,
             amount: t.amount,
             description: t.description,
@@ -220,7 +254,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
           .single();
 
         if (error) {
-          console.error("Erro ao salvar:", error);
+          console.error(error);
           return;
         }
 
@@ -231,6 +265,10 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       },
 
       updateTransaction: async (t) => {
+        const user = await getCurrentUser();
+
+        if (!user) return;
+
         const { error } = await supabase
           .from("transactions")
           .update({
@@ -241,7 +279,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
             date: t.date,
             notes: t.notes
           })
-          .eq("id", t.id);
+          .eq("id", t.id)
+          .eq("user_id", user.id);
 
         if (error) {
           console.error(error);
@@ -252,11 +291,16 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
           prev.map(x => x.id === t.id ? t : x)
         );
       }, deleteTransaction: async (id) => {
+
+        const user = await getCurrentUser();
+
+        if (!user) return;
+
         const { error } = await supabase
           .from("transactions")
           .delete()
-          .eq("id", id);
-
+          .eq("id", id)
+          .eq("user_id", user.id);
         if (error) {
           console.error(error);
           return;

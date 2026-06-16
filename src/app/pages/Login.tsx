@@ -30,7 +30,8 @@ export function Login() {
 
     async function handleLogin(e: React.FormEvent) {
         e.preventDefault();
-
+        console.log("Email:", email);
+        console.log("Senha:", password);
         setLoading(true);
 
         const { error } = await supabase.auth.signInWithPassword({
@@ -41,11 +42,12 @@ export function Login() {
         setLoading(false);
 
         if (error) {
+            console.log(error);
             alert(error.message);
             return;
         }
 
-        navigate("/");
+        navigate("/home");
     }
 
     return (

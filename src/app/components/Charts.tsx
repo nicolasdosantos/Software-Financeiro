@@ -11,9 +11,18 @@ export function Charts() {
   const { transactions, categories } = useFinance();
   const [selectedMonth, setSelectedMonth] = useState("2026-06");
 
-  const months = ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06"];
-  const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun"];
-
+  const months = [
+    ...new Set(
+      transactions
+        .map(t => t.date.slice(0, 7))
+        .sort()
+    )
+  ];
+  const monthNames = months.map(month =>
+    new Date(month + "-01").toLocaleString("pt-BR", {
+      month: "short"
+    })
+  );
   function getMonthData(month: string) {
     const txs = transactions.filter(t => t.date.startsWith(month));
     const income = txs.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0);
@@ -23,13 +32,25 @@ export function Charts() {
 
   const barData = months.map((m, i) => {
     const d = getMonthData(m);
-    return { name: monthNames[i], receitas: d.income || 7000 + i * 500, despesas: d.expense || 4500 + i * 300 };
+    return {
+      name: monthNames[i], receitas: d.income,
+      despesas: d.expense
+    };
   });
+
+
+  let acumulado = 0;
 
   const lineData = months.map((m, i) => {
     const d = getMonthData(m);
-    const bal = d.balance || 2500 + i * 200;
-    return { name: monthNames[i], saldo: bal, acumulado: 2500 + i * 400 + bal };
+
+    acumulado += d.balance;
+
+    return {
+      name: monthNames[i],
+      saldo: d.balance,
+      acumulado
+    };
   });
 
   const catSpend: Record<string, number> = {};
