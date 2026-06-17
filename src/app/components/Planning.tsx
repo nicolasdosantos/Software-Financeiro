@@ -1,13 +1,12 @@
 import { useState } from "react";
 import { motion } from "motion/react";
 import { AlertTriangle, CheckCircle, Edit2, X } from "lucide-react";
-import { useFinance, formatCurrency } from "../context/FinanceContext";
+import { useFinance, formatCurrency, getMonthName } from "../context/FinanceContext";
 
 export function Planning() {
-  const { transactions, categories, budgets, updateBudget } = useFinance();
+  const { transactions, categories, budgets, updateBudget, currentMonth } = useFinance();
   const [editingCat, setEditingCat] = useState<string | null>(null);
   const [newLimit, setNewLimit] = useState("");
-  const currentMonth = "2026-06";
 
   function getSpend(catId: string) {
     return transactions.filter(t => t.date.startsWith(currentMonth) && t.category === catId && t.type === "expense")
@@ -34,7 +33,7 @@ export function Planning() {
     <div className="space-y-4 sm:space-y-5">
       <div>
         <h1 className="text-white" style={{ fontSize: "clamp(1.2rem,4vw,1.5rem)", fontWeight: 700 }}>Planejamento Financeiro</h1>
-        <p style={{ color: "var(--muted-foreground)", fontSize: "0.875rem" }}>Junho 2026 — Controle seu orçamento por categoria</p>
+        <p style={{ color: "var(--muted-foreground)", fontSize: "0.875rem" }}>{getMonthName(currentMonth)} — Controle seu orçamento por categoria</p>
       </div>
 
       {/* Overview */}

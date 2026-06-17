@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Plus, Edit2, Trash2, X, CheckCircle } from "lucide-react";
-import { useFinance, formatCurrency, Goal } from "../context/FinanceContext";
+import { Plus, Edit2, Trash2, X, CheckCircle, CircleDollarSign } from "lucide-react";
+import { useFinance, formatCurrency, Goal, toLocalDate } from "../context/FinanceContext";
 
 function GoalForm({ initial, onSave, onClose }: { initial?: Goal; onSave: (g: any) => void; onClose: () => void }) {
   const [form, setForm] = useState({
@@ -77,14 +77,72 @@ function GoalForm({ initial, onSave, onClose }: { initial?: Goal; onSave: (g: an
   );
 }
 
+function GoalContributionForm({ goal, onSave, onClose }: { goal: Goal; onSave: (amount: number) => Promise<void>; onClose: () => void }) {
+  const [amount, setAmount] = useState("");
+  const remaining = Math.max(0, goal.target - goal.current);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const value = parseFloat(amount);
+    if (Number.isNaN(value) || value <= 0) return;
+
+    await onSave(value);
+    onClose();
+  }
+
+  const inp = { background: "var(--input-background)", border: "1px solid var(--border)", borderRadius: "10px", color: "var(--foreground)", padding: "10px 14px", width: "100%", fontSize: "0.875rem", outline: "none" };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="p-3 rounded-xl" style={{ background: "var(--secondary)", border: "1px solid var(--border)" }}>
+        <p className="text-white" style={{ fontWeight: 600 }}>{goal.title}</p>
+        <p style={{ color: "var(--muted-foreground)", fontSize: "0.8rem" }}>
+          Falta {formatCurrency(remaining)} para completar a meta.
+        </p>
+      </div>
+
+      <div>
+        <label className="block text-sm mb-1.5" style={{ color: "var(--muted-foreground)" }}>Valor guardado (R$)</label>
+        <input
+          autoFocus
+          style={inp}
+          type="number"
+          min="0.01"
+          max={remaining || undefined}
+          step="0.01"
+          required
+          value={amount}
+          onChange={e => setAmount(e.target.value)}
+          placeholder="0,00"
+        />
+      </div>
+
+      <div className="flex gap-3 pt-2">
+        <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-medium"
+          style={{ background: "var(--secondary)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>Cancelar</button>
+        <button type="submit" className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white hover:opacity-90"
+          style={{ background: "var(--primary)" }}>Adicionar</button>
+      </div>
+    </form>
+  );
+}
+
 export function Goals() {
   const { goals, addGoal, updateGoal, deleteGoal } = useFinance();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Goal | null>(null);
+  const [contributing, setContributing] = useState<Goal | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
 
   const overlay = { position: "fixed" as const, inset: 0, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: "16px" };
   const dialog = { background: "var(--popover)", border: "1px solid var(--border)", borderRadius: "20px", padding: "24px", width: "100%", maxWidth: "460px", maxHeight: "90vh", overflowY: "auto" as const };
+
+  async function addContribution(goal: Goal, amount: number) {
+    await updateGoal({
+      ...goal,
+      current: Math.min(goal.target, goal.current + amount),
+    });
+  }
 
   return (
     <div className="space-y-4 sm:space-y-5">
@@ -111,7 +169,7 @@ export function Goals() {
           {goals.map((goal, i) => {
             const pct = Math.min(100, (goal.current / goal.target) * 100);
             const done = pct >= 100;
-            const daysLeft = Math.ceil((new Date(goal.deadline).getTime() - Date.now()) / 86400000);
+            const daysLeft = Math.ceil((toLocalDate(goal.deadline).getTime() - Date.now()) / 86400000);
             const monthlyNeeded = daysLeft > 0 && !done ? (goal.target - goal.current) / (daysLeft / 30) : 0;
 
             return (
@@ -176,6 +234,14 @@ export function Goals() {
                     </div>
                   )}
                 </div>
+
+                {!done && (
+                  <button onClick={() => setContributing(goal)}
+                    className="relative mt-4 flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-medium text-white hover:opacity-90"
+                    style={{ background: goal.color }}>
+                    <CircleDollarSign size={16} /> Guardar valor
+                  </button>
+                )}
               </motion.div>
             );
           })}
@@ -204,6 +270,23 @@ export function Goals() {
                 <button onClick={() => setEditing(null)} style={{ color: "var(--muted-foreground)" }}><X size={20} /></button>
               </div>
               <GoalForm initial={editing} onSave={updateGoal} onClose={() => setEditing(null)} />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {contributing && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={overlay} onClick={() => setContributing(null)}>
+            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} style={dialog} onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-white" style={{ fontWeight: 600 }}>Adicionar valor</h2>
+                <button onClick={() => setContributing(null)} style={{ color: "var(--muted-foreground)" }}><X size={20} /></button>
+              </div>
+              <GoalContributionForm
+                goal={contributing}
+                onSave={(amount) => addContribution(contributing, amount)}
+                onClose={() => setContributing(null)}
+              />
             </motion.div>
           </motion.div>
         )}

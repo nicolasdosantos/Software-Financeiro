@@ -1,9 +1,8 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import type { User } from "@supabase/supabase-js";
 import { supabase } from "../../lib/supabase";
 
 export type TransactionType = "income" | "expense";
-
-
 
 export interface Transaction {
   id: string;
@@ -49,6 +48,54 @@ export interface Budget {
   limit: number;
 }
 
+interface FinanceContextType {
+  transactions: Transaction[];
+  categories: Category[];
+  goals: Goal[];
+  investments: Investment[];
+  budgets: Budget[];
+  loading: boolean;
+  addTransaction: (t: Omit<Transaction, "id">) => Promise<void>;
+  updateTransaction: (t: Transaction) => Promise<void>;
+  deleteTransaction: (id: string) => Promise<void>;
+  addCategory: (c: Omit<Category, "id">) => Promise<void>;
+  updateCategory: (c: Category) => Promise<void>;
+  deleteCategory: (id: string) => Promise<void>;
+  addGoal: (g: Omit<Goal, "id">) => Promise<void>;
+  updateGoal: (g: Goal) => Promise<void>;
+  deleteGoal: (id: string) => Promise<void>;
+  addInvestment: (i: Omit<Investment, "id">) => Promise<void>;
+  updateInvestment: (i: Investment) => Promise<void>;
+  deleteInvestment: (id: string) => Promise<void>;
+  updateBudget: (b: Budget) => Promise<void>;
+  currentMonth: string;
+  setCurrentMonth: (m: string) => void;
+}
+
+type GoalRow = {
+  id: string;
+  title: string;
+  description: string | null;
+  target: number;
+  current: number;
+  deadline: string;
+  color: string;
+  icon: string;
+};
+type InvestmentRow = {
+  id: string;
+  name: string;
+  type: string;
+  invested: number;
+  current_value: number;
+  start_date: string;
+  institution: string | null;
+};
+type BudgetRow = {
+  category_id: string;
+  limit_amount: number;
+};
+
 const DEFAULT_CATEGORIES: Category[] = [
   { id: "cat-1", name: "Alimentação", icon: "🍽️", color: "#f59e0b", type: "default" },
   { id: "cat-2", name: "Transporte", icon: "🚗", color: "#3b82f6", type: "default" },
@@ -63,268 +110,428 @@ const DEFAULT_CATEGORIES: Category[] = [
   { id: "cat-11", name: "Outros", icon: "📦", color: "#94a3b8", type: "default" },
 ];
 
-const INITIAL_TRANSACTIONS: Transaction[] = [
-  { id: "t1", type: "income", amount: 8500, description: "Salário maio", category: "cat-8", date: "2026-05-05" },
-  { id: "t2", type: "expense", amount: 2200, description: "Aluguel maio", category: "cat-3", date: "2026-05-07" },
-  { id: "t3", type: "expense", amount: 850, description: "Supermercado Extra", category: "cat-1", date: "2026-05-10" },
-  { id: "t4", type: "expense", amount: 320, description: "Gasolina", category: "cat-2", date: "2026-05-12" },
-  { id: "t5", type: "expense", amount: 89.90, description: "Netflix + Spotify", category: "cat-6", date: "2026-05-15" },
-  { id: "t6", type: "expense", amount: 150, description: "Academia Smart Fit", category: "cat-4", date: "2026-05-15" },
-  { id: "t7", type: "expense", amount: 230, description: "Farmácia", category: "cat-4", date: "2026-05-18" },
-  { id: "t8", type: "expense", amount: 280, description: "Restaurante Dom", category: "cat-1", date: "2026-05-20" },
-  { id: "t9", type: "expense", amount: 95, description: "Uber", category: "cat-2", date: "2026-05-22" },
-  { id: "t10", type: "expense", amount: 180, description: "Energia elétrica", category: "cat-3", date: "2026-05-25" },
-  { id: "t11", type: "expense", amount: 120, description: "Internet Vivo", category: "cat-3", date: "2026-05-25" },
-  { id: "t12", type: "income", amount: 2000, description: "Projeto freelance", category: "cat-9", date: "2026-05-28" },
-  { id: "t13", type: "income", amount: 8500, description: "Salário junho", category: "cat-8", date: "2026-06-05" },
-  { id: "t14", type: "expense", amount: 2200, description: "Aluguel junho", category: "cat-3", date: "2026-06-07" },
-  { id: "t15", type: "expense", amount: 720, description: "Supermercado", category: "cat-1", date: "2026-06-08" },
-  { id: "t16", type: "expense", amount: 280, description: "Gasolina Shell", category: "cat-2", date: "2026-06-10" },
-  { id: "t17", type: "expense", amount: 450, description: "Curso React Avançado", category: "cat-5", date: "2026-06-10" },
-  { id: "t18", type: "expense", amount: 150, description: "Academia", category: "cat-4", date: "2026-06-10" },
-  { id: "t19", type: "expense", amount: 340, description: "Jantar aniversário", category: "cat-1", date: "2026-06-11" },
-  { id: "t20", type: "expense", amount: 1000, description: "Aporte CDB", category: "cat-7", date: "2026-06-12" },
-  { id: "t21", type: "expense", amount: 195, description: "Energia elétrica", category: "cat-3", date: "2026-06-12" },
-  { id: "t22", type: "expense", amount: 120, description: "Internet", category: "cat-3", date: "2026-06-12" },
-];
+const todayMonth = () => {
+  const today = new Date();
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+};
 
-const INITIAL_GOALS: Goal[] = [
-  { id: "g1", title: "Reserva de Emergência", description: "6 meses de despesas", target: 30000, current: 18500, deadline: "2026-12-31", color: "#10d9a4", icon: "🛡️" },
-  { id: "g2", title: "Viagem Europa", description: "Férias em Portugal e Espanha", target: 15000, current: 6200, deadline: "2027-06-30", color: "#204bca", icon: "✈️" },
-  { id: "g3", title: "MacBook Pro", description: "Upgrade do setup de trabalho", target: 12000, current: 9800, deadline: "2026-09-30", color: "#8b5cf6", icon: "💻" },
-];
-
-const INITIAL_INVESTMENTS: Investment[] = [
-  { id: "i1", name: "CDB Banco Inter", type: "Renda Fixa", invested: 15000, currentValue: 16240, startDate: "2025-01-10", institution: "Banco Inter" },
-  { id: "i2", name: "Tesouro Direto IPCA+", type: "Renda Fixa", invested: 8000, currentValue: 8890, startDate: "2025-03-15", institution: "Tesouro Nacional" },
-  { id: "i3", name: "Ações ITUB4", type: "Renda Variável", invested: 5000, currentValue: 5830, startDate: "2025-06-01", institution: "XP Investimentos" },
-  { id: "i4", name: "Fundo Imobiliário MXRF11", type: "FII", invested: 3000, currentValue: 3210, startDate: "2025-08-20", institution: "Clear Corretora" },
-];
-
-const INITIAL_BUDGETS: Budget[] = [
-  { categoryId: "cat-1", limit: 1000 },
-  { categoryId: "cat-2", limit: 500 },
-  { categoryId: "cat-3", limit: 2500 },
-  { categoryId: "cat-4", limit: 400 },
-  { categoryId: "cat-5", limit: 600 },
-  { categoryId: "cat-6", limit: 300 },
-  { categoryId: "cat-7", limit: 1500 },
-];
-
-function loadFromStorage<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
+export function getTodayDateInput(): string {
+  const today = new Date();
+  return [
+    today.getFullYear(),
+    String(today.getMonth() + 1).padStart(2, "0"),
+    String(today.getDate()).padStart(2, "0"),
+  ].join("-");
 }
 
-interface FinanceContextType {
-  transactions: Transaction[];
-  categories: Category[];
-  goals: Goal[];
-  investments: Investment[];
-  budgets: Budget[];
-  addTransaction: (t: Omit<Transaction, "id">) => Promise<void>;
-  updateTransaction: (t: Transaction) => Promise<void>;
-  deleteTransaction: (id: string) => Promise<void>;
-  addCategory: (c: Omit<Category, "id">) => void;
-  updateCategory: (c: Category) => void;
-  deleteCategory: (id: string) => void;
-  addGoal: (g: Omit<Goal, "id">) => void;
-  updateGoal: (g: Goal) => void;
-  deleteGoal: (id: string) => void;
-  addInvestment: (i: Omit<Investment, "id">) => void;
-  updateInvestment: (i: Investment) => void;
-  deleteInvestment: (id: string) => void;
-  updateBudget: (b: Budget) => void;
-  currentMonth: string;
-  setCurrentMonth: (m: string) => void;
+export function toLocalDate(date: string): Date {
+  const [year, month, day] = date.slice(0, 10).split("-").map(Number);
+  return new Date(year, month - 1, day, 12);
+}
+
+export function toLocalMonthDate(month: string): Date {
+  const [year, monthNumber] = month.split("-").map(Number);
+  return new Date(year, monthNumber - 1, 1, 12);
+}
+
+function mapGoal(row: GoalRow): Goal {
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description ?? "",
+    target: Number(row.target),
+    current: Number(row.current),
+    deadline: row.deadline,
+    color: row.color,
+    icon: row.icon,
+  };
+}
+
+function mapInvestment(row: InvestmentRow): Investment {
+  return {
+    id: row.id,
+    name: row.name,
+    type: row.type,
+    invested: Number(row.invested),
+    currentValue: Number(row.current_value),
+    startDate: row.start_date,
+    institution: row.institution ?? "",
+  };
+}
+
+function mapBudget(row: BudgetRow): Budget {
+  return {
+    categoryId: row.category_id,
+    limit: Number(row.limit_amount),
+  };
 }
 
 const FinanceContext = createContext<FinanceContextType | null>(null);
 
 export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [categories, setCategories] = useState<Category[]>(() =>
-    loadFromStorage("fp_categories", DEFAULT_CATEGORIES)
-  );
-  const [goals, setGoals] = useState<Goal[]>(() =>
-    loadFromStorage("fp_goals", INITIAL_GOALS)
-  );
-  const [investments, setInvestments] = useState<Investment[]>(() =>
-    loadFromStorage("fp_investments", INITIAL_INVESTMENTS)
-  );
-  const [budgets, setBudgets] = useState<Budget[]>(() =>
-    loadFromStorage("fp_budgets", INITIAL_BUDGETS)
-  );
-  const [currentMonth, setCurrentMonth] = useState("2026-06");
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [investments, setInvestments] = useState<Investment[]>([]);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [currentMonth, setCurrentMonth] = useState(todayMonth);
 
-
-  useEffect(() => {
-    loadTransactions();
+  const getCurrentUser = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    return user;
   }, []);
 
-  async function getCurrentUser() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    return user;
-  }
-
-  async function loadTransactions() {
-    const user = await getCurrentUser();
-
-    if (!user) return;
+  const ensureDefaultCategories = useCallback(async (user: User, existing: Category[]) => {
+    if (existing.length > 0) return existing;
 
     const { data, error } = await supabase
-      .from("transactions")
+      .from("categories")
+      .insert(DEFAULT_CATEGORIES.map((category) => ({ ...category, user_id: user.id })))
       .select("*")
-      .eq("user_id", user.id)
-      .order("date", { ascending: false });
+      .order("name", { ascending: true });
 
     if (error) {
-      console.error("Erro ao carregar transações:", error);
+      console.error("Erro ao criar categorias padrão:", error);
+      return [];
+    }
+
+    return (data ?? []) as Category[];
+  }, []);
+
+  const loadFinanceData = useCallback(async () => {
+    setLoading(true);
+
+    const user = await getCurrentUser();
+    if (!user) {
+      setTransactions([]);
+      setCategories([]);
+      setGoals([]);
+      setInvestments([]);
+      setBudgets([]);
+      setLoading(false);
       return;
     }
 
-    setTransactions(data || []);
-  }
+    const [
+      transactionsResult,
+      categoriesResult,
+      goalsResult,
+      investmentsResult,
+      budgetsResult,
+    ] = await Promise.all([
+      supabase.from("transactions").select("*").eq("user_id", user.id).order("date", { ascending: false }),
+      supabase.from("categories").select("*").eq("user_id", user.id).order("name", { ascending: true }),
+      supabase.from("goals").select("*").eq("user_id", user.id).order("deadline", { ascending: true }),
+      supabase.from("investments").select("*").eq("user_id", user.id).order("start_date", { ascending: false }),
+      supabase.from("budgets").select("category_id, limit_amount").eq("user_id", user.id),
+    ]);
+
+    if (transactionsResult.error) console.error("Erro ao carregar transações:", transactionsResult.error);
+    if (categoriesResult.error) console.error("Erro ao carregar categorias:", categoriesResult.error);
+    if (goalsResult.error) console.error("Erro ao carregar metas:", goalsResult.error);
+    if (investmentsResult.error) console.error("Erro ao carregar investimentos:", investmentsResult.error);
+    if (budgetsResult.error) console.error("Erro ao carregar orçamentos:", budgetsResult.error);
+
+    const userCategories = await ensureDefaultCategories(user, (categoriesResult.data ?? []) as Category[]);
+
+    setTransactions((transactionsResult.data ?? []) as Transaction[]);
+    setCategories(userCategories);
+    setGoals(((goalsResult.data ?? []) as GoalRow[]).map(mapGoal));
+    setInvestments(((investmentsResult.data ?? []) as InvestmentRow[]).map(mapInvestment));
+    setBudgets(((budgetsResult.data ?? []) as BudgetRow[]).map(mapBudget));
+    setLoading(false);
+  }, [ensureDefaultCategories, getCurrentUser]);
 
   useEffect(() => {
-    localStorage.setItem(
-      "fp_categories",
-      JSON.stringify(categories)
-    );
-  }, [categories]);
+    loadFinanceData();
 
-  useEffect(() => {
-    localStorage.setItem(
-      "fp_goals",
-      JSON.stringify(goals)
-    );
-  }, [goals]);
+    const { data: listener } = supabase.auth.onAuthStateChange(() => {
+      loadFinanceData();
+    });
 
-  useEffect(() => {
-    localStorage.setItem(
-      "fp_investments",
-      JSON.stringify(investments)
-    );
-  }, [investments]);
+    return () => listener.subscription.unsubscribe();
+  }, [loadFinanceData]);
 
-  useEffect(() => {
-    localStorage.setItem(
-      "fp_budgets",
-      JSON.stringify(budgets)
-    );
-  }, [budgets]);
+  const value = useMemo<FinanceContextType>(() => ({
+    transactions,
+    categories,
+    goals,
+    investments,
+    budgets,
+    loading,
+    currentMonth,
+    setCurrentMonth,
 
-  const uid = () =>
-    Math.random().toString(36).slice(2, 10);
+    addTransaction: async (transaction) => {
+      const user = await getCurrentUser();
+      if (!user) return;
 
+      const { data, error } = await supabase
+        .from("transactions")
+        .insert({ ...transaction, user_id: user.id })
+        .select("*")
+        .single();
+
+      if (error) {
+        console.error("Erro ao adicionar transação:", error);
+        return;
+      }
+
+      setTransactions((prev) => [data as Transaction, ...prev]);
+    },
+
+    updateTransaction: async (transaction) => {
+      const user = await getCurrentUser();
+      if (!user) return;
+
+      const { id, ...payload } = transaction;
+      const { error } = await supabase
+        .from("transactions")
+        .update(payload)
+        .eq("id", id)
+        .eq("user_id", user.id);
+
+      if (error) {
+        console.error("Erro ao atualizar transação:", error);
+        return;
+      }
+
+      setTransactions((prev) => prev.map((item) => item.id === id ? transaction : item));
+    },
+
+    deleteTransaction: async (id) => {
+      const user = await getCurrentUser();
+      if (!user) return;
+
+      const { error } = await supabase
+        .from("transactions")
+        .delete()
+        .eq("id", id)
+        .eq("user_id", user.id);
+
+      if (error) {
+        console.error("Erro ao excluir transação:", error);
+        return;
+      }
+
+      setTransactions((prev) => prev.filter((item) => item.id !== id));
+    },
+
+    addCategory: async (category) => {
+      const user = await getCurrentUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("categories")
+        .insert({ ...category, user_id: user.id })
+        .select("*")
+        .single();
+
+      if (error) {
+        console.error("Erro ao adicionar categoria:", error);
+        return;
+      }
+
+      setCategories((prev) => [...prev, data as Category].sort((a, b) => a.name.localeCompare(b.name)));
+    },
+
+    updateCategory: async (category) => {
+      const user = await getCurrentUser();
+      if (!user) return;
+
+      const { id, ...payload } = category;
+      const { error } = await supabase
+        .from("categories")
+        .update(payload)
+        .eq("id", id)
+        .eq("user_id", user.id);
+
+      if (error) {
+        console.error("Erro ao atualizar categoria:", error);
+        return;
+      }
+
+      setCategories((prev) => prev.map((item) => item.id === id ? category : item));
+    },
+
+    deleteCategory: async (id) => {
+      const user = await getCurrentUser();
+      if (!user) return;
+
+      const { error } = await supabase
+        .from("categories")
+        .delete()
+        .eq("id", id)
+        .eq("user_id", user.id)
+        .eq("type", "custom");
+
+      if (error) {
+        console.error("Erro ao excluir categoria:", error);
+        return;
+      }
+
+      setCategories((prev) => prev.filter((item) => item.id !== id));
+      setBudgets((prev) => prev.filter((item) => item.categoryId !== id));
+    },
+
+    addGoal: async (goal) => {
+      const user = await getCurrentUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("goals")
+        .insert({ ...goal, user_id: user.id })
+        .select("*")
+        .single();
+
+      if (error) {
+        console.error("Erro ao adicionar meta:", error);
+        return;
+      }
+
+      setGoals((prev) => [...prev, mapGoal(data as GoalRow)]);
+    },
+
+    updateGoal: async (goal) => {
+      const user = await getCurrentUser();
+      if (!user) return;
+
+      const { id, ...payload } = goal;
+      const { error } = await supabase
+        .from("goals")
+        .update(payload)
+        .eq("id", id)
+        .eq("user_id", user.id);
+
+      if (error) {
+        console.error("Erro ao atualizar meta:", error);
+        return;
+      }
+
+      setGoals((prev) => prev.map((item) => item.id === id ? goal : item));
+    },
+
+    deleteGoal: async (id) => {
+      const user = await getCurrentUser();
+      if (!user) return;
+
+      const { error } = await supabase
+        .from("goals")
+        .delete()
+        .eq("id", id)
+        .eq("user_id", user.id);
+
+      if (error) {
+        console.error("Erro ao excluir meta:", error);
+        return;
+      }
+
+      setGoals((prev) => prev.filter((item) => item.id !== id));
+    },
+
+    addInvestment: async (investment) => {
+      const user = await getCurrentUser();
+      if (!user) return;
+
+      const { currentValue, startDate, ...payload } = investment;
+      const { data, error } = await supabase
+        .from("investments")
+        .insert({
+          ...payload,
+          current_value: currentValue,
+          start_date: startDate,
+          user_id: user.id,
+        })
+        .select("*")
+        .single();
+
+      if (error) {
+        console.error("Erro ao adicionar investimento:", error);
+        return;
+      }
+
+      setInvestments((prev) => [mapInvestment(data as InvestmentRow), ...prev]);
+    },
+
+    updateInvestment: async (investment) => {
+      const user = await getCurrentUser();
+      if (!user) return;
+
+      const { id, currentValue, startDate, ...payload } = investment;
+      const { error } = await supabase
+        .from("investments")
+        .update({
+          ...payload,
+          current_value: currentValue,
+          start_date: startDate,
+        })
+        .eq("id", id)
+        .eq("user_id", user.id);
+
+      if (error) {
+        console.error("Erro ao atualizar investimento:", error);
+        return;
+      }
+
+      setInvestments((prev) => prev.map((item) => item.id === id ? investment : item));
+    },
+
+    deleteInvestment: async (id) => {
+      const user = await getCurrentUser();
+      if (!user) return;
+
+      const { error } = await supabase
+        .from("investments")
+        .delete()
+        .eq("id", id)
+        .eq("user_id", user.id);
+
+      if (error) {
+        console.error("Erro ao excluir investimento:", error);
+        return;
+      }
+
+      setInvestments((prev) => prev.filter((item) => item.id !== id));
+    },
+
+    updateBudget: async (budget) => {
+      const user = await getCurrentUser();
+      if (!user) return;
+
+      const { error } = await supabase
+        .from("budgets")
+        .upsert({
+          user_id: user.id,
+          category_id: budget.categoryId,
+          limit_amount: budget.limit,
+        }, { onConflict: "user_id,category_id" });
+
+      if (error) {
+        console.error("Erro ao atualizar orçamento:", error);
+        return;
+      }
+
+      setBudgets((prev) => {
+        const exists = prev.some((item) => item.categoryId === budget.categoryId);
+        return exists
+          ? prev.map((item) => item.categoryId === budget.categoryId ? budget : item)
+          : [...prev, budget];
+      });
+    },
+  }), [
+    budgets,
+    categories,
+    currentMonth,
+    getCurrentUser,
+    goals,
+    investments,
+    loading,
+    transactions,
+  ]);
 
   return (
-    <FinanceContext.Provider value={{
-      transactions,
-      categories,
-      goals,
-      investments,
-      budgets,
-      currentMonth,
-      setCurrentMonth,
-
-      addTransaction: async (t) => {
-        const user = await getCurrentUser();
-
-        if (!user) return;
-
-        const { data, error } = await supabase
-          .from("transactions")
-          .insert({
-            user_id: user.id,
-            type: t.type,
-            amount: t.amount,
-            description: t.description,
-            category: t.category,
-            date: t.date,
-            notes: t.notes
-          })
-          .select()
-          .single();
-
-        if (error) {
-          console.error(error);
-          return;
-        }
-
-        setTransactions(prev => [
-          data as Transaction,
-          ...prev
-        ]);
-      },
-
-      updateTransaction: async (t) => {
-        const user = await getCurrentUser();
-
-        if (!user) return;
-
-        const { error } = await supabase
-          .from("transactions")
-          .update({
-            type: t.type,
-            amount: t.amount,
-            description: t.description,
-            category: t.category,
-            date: t.date,
-            notes: t.notes
-          })
-          .eq("id", t.id)
-          .eq("user_id", user.id);
-
-        if (error) {
-          console.error(error);
-          return;
-        }
-
-        setTransactions(prev =>
-          prev.map(x => x.id === t.id ? t : x)
-        );
-      }, deleteTransaction: async (id) => {
-
-        const user = await getCurrentUser();
-
-        if (!user) return;
-
-        const { error } = await supabase
-          .from("transactions")
-          .delete()
-          .eq("id", id)
-          .eq("user_id", user.id);
-        if (error) {
-          console.error(error);
-          return;
-        }
-
-        setTransactions(prev =>
-          prev.filter(x => x.id !== id)
-        );
-      },
-      addCategory: (c) => setCategories(prev => [...prev, { ...c, id: uid() }]),
-      updateCategory: (c) => setCategories(prev => prev.map(x => x.id === c.id ? c : x)),
-      deleteCategory: (id) => setCategories(prev => prev.filter(x => x.id !== id)),
-      addGoal: (g) => setGoals(prev => [...prev, { ...g, id: uid() }]),
-      updateGoal: (g) => setGoals(prev => prev.map(x => x.id === g.id ? g : x)),
-      deleteGoal: (id) => setGoals(prev => prev.filter(x => x.id !== id)),
-      addInvestment: (i) => setInvestments(prev => [...prev, { ...i, id: uid() }]),
-      updateInvestment: (i) => setInvestments(prev => prev.map(x => x.id === i.id ? i : x)),
-      deleteInvestment: (id) => setInvestments(prev => prev.filter(x => x.id !== id)),
-      updateBudget: (b) => setBudgets(prev => {
-        const idx = prev.findIndex(x => x.categoryId === b.categoryId);
-        return idx >= 0 ? prev.map(x => x.categoryId === b.categoryId ? b : x) : [...prev, b];
-      }),
-    }}>
+    <FinanceContext.Provider value={value}>
       {children}
     </FinanceContext.Provider>
   );
@@ -341,7 +548,9 @@ export function formatCurrency(value: number): string {
 }
 
 export function getMonthName(month: string): string {
-  const [year, m] = month.split("-");
-  const date = new Date(Number(year), Number(m) - 1, 1);
-  return date.toLocaleString("pt-BR", { month: "long", year: "numeric" });
+  return toLocalMonthDate(month).toLocaleString("pt-BR", { month: "long", year: "numeric" });
+}
+
+export function getShortMonthName(month: string): string {
+  return toLocalMonthDate(month).toLocaleString("pt-BR", { month: "short" });
 }

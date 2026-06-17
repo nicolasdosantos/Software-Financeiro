@@ -5,7 +5,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from "recharts";
 import { TrendingUp, TrendingDown, Wallet, PiggyBank, ArrowUpRight, ArrowDownRight, Eye, EyeOff } from "lucide-react";
-import { useFinance, formatCurrency } from "../context/FinanceContext";
+import { useFinance, formatCurrency, getMonthName, getShortMonthName } from "../context/FinanceContext";
 import { useUser } from "../../hooks/useUser";
 
 
@@ -41,10 +41,6 @@ export function Dashboard() {
     )
   ].sort();
 
-  const monthNames = months.map(m =>
-    new Date(m + "-01").toLocaleString("pt-BR", { month: "short" })
-  );
-
   const prevMonthIndex = months.indexOf(currentMonth) - 1;
   const prevMonth = months[prevMonthIndex] ?? currentMonth;
 
@@ -62,9 +58,9 @@ export function Dashboard() {
 
   const statCards = [
     { title: "Saldo Total", value: savings, icon: Wallet, color: "#204bca", bg: "rgba(32,75,202,0.12)", change: "+12,3%", up: true },
-    { title: "Receitas (Jun)", value: curr.income, icon: TrendingUp, color: "#10d9a4", bg: "rgba(16,217,164,0.12)", change: `${((curr.income - prev.income) / Math.max(prev.income, 1) * 100).toFixed(1)}%`, up: curr.income >= prev.income },
-    { title: "Despesas (Jun)", value: curr.expense, icon: TrendingDown, color: "#ef4444", bg: "rgba(239,68,68,0.12)", change: `${((curr.expense - prev.expense) / Math.max(prev.expense, 1) * 100).toFixed(1)}%`, up: curr.expense < prev.expense },
-    { title: "Economia (Jun)", value: curr.balance, icon: PiggyBank, color: "#8b5cf6", bg: "rgba(139,92,246,0.12)", change: "+28,5%", up: true },
+    { title: `Receitas (${getShortMonthName(currentMonth)})`, value: curr.income, icon: TrendingUp, color: "#10d9a4", bg: "rgba(16,217,164,0.12)", change: `${((curr.income - prev.income) / Math.max(prev.income, 1) * 100).toFixed(1)}%`, up: curr.income >= prev.income },
+    { title: `Despesas (${getShortMonthName(currentMonth)})`, value: curr.expense, icon: TrendingDown, color: "#ef4444", bg: "rgba(239,68,68,0.12)", change: `${((curr.expense - prev.expense) / Math.max(prev.expense, 1) * 100).toFixed(1)}%`, up: curr.expense < prev.expense },
+    { title: `Economia (${getShortMonthName(currentMonth)})`, value: curr.balance, icon: PiggyBank, color: "#8b5cf6", bg: "rgba(139,92,246,0.12)", change: "+28,5%", up: true },
   ];
 
   const monthlyData = months.map((m) => {
@@ -77,7 +73,7 @@ export function Dashboard() {
       .reduce((s, t) => s + t.amount, 0);
 
     return {
-      name: new Date(m + "-01").toLocaleString("pt-BR", { month: "short" }),
+      name: getShortMonthName(m),
       receitas: inc,
       despesas: exp,
     };
@@ -107,7 +103,7 @@ export function Dashboard() {
             Bem-vindo, {user?.user_metadata?.name || "Usuário"}! 👋
           </h1>
           <p style={{ color: "var(--muted-foreground)", fontSize: "0.875rem" }}>
-            Aqui está seu resumo financeiro de junho.
+            Aqui está seu resumo financeiro de {getMonthName(currentMonth)}.
           </p>
         </div>
         <button
@@ -197,7 +193,7 @@ export function Dashboard() {
           style={{ background: "var(--card)", border: "1px solid var(--border)" }}
         >
           <h3 className="text-white mb-0.5" style={{ fontWeight: 600 }}>Gastos por Categoria</h3>
-          <p style={{ color: "var(--muted-foreground)", fontSize: "0.78rem", marginBottom: "8px" }}>Junho 2026</p>
+          <p style={{ color: "var(--muted-foreground)", fontSize: "0.78rem", marginBottom: "8px" }}>{getMonthName(currentMonth)}</p>
           <ResponsiveContainer width="100%" height={140}>
             <PieChart>
               <Pie data={pieData} cx="50%" cy="50%" innerRadius={40} outerRadius={62}

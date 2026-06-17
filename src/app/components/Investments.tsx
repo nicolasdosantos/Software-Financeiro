@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Plus, Edit2, Trash2, X, TrendingUp, TrendingDown } from "lucide-react";
-import { useFinance, formatCurrency, Investment } from "../context/FinanceContext";
+import { useFinance, formatCurrency, getTodayDateInput, Investment } from "../context/FinanceContext";
 
 const TYPES = ["Renda Fixa", "Renda Variável", "FII", "Criptomoeda", "Previdência", "Outro"];
 const TYPE_COLORS: Record<string, string> = {
@@ -13,7 +13,7 @@ function InvestForm({ initial, onSave, onClose }: { initial?: Investment; onSave
   const [form, setForm] = useState({
     name: initial?.name || "", type: initial?.type || "Renda Fixa",
     invested: initial?.invested?.toString() || "", currentValue: initial?.currentValue?.toString() || "",
-    startDate: initial?.startDate || new Date().toISOString().split("T")[0], institution: initial?.institution || "",
+    startDate: initial?.startDate || getTodayDateInput(), institution: initial?.institution || "",
   });
 
   function handleSubmit(e: React.FormEvent) {

@@ -3,7 +3,7 @@ import {
   PieChart, Pie, Cell, BarChart, Bar, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from "recharts";
-import { useFinance, formatCurrency } from "../context/FinanceContext";
+import { useFinance, formatCurrency, getMonthName, getShortMonthName } from "../context/FinanceContext";
 import { TrendingUp, TrendingDown, Lightbulb } from "lucide-react";
 
 export function Charts() {
@@ -47,11 +47,7 @@ export function Charts() {
     )
   ].sort();
 
-  const monthNames = months.map(month =>
-    new Date(month + "-01").toLocaleString("pt-BR", {
-      month: "short"
-    })
-  );
+  const monthNames = months.map(getShortMonthName);
 
   const prevMonthIndex = months.indexOf(selectedMonth) - 1;
   const prevMonth = months[prevMonthIndex] ?? selectedMonth;
@@ -146,10 +142,7 @@ export function Charts() {
         >
           {months.map(m => (
             <option key={m} value={m}>
-              {new Date(m + "-01").toLocaleString("pt-BR", {
-                month: "long",
-                year: "numeric"
-              })}
+              {getMonthName(m)}
             </option>
           ))}
         </select>

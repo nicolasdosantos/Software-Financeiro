@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Plus, Search, Edit2, Trash2, X, ChevronDown } from "lucide-react";
-import { useFinance, formatCurrency, Transaction } from "../context/FinanceContext";
+import { useFinance, formatCurrency, getMonthName, getTodayDateInput, Transaction } from "../context/FinanceContext";
 
 const ITEMS_PER_PAGE = 8;
 
@@ -11,8 +11,8 @@ function TransactionForm({ initial, onSave, onClose }: { initial?: Transaction; 
     type: initial?.type || "expense" as "income" | "expense",
     amount: initial?.amount?.toString() || "",
     description: initial?.description || "",
-    category: initial?.category || categories[0].id,
-    date: initial?.date || new Date().toISOString().split("T")[0],
+    category: initial?.category || categories[0]?.id || "",
+    date: initial?.date || getTodayDateInput(),
     notes: initial?.notes || "",
   });
 
@@ -60,7 +60,8 @@ function TransactionForm({ initial, onSave, onClose }: { initial?: Transaction; 
       </div>
       <div>
         <label className="block text-sm mb-1.5" style={{ color: "var(--muted-foreground)" }}>Categoria</label>
-        <select style={{ ...inp, cursor: "pointer" }} value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
+        <select style={{ ...inp, cursor: "pointer" }} required value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
+          {categories.length === 0 && <option value="" style={{ background: "#141828" }}>Carregando categorias...</option>}
           {categories.map(c => <option key={c.id} value={c.id} style={{ background: "#141828" }}>{c.icon} {c.name}</option>)}
         </select>
       </div>
@@ -152,22 +153,11 @@ export function Transactions() {
           </select>
           <select style={sel} value={filterMonth} onChange={e => { setFilterMonth(e.target.value); setPage(1); }}>
             <option value="all" style={{ background: "#141828" }}>Todos os meses</option>
-            {months.map(m => {
-              const [year, month] = m.split("-");
-
-              return (
-                <option key={m} value={m} style={{ background: "#141828" }}>
-                  {new Date(
-                    Number(year),
-                    Number(month) - 1,
-                    1
-                  ).toLocaleString("pt-BR", {
-                    month: "long",
-                    year: "numeric"
-                  })}
-                </option>
-              );
-            })}
+            {months.map(m => (
+              <option key={m} value={m} style={{ background: "#141828" }}>
+                {getMonthName(m)}
+              </option>
+            ))}
           </select>
         </div>
       </div>

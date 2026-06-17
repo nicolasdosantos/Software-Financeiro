@@ -2,19 +2,26 @@ import { useState } from "react";
 import { motion } from "motion/react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useFinance, formatCurrency, getMonthName } from "../context/FinanceContext";
+import { useFinance, formatCurrency, getMonthName, getShortMonthName, getTodayDateInput } from "../context/FinanceContext";
 
 export function Monthly() {
-  const { transactions, categories } = useFinance();
-  const [currentMonth, setCurrentMonth] = useState("2026-06");
 
-  const months = ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06"];
+  const { transactions, categories, currentMonth, setCurrentMonth } = useFinance();
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+
+  const months = Array.from(
+    new Set([currentMonth, ...transactions.map(t => t.date.slice(0, 7))])
+  ).sort();
+
   const currIdx = months.indexOf(currentMonth);
+
   function navigate(dir: -1 | 1) {
     const next = currIdx + dir;
-    if (next >= 0 && next < months.length) setCurrentMonth(months[next]);
+    if (next >= 0 && next < months.length) {
+      setCurrentMonth(months[next]);
+      setSelectedDay(null);
+    }
   }
-
   const txs = transactions.filter(t => t.date.startsWith(currentMonth));
   const income = txs.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0);
   const expense = txs.filter(t => t.type === "expense").reduce((s, t) => s + t.amount, 0);
@@ -36,17 +43,23 @@ export function Monthly() {
   });
   catSpend.sort((a, b) => b.total - a.total);
 
-  const compData = months.map((m, i) => {
+  const compData = months.map((m) => {
     const mt = transactions.filter(t => t.date.startsWith(m));
     const inc = mt.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0);
     const exp = mt.filter(t => t.type === "expense").reduce((s, t) => s + t.amount, 0);
     return {
-      name: new Date(m + "-01").toLocaleString("pt-BR", { month: "short" }),
-      saldo: inc - exp || (i < 4 ? 2500 + i * 400 : 0),
+      name: getShortMonthName(m),
+      saldo: inc - exp,
     };
   });
 
   const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+  const today = getTodayDateInput();
+  const selectedDate = selectedDay ? `${currentMonth}-${String(selectedDay).padStart(2, "0")}` : null;
+  const selectedTxs = selectedDay ? getDayTxs(selectedDay) : [];
+  const selectedIncome = selectedTxs.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0);
+  const selectedExpense = selectedTxs.filter(t => t.type === "expense").reduce((s, t) => s + t.amount, 0);
+  const selectedBalance = selectedIncome - selectedExpense;
 
   return (
     <div className="space-y-4 sm:space-y-5">
@@ -109,20 +122,83 @@ export function Monthly() {
               const dayTxs = getDayTxs(day);
               const net = dayTxs.reduce((s, t) => s + (t.type === "income" ? t.amount : -t.amount), 0);
               const hasActivity = dayTxs.length > 0;
-              const today = `${currentMonth}-${String(day).padStart(2, "0")}` === "2026-06-12";
+              const isToday = `${currentMonth}-${String(day).padStart(2, "0")}` === today;
               return (
-                <div key={day} className="aspect-square flex flex-col items-center justify-center rounded-lg sm:rounded-xl cursor-default"
+                <button key={day} type="button" onClick={() => setSelectedDay(day)}
+                  className="aspect-square flex flex-col items-center justify-center rounded-lg sm:rounded-xl transition-all"
                   style={{
-                    background: today ? "var(--primary)" : hasActivity ? `${net >= 0 ? "#10d9a4" : "#ef4444"}15` : "transparent",
-                    color: today ? "#fff" : hasActivity ? (net >= 0 ? "#10d9a4" : "#ef4444") : "var(--muted-foreground)",
-                    border: today ? "none" : hasActivity ? `1px solid ${net >= 0 ? "#10d9a450" : "#ef444450"}` : "1px solid transparent",
+                    background: selectedDay === day ? "var(--secondary)" : isToday ? "var(--primary)" : hasActivity ? `${net >= 0 ? "#10d9a4" : "#ef4444"}15` : "transparent",
+                    color: isToday && selectedDay !== day ? "#fff" : hasActivity ? (net >= 0 ? "#10d9a4" : "#ef4444") : "var(--muted-foreground)",
+                    border: selectedDay === day ? "1px solid var(--primary)" : isToday ? "1px solid transparent" : hasActivity ? `1px solid ${net >= 0 ? "#10d9a450" : "#ef444450"}` : "1px solid transparent",
+                    cursor: "pointer",
                   }}>
-                  <span style={{ fontWeight: today || hasActivity ? 600 : 400, fontSize: "clamp(0.65rem,1.5vw,0.82rem)" }}>{day}</span>
+                  <span style={{ fontWeight: isToday || hasActivity ? 600 : 400, fontSize: "clamp(0.65rem,1.5vw,0.82rem)" }}>{day}</span>
                   {hasActivity && <span style={{ fontSize: "0.5rem", fontWeight: 600 }}>{dayTxs.length}tx</span>}
-                </div>
+                </button>
               );
             })}
           </div>
+
+          {selectedDay && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+              className="mt-4 rounded-xl p-3 sm:p-4"
+              style={{ background: "var(--secondary)", border: "1px solid var(--border)" }}>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                <div>
+                  <h4 className="text-white" style={{ fontWeight: 600 }}>
+                    Relatório do dia {selectedDate ? new Date(selectedDate + "T12:00:00").toLocaleDateString("pt-BR") : ""}
+                  </h4>
+                  <p style={{ color: "var(--muted-foreground)", fontSize: "0.78rem" }}>
+                    {selectedTxs.length} transaç{selectedTxs.length !== 1 ? "ões" : "ão"} registrada{selectedTxs.length !== 1 ? "s" : ""}
+                  </p>
+                </div>
+                <div className="grid grid-cols-3 gap-2 min-w-0 sm:min-w-[280px]">
+                  {[
+                    { label: "Receitas", value: selectedIncome, color: "#10d9a4" },
+                    { label: "Despesas", value: selectedExpense, color: "#ef4444" },
+                    { label: "Saldo", value: selectedBalance, color: selectedBalance >= 0 ? "#204bca" : "#ef4444" },
+                  ].map(item => (
+                    <div key={item.label} className="rounded-lg px-2 py-1.5" style={{ background: "var(--card)" }}>
+                      <p style={{ color: "var(--muted-foreground)", fontSize: "0.62rem" }}>{item.label}</p>
+                      <p style={{ color: item.color, fontFamily: "var(--font-mono)", fontSize: "0.72rem", fontWeight: 700 }}>
+                        {formatCurrency(item.value)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {selectedTxs.length === 0 ? (
+                <p style={{ color: "var(--muted-foreground)", fontSize: "0.875rem", padding: "8px 0" }}>
+                  Nenhuma movimentação nesse dia.
+                </p>
+              ) : (
+                <div className="space-y-1.5">
+                  {selectedTxs.sort((a, b) => b.type.localeCompare(a.type)).map(tx => {
+                    const cat = categories.find(c => c.id === tx.category);
+                    return (
+                      <div key={tx.id} className="flex items-center justify-between gap-3 rounded-lg px-3 py-2"
+                        style={{ background: "var(--card)" }}>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                            style={{ background: cat ? `${cat.color}20` : "var(--secondary)" }}>
+                            {cat?.icon || "💳"}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="text-white truncate" style={{ fontSize: "0.82rem", fontWeight: 500 }}>{tx.description}</p>
+                            <p style={{ color: "var(--muted-foreground)", fontSize: "0.68rem" }}>{cat?.name || "Sem categoria"}</p>
+                          </div>
+                        </div>
+                        <span style={{ color: tx.type === "income" ? "#10d9a4" : "#ef4444", fontWeight: 700, fontSize: "0.8rem", fontFamily: "var(--font-mono)" }}>
+                          {tx.type === "income" ? "+" : "-"}{formatCurrency(tx.amount)}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </motion.div>
+          )}
         </motion.div>
 
         {/* Category breakdown */}

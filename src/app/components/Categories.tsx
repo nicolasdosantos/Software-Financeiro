@@ -77,6 +77,8 @@ export function Categories() {
     return transactions.filter(t => t.category === catId && t.type === "expense").reduce((s, t) => s + t.amount, 0);
   }
 
+  const maxSpend = Math.max(0, ...categories.map(cat => getSpend(cat.id)));
+
   const overlayStyle = {
     position: "fixed" as const, inset: 0, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)",
     display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: "16px",
@@ -150,7 +152,7 @@ export function Categories() {
                 <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: "var(--secondary)" }}>
                   <div className="h-full rounded-full" style={{
                     background: cat.color,
-                    width: `${Math.min(100, spend > 0 ? 30 + Math.random() * 50 : 0)}%`,
+                    width: `${maxSpend > 0 ? (spend / maxSpend) * 100 : 0}%`,
                     transition: "width 1s ease"
                   }} />
                 </div>
