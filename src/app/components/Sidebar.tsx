@@ -72,7 +72,7 @@ export function Sidebar({
       >
         <div
           className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-          style={{ background: "var(--primary)" }}
+          style={{ background: "linear-gradient(135deg, #193faf, #0f0f11)" }}
         >
           <Wallet size={18} className="text-white" />
         </div>
@@ -175,9 +175,10 @@ export function Sidebar({
         >
           <div
             className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-white text-sm font-semibold"
-            style={{ background: "linear-gradient(135deg, var(--primary), #7b9cff)" }}
+            style={{ background: "linear-gradient(135deg, #193faf, #000000)" }}
           >
-            J
+          {user?.user_metadata?.name.charAt(0).toUpperCase()}
+
           </div>
           {showLabels && (
             <div className="flex-1 overflow-hidden min-w-0">
