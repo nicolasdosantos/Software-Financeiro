@@ -25,11 +25,25 @@ function AnimatedCounter({ value }: { value: number }) {
 }
 
 export function Dashboard() {
-  const { transactions, categories } = useFinance();
   const [hideValues, setHideValues] = useState(false);
 
-  const currentMonth = "2026-06";
-  const prevMonth = "2026-05";
+  const { transactions, categories, currentMonth } = useFinance();
+
+
+  const months = [
+    ...new Set(
+      transactions
+        .map(t => t.date?.slice(0, 7))
+        .filter(Boolean)
+    )
+  ].sort();
+
+  const monthNames = months.map(m =>
+    new Date(m + "-01").toLocaleString("pt-BR", { month: "short" })
+  );
+
+  const prevMonthIndex = months.indexOf(currentMonth) - 1;
+  const prevMonth = months[prevMonthIndex] ?? currentMonth;
 
   function monthTotals(month: string) {
     const txs = transactions.filter(t => t.date.startsWith(month));
@@ -50,13 +64,20 @@ export function Dashboard() {
     { title: "Economia (Jun)", value: curr.balance, icon: PiggyBank, color: "#8b5cf6", bg: "rgba(139,92,246,0.12)", change: "+28,5%", up: true },
   ];
 
-  const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun"];
-  const monthKeys = ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06"];
-  const monthlyData = months.map((m, i) => {
-    const key = monthKeys[i];
-    const inc = transactions.filter(t => t.date.startsWith(key) && t.type === "income").reduce((s, t) => s + t.amount, 0);
-    const exp = transactions.filter(t => t.date.startsWith(key) && t.type === "expense").reduce((s, t) => s + t.amount, 0);
-    return { name: m, receitas: inc || 7200 + i * 500, despesas: exp || 4800 + i * 300 };
+  const monthlyData = months.map((m) => {
+    const inc = transactions
+      .filter(t => t.date?.startsWith(m) && t.type === "income")
+      .reduce((s, t) => s + t.amount, 0);
+
+    const exp = transactions
+      .filter(t => t.date?.startsWith(m) && t.type === "expense")
+      .reduce((s, t) => s + t.amount, 0);
+
+    return {
+      name: new Date(m + "-01").toLocaleString("pt-BR", { month: "short" }),
+      receitas: inc,
+      despesas: exp,
+    };
   });
 
   const catSpend: Record<string, number> = {};
