@@ -37,14 +37,19 @@ export function Register() {
             return;
         }
 
+        if (password.length < 6) {
+            alert("Senha muito fraca (mínimo 6 caracteres)");
+            return;
+        }
+
         setLoading(true);
 
-        const { error } = await supabase.auth.signUp({
-            email,
-            password,
+        const { data, error } = await supabase.auth.signUp({
+            email: email.trim(),
+            password: password.trim(),
             options: {
                 data: {
-                    name,
+                    name: name.trim(),
                 },
             },
         });
@@ -52,12 +57,12 @@ export function Register() {
         setLoading(false);
 
         if (error) {
+            console.log(error);
             alert(error.message);
             return;
         }
 
         alert("Conta criada com sucesso!");
-
         navigate("/login");
     }
 

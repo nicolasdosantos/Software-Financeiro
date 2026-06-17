@@ -43,8 +43,8 @@ export function Login() {
 
         if (error) {
             console.log(error);
-            alert(error.message);
-            return;
+            console.log("ERRO COMPLETO:", error);
+            alert(error.message); return;
         }
 
         navigate("/home");

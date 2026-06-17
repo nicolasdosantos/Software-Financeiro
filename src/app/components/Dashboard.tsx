@@ -6,6 +6,8 @@ import {
 } from "recharts";
 import { TrendingUp, TrendingDown, Wallet, PiggyBank, ArrowUpRight, ArrowDownRight, Eye, EyeOff } from "lucide-react";
 import { useFinance, formatCurrency } from "../context/FinanceContext";
+import { useUser } from "../../hooks/useUser";
+
 
 function AnimatedCounter({ value }: { value: number }) {
   const [displayed, setDisplayed] = useState(0);
@@ -29,6 +31,7 @@ export function Dashboard() {
 
   const { transactions, categories, currentMonth } = useFinance();
 
+  const user = useUser();
 
   const months = [
     ...new Set(
@@ -101,7 +104,7 @@ export function Dashboard() {
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-white" style={{ fontSize: "clamp(1.2rem, 4vw, 1.5rem)", fontWeight: 700 }}>
-            Bem-vindo,! 👋
+            Bem-vindo, {user?.user_metadata?.name || "Usuário"}! 👋
           </h1>
           <p style={{ color: "var(--muted-foreground)", fontSize: "0.875rem" }}>
             Aqui está seu resumo financeiro de junho.

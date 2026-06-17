@@ -5,6 +5,8 @@ import {
   Target, PiggyBank, TrendingUp, User, FileText, ChevronLeft,
   ChevronRight, Bell, Wallet, X
 } from "lucide-react";
+import { useUser } from "../../hooks/useUser";
+import { useState } from "react";
 
 
 const navItems = [
@@ -19,6 +21,7 @@ const navItems = [
   { path: "/relatorios", label: "Relatórios", icon: FileText },
   { path: "/perfil", label: "Perfil", icon: User },
 ];
+
 
 interface SidebarProps {
   collapsed: boolean;
@@ -39,6 +42,7 @@ export function Sidebar({
   const mobileTransform = isMobile
     ? mobileOpen ? "translateX(0)" : "translateX(-100%)"
     : "translateX(0)";
+  const user = useUser();
 
   return (
     <aside
@@ -177,9 +181,12 @@ export function Sidebar({
           </div>
           {showLabels && (
             <div className="flex-1 overflow-hidden min-w-0">
-              <p className="text-sm font-medium text-white leading-none whitespace-nowrap">Teste</p>
+              <p className="text-sm font-medium text-white leading-none whitespace-nowrap">
+                {user?.user_metadata?.name || "Usuário"}
+              </p>
+
               <p className="text-xs mt-0.5 whitespace-nowrap" style={{ color: "var(--muted-foreground)" }}>
-                teste@email.com
+                {user?.email || ""}
               </p>
             </div>
           )}

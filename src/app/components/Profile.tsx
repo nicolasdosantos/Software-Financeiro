@@ -1,13 +1,19 @@
 import { useState } from "react";
 import { motion } from "motion/react";
 import { User, Shield, Bell, Save, CheckCircle } from "lucide-react";
+import { useEffect } from "react";
+import { supabase } from "../../lib/supabase";
 
 export function Profile() {
+
   const [profile, setProfile] = useState({
-    name: "João Silva", email: "joao.silva@email.com",
-    phone: "(11) 99999-0000", city: "São Paulo, SP",
-    occupation: "Desenvolvedor de Software",
+    name: "",
+    email: "",
+    phone: "",
+    city: "",
+    occupation: "",
   });
+
   const [notifications, setNotifications] = useState({
     budgetAlert: true, weeklyReport: true, goalUpdate: false, monthlyBalance: true,
   });
@@ -22,6 +28,26 @@ export function Profile() {
     background: "var(--secondary)", border: "1px solid var(--border)", borderRadius: "10px",
     color: "var(--foreground)", padding: "10px 14px", width: "100%", fontSize: "0.875rem", outline: "none",
   };
+
+  useEffect(() => {
+    async function loadUser() {
+      const { data } = await supabase.auth.getUser();
+
+      const user = data.user;
+
+      if (!user) return;
+
+      setProfile({
+        name: user.user_metadata?.name || "",
+        email: user.email || "",
+        phone: user.user_metadata?.phone || "",
+        city: user.user_metadata?.city || "",
+        occupation: user.user_metadata?.occupation || "",
+      });
+    }
+
+    loadUser();
+  }, []);
 
   return (
     <div className="space-y-4 sm:space-y-5 max-w-2xl">
