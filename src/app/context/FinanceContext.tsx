@@ -56,10 +56,11 @@ const DEFAULT_CATEGORIES: Category[] = [
   { id: "cat-4", name: "Saúde", icon: "❤️", color: "#ef4444", type: "default" },
   { id: "cat-5", name: "Educação", icon: "📚", color: "#10b981", type: "default" },
   { id: "cat-6", name: "Lazer", icon: "🎮", color: "#ec4899", type: "default" },
-  { id: "cat-7", name: "Investimentos", icon: "📈", color: "#10d9a4", type: "default" },
-  { id: "cat-8", name: "Salário", icon: "💼", color: "#22c55e", type: "default" },
-  { id: "cat-9", name: "Freelance", icon: "💻", color: "#6366f1", type: "default" },
-  { id: "cat-10", name: "Outros", icon: "📦", color: "#94a3b8", type: "default" },
+  { id: "cat-7", name: "Compras", icon: "🛒", color: "#3526c4", type: "default" },
+  { id: "cat-8", name: "Investimentos", icon: "📈", color: "#10d9a4", type: "default" },
+  { id: "cat-9", name: "Salário", icon: "💼", color: "#22c55e", type: "default" },
+  { id: "cat-10", name: "Freelance", icon: "💻", color: "#6366f1", type: "default" },
+  { id: "cat-11", name: "Outros", icon: "📦", color: "#94a3b8", type: "default" },
 ];
 
 const INITIAL_TRANSACTIONS: Transaction[] = [
