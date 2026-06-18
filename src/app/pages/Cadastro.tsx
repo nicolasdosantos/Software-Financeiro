@@ -63,7 +63,7 @@ export function Register() {
         }
 
         alert("Conta criada com sucesso!");
-        navigate("/login");
+        navigate("/");
     }
 
     return (

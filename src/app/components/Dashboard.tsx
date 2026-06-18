@@ -197,7 +197,7 @@ export function Dashboard() {
           <ResponsiveContainer width="100%" height={140}>
             <PieChart>
               <Pie data={pieData} cx="50%" cy="50%" innerRadius={40} outerRadius={62}
-                paddingAngle={3} dataKey="value">
+                paddingAngle={3} dataKey="value" style={{color: "white"}}>
                 {pieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
               </Pie>
               <Tooltip {...tooltipStyle} formatter={(val: number) => [formatCurrency(val), ""]} />
