@@ -3,6 +3,8 @@ import { motion } from "motion/react";
 import { User, Shield, Bell, Save, CheckCircle } from "lucide-react";
 import { useEffect } from "react";
 import { supabase } from "../../lib/supabase";
+import { useNavigate } from "react-router-dom";
+
 
 export function Profile() {
 
@@ -45,6 +47,19 @@ export function Profile() {
       setLoading(false);
     }
   }
+
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    navigate("/");
+  };
 
   const inp = {
     background: "var(--secondary)", border: "1px solid var(--border)", borderRadius: "10px",
@@ -187,6 +202,7 @@ export function Profile() {
                   style={{ background: "rgba(32,75,202,0.15)", color: "var(--primary)", border: "1px solid rgba(32,75,202,0.3)", whiteSpace: "nowrap" }}>
                   {item.action}
                 </button>
+
               </div>
             ))}
           </div>
@@ -207,6 +223,17 @@ export function Profile() {
               ? "Salvo com sucesso!"
               : "Salvar Alterações"}
         </motion.button>
+        <motion.button
+          onClick={handleLogout}
+          whileTap={{ scale: 0.97 }}
+          className="flex items-center gap-2 px-5 py-3 rounded-xl text-white font-medium w-full justify-center"
+          style={{
+            background: "#d91010",
+          }}
+        >
+          Sair
+        </motion.button>
+
       </div>
     </div>
 
