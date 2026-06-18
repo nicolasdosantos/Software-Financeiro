@@ -110,7 +110,7 @@ export default function MainLayout() {
                 fontSize: "1rem",
               }}
             >
-              FinanceOS
+              Bem vindo a Nexo!
             </span>
           </div>
 

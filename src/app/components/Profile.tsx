@@ -82,7 +82,7 @@ export function Profile() {
         {/* Avatar card */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
           className="rounded-2xl p-4 sm:p-5 flex items-center gap-4"
-          style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+          style={{ background: "var(--card)", border: "1px solid var(--border)", justifyContent: "space-around" }}>
           <div className="relative shrink-0">
             <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl flex items-center justify-center text-white font-bold"
               style={{ background: "linear-gradient(135deg, #193faf, #000000)", fontSize: "clamp(1.5rem,5vw,2rem)" }}>
@@ -198,7 +198,7 @@ export function Profile() {
           className="flex items-center gap-2 px-5 py-3 rounded-xl text-white font-medium w-full sm:w-auto justify-center sm:justify-start"
           style={{
             background: saved ? "#10d9a4" : "var(--primary)",
-            opacity: loading ? 0.7 : 1
+            opacity: loading ? 0.7 : 1, justifyContent: "center", width: "100%"
           }}
         >
           {loading

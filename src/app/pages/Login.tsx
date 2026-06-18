@@ -87,7 +87,7 @@ export function Login() {
                                 fontWeight: 700,
                             }}
                         >
-                            FinanceOS
+                            Bem-vindo a Nexos!
                         </h1>
 
                         <p

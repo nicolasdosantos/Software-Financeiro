@@ -132,8 +132,7 @@ export function Transactions() {
         {/* Search */}
         <div className="flex items-center gap-2 rounded-xl px-3 py-2.5"
           style={{ background: "var(--secondary)", border: "1px solid var(--border)" }}>
-          <Search size={15} style={{ color: "var(--muted-foreground)", shrink: 0 }} />
-          <input
+          <Search size={15} className="shrink-0" style={{ color: "var(--muted-foreground)" }} />          <input
             style={{ background: "transparent", outline: "none", color: "var(--foreground)", width: "100%", fontSize: "0.875rem" }}
             placeholder="Buscar transações..."
             value={search}
