@@ -7,6 +7,7 @@ import {
 import { TrendingUp, TrendingDown, Wallet, PiggyBank, ArrowUpRight, ArrowDownRight, Eye, EyeOff } from "lucide-react";
 import { useFinance, formatCurrency, getMonthName, getShortMonthName } from "../context/FinanceContext";
 import { useUser } from "../../hooks/useUser";
+import { useNavigate } from "react-router-dom";
 
 
 function AnimatedCounter({ value }: { value: number }) {
@@ -93,6 +94,8 @@ export function Dashboard() {
   const tooltipStyle = {
     contentStyle: { background: "#141828", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "12px", color: "#e8eeff" },
   };
+
+  const navigate = useNavigate();
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -197,7 +200,7 @@ export function Dashboard() {
           <ResponsiveContainer width="100%" height={140}>
             <PieChart>
               <Pie data={pieData} cx="50%" cy="50%" innerRadius={40} outerRadius={62}
-                paddingAngle={3} dataKey="value" style={{color: "white"}}>
+                paddingAngle={3} dataKey="value" style={{ color: "white" }}>
                 {pieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
               </Pie>
               <Tooltip {...tooltipStyle} formatter={(val: number) => [formatCurrency(val), ""]} />
@@ -227,7 +230,9 @@ export function Dashboard() {
       >
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-white" style={{ fontWeight: 600 }}>Últimas Transações</h3>
-          <span style={{ color: "var(--primary)", fontSize: "0.8rem", cursor: "pointer" }}>Ver todas</span>
+          <span   onClick={() => navigate("/transacoes")}
+
+            style={{ color: "var(--primary)", fontSize: "0.8rem", cursor: "pointer" }}>Ver todas</span>
         </div>
         <div className="space-y-1">
           {recentTxs.map(tx => {
