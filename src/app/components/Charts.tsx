@@ -203,7 +203,7 @@ export function Charts() {
             <XAxis dataKey="name" stroke="#8892b0" />
             <YAxis stroke="#8892b0" />
             <Tooltip {...tooltipStyle} />
-            <Bar dataKey="receitas" fill="#204bca" />
+            <Bar dataKey="receitas" fill="#7bc779" />
             <Bar dataKey="despesas" fill="#ef4444" />
           </BarChart>
         </ResponsiveContainer>

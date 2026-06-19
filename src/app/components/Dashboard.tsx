@@ -170,8 +170,8 @@ export function Dashboard() {
             <AreaChart data={monthlyData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="incGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#204bca" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#204bca" stopOpacity={0} />
+                  <stop offset="5%" stopColor="#7bc779" stopOpacity={0.3} />
+                  <stop offset="100%" stopColor="#7bc779" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="expGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#ef4444" stopOpacity={0.2} />
@@ -183,7 +183,7 @@ export function Dashboard() {
               <YAxis tick={{ fill: "#8892b0", fontSize: 10 }} axisLine={false} tickLine={false}
                 tickFormatter={v => `R$${(v / 1000).toFixed(0)}k`} />
               <Tooltip {...tooltipStyle} formatter={(val: number) => [formatCurrency(val), ""]} />
-              <Area type="monotone" dataKey="receitas" name="Receitas" stroke="#204bca" strokeWidth={2} fill="url(#incGrad)" dot={{ fill: "#204bca", r: 3, strokeWidth: 0 }} />
+              <Area type="monotone" dataKey="receitas" name="Receitas" stroke="#45a342" strokeWidth={2} fill="url(#incGrad)" dot={{ fill: "#6ac067", r: 3, strokeWidth: 0 }} />
               <Area type="monotone" dataKey="despesas" name="Despesas" stroke="#ef4444" strokeWidth={2} fill="url(#expGrad)" dot={{ fill: "#ef4444", r: 3, strokeWidth: 0 }} />
             </AreaChart>
           </ResponsiveContainer>
