@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion } from "motion/react";
 import { Download, CheckCircle } from "lucide-react";
+import XLSX from "xlsx-js-style";
 import { useFinance, formatCurrency, getMonthName, toLocalDate } from "../context/FinanceContext";
 
 function normalizeFileName(value: string) {
@@ -65,6 +66,7 @@ function buildHtmlReport(title: string, subtitle: string, sections: string) {
 }
 
 export function Reports() {
+  const workbook = XLSX.utils.book_new();
   const { transactions, categories, goals, investments, currentMonth } = useFinance();
   const [generating, setGenerating] = useState<string | null>(null);
   const [done, setDone] = useState<string[]>([]);
@@ -81,7 +83,7 @@ export function Reports() {
     setGenerating(id);
     await new Promise(resolve => setTimeout(resolve, 350));
 
-    if (id === "full-excel") downloadTransactionsCsv();
+    if (id === "full-excel") downloadFullExcelReport();
     else if (id === "category-report") downloadCategoryReport(selectedMonth);
     else if (id === "goal-report") downloadGoalsReport();
     else if (id === "investment-report") downloadInvestmentsReport();
@@ -145,23 +147,127 @@ export function Reports() {
     downloadFile(html, `extrato-${normalizeFileName(getMonthName(month))}.html`, "text/html;charset=utf-8");
   }
 
-  function downloadTransactionsCsv() {
-    const header = ["Data", "Descrição", "Categoria", "Tipo", "Valor", "Observações"];
-    const rows = transactions
+  function downloadTransactionsExcel() {
+    const data = transactions
       .sort((a, b) => b.date.localeCompare(a.date))
-      .map(tx => [
-        toLocalDate(tx.date).toLocaleDateString("pt-BR"),
-        tx.description,
-        getCategoryName(tx.category),
-        tx.type === "income" ? "Receita" : "Despesa",
-        tx.type === "income" ? tx.amount : -tx.amount,
-        tx.notes || "",
-      ].map(escapeCsv).join(";"));
+      .map(tx => ({
+        Data: toLocalDate(tx.date).toLocaleDateString("pt-BR"),
+        Descrição: tx.description,
+        Categoria: getCategoryName(tx.category),
+        Tipo: tx.type === "income" ? "Receita" : "Despesa",
+        Valor: tx.type === "income" ? tx.amount : -tx.amount,
+        Observações: tx.notes || ""
+      }));
 
-    downloadFile(
-      [header.map(escapeCsv).join(";"), ...rows].join("\n"),
-      "transacoes-financeiras.csv",
-      "text/csv;charset=utf-8"
+    const worksheet = XLSX.utils.json_to_sheet(data);
+
+    const workbook = XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(
+      workbook,
+      worksheet,
+      "Transações"
+    );
+
+    XLSX.writeFile(
+      workbook,
+      "transacoes-financeiras.xlsx"
+    );
+  }
+
+  function downloadFullExcelReport() {
+    const workbook = XLSX.utils.book_new();
+
+    const transactionsData = transactions.map(tx => ({
+      Data: toLocalDate(tx.date).toLocaleDateString("pt-BR"),
+      Descrição: tx.description,
+      Categoria: getCategoryName(tx.category),
+      Tipo: tx.type === "income" ? "Receita" : "Despesa",
+      Valor: tx.type === "income" ? tx.amount : -tx.amount,
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(transactionsData);
+
+    const range = XLSX.utils.decode_range(ws["!ref"] || "A1");
+
+    // Cabeçalho
+    for (let C = range.s.c; C <= range.e.c; C++) {
+      const cell = ws[XLSX.utils.encode_cell({ r: 0, c: C })];
+
+      if (cell) {
+        cell.s = {
+          fill: {
+            fgColor: { rgb: "204BCA" }
+          },
+          font: {
+            color: { rgb: "FFFFFF" },
+            bold: true,
+            sz: 12
+          },
+          alignment: {
+            horizontal: "center",
+            vertical: "center"
+          },
+          border: {
+            top: { style: "thin", color: { rgb: "CCCCCC" } },
+            bottom: { style: "thin", color: { rgb: "CCCCCC" } },
+            left: { style: "thin", color: { rgb: "CCCCCC" } },
+            right: { style: "thin", color: { rgb: "CCCCCC" } },
+          }
+        };
+      }
+    }
+
+    // Linhas
+    for (let R = 1; R <= range.e.r; R++) {
+      for (let C = 0; C <= range.e.c; C++) {
+
+        const cell = ws[XLSX.utils.encode_cell({ r: R, c: C })];
+
+        if (!cell) continue;
+
+        cell.s = {
+          border: {
+            top: { style: "thin", color: { rgb: "E5E7EB" } },
+            bottom: { style: "thin", color: { rgb: "E5E7EB" } },
+            left: { style: "thin", color: { rgb: "E5E7EB" } },
+            right: { style: "thin", color: { rgb: "E5E7EB" } },
+          }
+        };
+
+        // Coluna Valor
+        if (C === 4 && typeof cell.v === "number") {
+          cell.s = {
+            ...cell.s,
+            font: {
+              bold: true,
+              color: {
+                rgb: cell.v >= 0 ? "10D9A4" : "EF4444"
+              }
+            }
+          };
+        }
+      }
+    }
+
+    // Tamanho das colunas
+    ws["!cols"] = [
+      { wch: 15 },
+      { wch: 35 },
+      { wch: 20 },
+      { wch: 15 },
+      { wch: 18 },
+    ];
+
+    XLSX.utils.book_append_sheet(
+      workbook,
+      ws,
+      "Transações"
+    );
+
+    XLSX.writeFile(
+      workbook,
+      `relatorio-completo-${new Date().getFullYear()}.xlsx`
     );
   }
 
@@ -303,7 +409,7 @@ export function Reports() {
 
   const reportTypes = [
     { id: "monthly-pdf", icon: "📄", label: "Extrato Mensal", desc: `Relatório completo de ${getMonthName(selectedMonth)}`, format: "HTML", color: "#ef4444" },
-    { id: "full-excel", icon: "📊", label: "Exportar para Excel", desc: "Todas as transações em planilha CSV", format: "CSV", color: "#10d9a4" },
+    { id: "full-excel", icon: "📊", label: "Exportar para Excel", desc: "Relatório completo em Excel", format: "XLSX", color: "#10d9a4" },
     { id: "category-report", icon: "🏷️", label: "Relatório por Categoria", desc: "Análise detalhada de gastos por categoria", format: "HTML", color: "#8b5cf6" },
     { id: "goal-report", icon: "🎯", label: "Relatório de Metas", desc: "Progresso de todas as metas financeiras", format: "HTML", color: "#f59e0b" },
     { id: "investment-report", icon: "📈", label: "Relatório de Investimentos", desc: "Portfólio com rentabilidade e evolução", format: "HTML", color: "#204bca" },
