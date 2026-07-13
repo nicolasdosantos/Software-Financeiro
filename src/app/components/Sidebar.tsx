@@ -3,10 +3,11 @@ import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard, ArrowLeftRight, CalendarDays, Tag, BarChart3,
   Target, PiggyBank, TrendingUp, User, FileText, ChevronLeft,
-  ChevronRight, Bell, Wallet, X
+  Bell, Wallet, X
 } from "lucide-react";
 import { useUser } from "../../hooks/useUser";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 
 const navItems = [
@@ -33,7 +34,7 @@ interface SidebarProps {
 
 export function Sidebar({
   collapsed, onToggle,
-  isMobile = false, mobileOpen = false, notificationCount = 3
+  isMobile = false, mobileOpen = false, notificationCount = 0
 }: SidebarProps) {
   const showLabels = isMobile || !collapsed;
   const sidebarWidth = isMobile ? 260 : collapsed ? 72 : 260;
@@ -43,6 +44,8 @@ export function Sidebar({
     ? mobileOpen ? "translateX(0)" : "translateX(-100%)"
     : "translateX(0)";
   const user = useUser();
+  const navigate = useNavigate();
+  const userInitial = (user?.user_metadata?.name || user?.email || "?").charAt(0).toUpperCase();
 
   return (
     <aside
@@ -70,25 +73,35 @@ export function Sidebar({
         className="flex items-center gap-3 px-4 py-5 shrink-0"
         style={{ borderBottom: "1px solid var(--sidebar-border)" }}
       >
-        <div
+        <motion.div
+          initial={{ scale: 0.5, opacity: 0, rotate: -12 }}
+          animate={{ scale: 1, opacity: 1, rotate: 0 }}
+          transition={{ type: "spring", stiffness: 260, damping: 16 }}
           className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-          style={{ background: "linear-gradient(135deg, #193faf, #0f0f11)" }}
+          style={{ background: "linear-gradient(135deg, #3b6de8, #193faf 55%, #0f0f11)", boxShadow: "0 4px 14px rgba(32,75,202,0.35)" }}
         >
           <Wallet size={18} className="text-white" />
-        </div>
-        {showLabels && (
-          <div className="overflow-hidden">
-            <p className="text-white font-semibold leading-none whitespace-nowrap">Nexo</p>
-            <p className="text-xs mt-0.5 whitespace-nowrap" style={{ color: "var(--muted-foreground)" }}>
-              Controle financeiro
-            </p>
-          </div>
-        )}
+        </motion.div>
+        <AnimatePresence initial={false}>
+          {showLabels && (
+            <motion.div
+              key="logo-label"
+              initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -6 }}
+              transition={{ duration: 0.18 }}
+              className="overflow-hidden"
+            >
+              <p className="text-white font-semibold leading-none whitespace-nowrap">Nexo</p>
+              <p className="text-xs mt-0.5 whitespace-nowrap" style={{ color: "var(--muted-foreground)" }}>
+                Controle financeiro
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
         {/* Close button on mobile */}
         {isMobile && (
           <button
             onClick={onToggle}
-            className="ml-auto p-1 rounded-lg"
+            className="ml-auto p-1 rounded-lg transition-colors hover:bg-[var(--sidebar-accent)]"
             style={{ color: "var(--muted-foreground)" }}
           >
             <X size={18} />
@@ -103,31 +116,30 @@ export function Sidebar({
           return (
             <NavLink key={item.path} to={item.path}>
               {({ isActive }) => (
-                <div
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all relative group"
-                  style={{
-                    background: isActive ? "var(--primary)" : "transparent",
-                    color: isActive ? "#fff" : "var(--muted-foreground)",
-                  }}
-                  onMouseEnter={e => {
-                    if (!isActive)
-                      (e.currentTarget as HTMLElement).style.background =
-                        "var(--sidebar-accent)";
-                  }}
-                  onMouseLeave={e => {
-                    if (!isActive)
-                      (e.currentTarget as HTMLElement).style.background =
-                        "transparent";
-                  }}
-                >
-                  <span className="shrink-0">
+                <div className="relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl group">
+                  {isActive && (
+                    <motion.div
+                      layoutId="sidebar-active-pill"
+                      className="absolute inset-0 rounded-xl"
+                      style={{ background: "var(--primary)", boxShadow: "0 4px 14px rgba(32,75,202,0.35)" }}
+                      transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                    />
+                  )}
+                  {!isActive && (
+                    <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                      style={{ background: "var(--sidebar-accent)" }} />
+                  )}
+                  <span
+                    className="relative z-10 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5"
+                    style={{ color: isActive ? "#fff" : "var(--muted-foreground)" }}
+                  >
                     <Icon size={18} />
                   </span>
 
                   {showLabels && (
                     <span
-                      className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis"
-                      style={{ color: isActive ? "#fff" : undefined }}
+                      className="relative z-10 text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis transition-transform duration-200 group-hover:translate-x-0.5"
+                      style={{ color: isActive ? "#fff" : "var(--muted-foreground)" }}
                     >
                       {item.label}
                     </span>
@@ -144,41 +156,46 @@ export function Sidebar({
         className="px-2 pb-4 pt-3 shrink-0 space-y-1"
         style={{ borderTop: "1px solid var(--sidebar-border)" }}
       >
-        {/* Notifications */}
-        <button
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors"
+        {/* Notifications — links to notification preferences in Perfil */}
+        <motion.button
+          whileTap={{ scale: 0.97 }}
+          onClick={() => navigate("/perfil")}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors hover:bg-[var(--sidebar-accent)]"
           style={{ color: "var(--muted-foreground)" }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--sidebar-accent)"; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
         >
           <div className="relative shrink-0">
             <Bell size={18} />
             {notificationCount > 0 && (
-              <span
+              <motion.span
+                initial={{ scale: 0 }} animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 400, damping: 14 }}
                 className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-white flex items-center justify-center"
                 style={{ background: "var(--destructive)", fontSize: "10px" }}
               >
                 {notificationCount}
-              </span>
+              </motion.span>
             )}
           </div>
           {showLabels && (
             <span className="text-sm font-medium whitespace-nowrap">Notificações</span>
           )}
-        </button>
+        </motion.button>
 
         {/* User avatar */}
-        <div
-          className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-colors"
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--sidebar-accent)"; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+        <motion.div
+          whileTap={{ scale: 0.98 }}
+          onClick={() => navigate("/perfil")}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-colors hover:bg-[var(--sidebar-accent)]"
         >
-          <div
-            className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-white text-sm font-semibold"
-            style={{ background: "linear-gradient(135deg, #193faf, #000000)" }}
-          >
-          {user?.user_metadata?.name.charAt(0).toUpperCase()}
-
+          <div className="relative shrink-0">
+            <div
+              className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold"
+              style={{ background: "linear-gradient(135deg, #3b6de8, #193faf 55%, #000000)" }}
+            >
+              {userInitial}
+            </div>
+            <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full"
+              style={{ background: "#10d9a4", border: "2px solid var(--sidebar)" }} />
           </div>
           {showLabels && (
             <div className="flex-1 overflow-hidden min-w-0">
@@ -186,23 +203,39 @@ export function Sidebar({
                 {user?.user_metadata?.name || "Usuário"}
               </p>
 
-              <p className="text-xs mt-0.5 whitespace-nowrap" style={{ color: "var(--muted-foreground)" }}>
+              <p className="text-xs mt-0.5 whitespace-nowrap truncate" style={{ color: "var(--muted-foreground)" }}>
                 {user?.email || ""}
               </p>
             </div>
           )}
-        </div>
+        </motion.div>
 
         {/* Collapse toggle — desktop only */}
         {!isMobile && (
           <button
             onClick={onToggle}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl transition-colors text-sm"
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl transition-colors text-sm hover:bg-[var(--sidebar-accent)]"
             style={{ color: "var(--muted-foreground)" }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--sidebar-accent)"; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
           >
-            {collapsed ? <ChevronRight size={16} /> : <><ChevronLeft size={16} /><span>Recolher</span></>}
+            <motion.span
+              animate={{ rotate: collapsed ? 180 : 0 }}
+              transition={{ type: "spring", stiffness: 300, damping: 22 }}
+              className="flex items-center justify-center"
+            >
+              <ChevronLeft size={16} />
+            </motion.span>
+            <AnimatePresence initial={false}>
+              {!collapsed && (
+                <motion.span
+                  key="collapse-label"
+                  initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: "auto" }} exit={{ opacity: 0, width: 0 }}
+                  transition={{ duration: 0.16 }}
+                  className="overflow-hidden whitespace-nowrap"
+                >
+                  Recolher
+                </motion.span>
+              )}
+            </AnimatePresence>
           </button>
         )}
       </div>

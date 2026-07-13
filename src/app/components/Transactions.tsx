@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Plus, Search, Edit2, Trash2, X, ChevronDown } from "lucide-react";
+import { toast } from "sonner";
 import { useFinance, formatCurrency, getMonthName, getTodayDateInput, Transaction } from "../context/FinanceContext";
 
 const ITEMS_PER_PAGE = 8;
 
-function TransactionForm({ initial, onSave, onClose }: { initial?: Transaction; onSave: (t: any) => void; onClose: () => void }) {
+function TransactionForm({ initial, onSave, onClose }: { initial?: Transaction; onSave: (t: any) => Promise<void>; onClose: () => void }) {
   const { categories } = useFinance();
   const [form, setForm] = useState({
     type: initial?.type || "expense" as "income" | "expense",
@@ -15,13 +16,23 @@ function TransactionForm({ initial, onSave, onClose }: { initial?: Transaction; 
     date: initial?.date || getTodayDateInput(),
     notes: initial?.notes || "",
   });
+  const [submitting, setSubmitting] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const data = { ...form, amount: parseFloat(form.amount) };
-    if (initial) onSave({ ...data, id: initial.id });
-    else onSave(data);
-    onClose();
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const data = { ...form, amount: parseFloat(form.amount) };
+      if (initial) await onSave({ ...data, id: initial.id });
+      else await onSave(data);
+      toast.success(initial ? "Transação atualizada com sucesso!" : "Transação adicionada com sucesso!");
+      onClose();
+    } catch (err) {
+      console.error("Erro ao salvar transação:", err);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   const inp = {
@@ -71,13 +82,13 @@ function TransactionForm({ initial, onSave, onClose }: { initial?: Transaction; 
           onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Notas..." />
       </div>
       <div className="flex gap-3 pt-1">
-        <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-medium"
+        <button type="button" onClick={onClose} disabled={submitting} className="flex-1 py-2.5 rounded-xl text-sm font-medium"
           style={{ background: "var(--secondary)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>
           Cancelar
         </button>
-        <button type="submit" className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white hover:opacity-90"
-          style={{ background: "var(--primary)" }}>
-          {initial ? "Salvar" : "Adicionar"}
+        <button type="submit" disabled={submitting} className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white hover:opacity-90"
+          style={{ background: "var(--primary)", opacity: submitting ? 0.7 : 1 }}>
+          {submitting ? "Salvando..." : initial ? "Salvar" : "Adicionar"}
         </button>
       </div>
     </form>
@@ -94,6 +105,7 @@ export function Transactions() {
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const filtered = transactions.filter(t => {
     if (filterType !== "all" && t.type !== filterType) return false;
@@ -343,10 +355,26 @@ export function Transactions() {
               <h3 className="text-white mb-2" style={{ fontWeight: 600 }}>Excluir transação?</h3>
               <p style={{ color: "var(--muted-foreground)", fontSize: "0.875rem", marginBottom: "24px" }}>Esta ação não pode ser desfeita.</p>
               <div className="flex gap-3">
-                <button onClick={() => setDeletingId(null)} className="flex-1 py-2.5 rounded-xl text-sm font-medium"
+                <button onClick={() => setDeletingId(null)} disabled={isDeleting} className="flex-1 py-2.5 rounded-xl text-sm font-medium"
                   style={{ background: "var(--secondary)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>Cancelar</button>
-                <button onClick={() => { deleteTransaction(deletingId); setDeletingId(null); }}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white" style={{ background: "var(--destructive)" }}>Excluir</button>
+                <button
+                  disabled={isDeleting}
+                  onClick={async () => {
+                    if (isDeleting) return;
+                    setIsDeleting(true);
+                    try {
+                      await deleteTransaction(deletingId);
+                      toast.success("Transação excluída com sucesso!");
+                      setDeletingId(null);
+                    } catch (err) {
+                      console.error("Erro ao excluir transação:", err);
+                    } finally {
+                      setIsDeleting(false);
+                    }
+                  }}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white" style={{ background: "var(--destructive)", opacity: isDeleting ? 0.7 : 1 }}>
+                  {isDeleting ? "Excluindo..." : "Excluir"}
+                </button>
               </div>
             </motion.div>
           </motion.div>

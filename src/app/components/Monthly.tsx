@@ -43,6 +43,13 @@ export function Monthly() {
   });
   catSpend.sort((a, b) => b.total - a.total);
 
+  const compDataYears = [...new Set(months.map(m => m.slice(0, 4)))];
+  const compDataYearLabel = compDataYears.length === 0
+    ? String(new Date().getFullYear())
+    : compDataYears.length === 1
+      ? compDataYears[0]
+      : `${compDataYears[0]}–${compDataYears[compDataYears.length - 1]}`;
+
   const compData = months.map((m) => {
     const mt = transactions.filter(t => t.date.startsWith(m));
     const inc = mt.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0);
@@ -235,7 +242,7 @@ export function Monthly() {
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.36 }}
         className="rounded-2xl p-4 sm:p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
         <h3 className="text-white mb-1" style={{ fontWeight: 600 }}>Evolução do Saldo</h3>
-        <p style={{ color: "var(--muted-foreground)", fontSize: "0.78rem", marginBottom: "16px" }}>Saldo mês a mês em 2026</p>
+        <p style={{ color: "var(--muted-foreground)", fontSize: "0.78rem", marginBottom: "16px" }}>Saldo mês a mês em {compDataYearLabel}</p>
         <ResponsiveContainer width="100%" height={180}>
           <BarChart data={compData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />

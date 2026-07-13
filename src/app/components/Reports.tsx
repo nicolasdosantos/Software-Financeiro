@@ -1,8 +1,17 @@
 import { useState } from "react";
 import { motion } from "motion/react";
 import { Download, CheckCircle } from "lucide-react";
+import { toast } from "sonner";
 import XLSX from "xlsx-js-style";
 import { useFinance, formatCurrency, getMonthName, toLocalDate } from "../context/FinanceContext";
+
+const HTML_ESCAPE_MAP: Record<string, string> = {
+  "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+};
+
+function escapeHtml(value: string | number) {
+  return String(value).replace(/[&<>"']/g, (ch) => HTML_ESCAPE_MAP[ch]);
+}
 
 function normalizeFileName(value: string) {
   return value
@@ -80,19 +89,27 @@ export function Reports() {
   }
 
   async function generate(id: string) {
+    if (generating) return;
     setGenerating(id);
-    await new Promise(resolve => setTimeout(resolve, 350));
 
-    if (id === "full-excel") downloadFullExcelReport();
-    else if (id === "category-report") downloadCategoryReport(selectedMonth);
-    else if (id === "goal-report") downloadGoalsReport();
-    else if (id === "investment-report") downloadInvestmentsReport();
-    else if (id === "annual-report") downloadAnnualReport();
-    else if (id.startsWith("month-")) downloadMonthlyReport(id.replace("month-", ""));
-    else downloadMonthlyReport(selectedMonth);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 350));
 
-    setGenerating(null);
-    markDone(id);
+      if (id === "full-excel") downloadFullExcelReport();
+      else if (id === "category-report") downloadCategoryReport(selectedMonth);
+      else if (id === "goal-report") downloadGoalsReport();
+      else if (id === "investment-report") downloadInvestmentsReport();
+      else if (id === "annual-report") downloadAnnualReport();
+      else if (id.startsWith("month-")) downloadMonthlyReport(id.replace("month-", ""));
+      else downloadMonthlyReport(selectedMonth);
+
+      markDone(id);
+    } catch (err) {
+      console.error("Erro ao gerar relatório:", err);
+      toast.error("Não foi possível gerar o relatório. Tente novamente.");
+    } finally {
+      setGenerating(null);
+    }
   }
 
   function getMonthStats(month: string) {
@@ -112,8 +129,8 @@ export function Reports() {
       .map(tx => `
         <tr>
           <td>${toLocalDate(tx.date).toLocaleDateString("pt-BR")}</td>
-          <td>${tx.description}</td>
-          <td>${getCategoryName(tx.category)}</td>
+          <td>${escapeHtml(tx.description)}</td>
+          <td>${escapeHtml(getCategoryName(tx.category))}</td>
           <td>${tx.type === "income" ? "Receita" : "Despesa"}</td>
           <td class="${tx.type === "income" ? "income" : "expense"}">${tx.type === "income" ? "+" : "-"}${formatCurrency(tx.amount)}</td>
         </tr>
@@ -283,7 +300,7 @@ export function Reports() {
 
     const rows = totals.map(item => `
       <tr>
-        <td>${item.name}</td>
+        <td>${escapeHtml(item.name)}</td>
         <td class="expense">${formatCurrency(item.total)}</td>
         <td>${stats.expense > 0 ? ((item.total / stats.expense) * 100).toFixed(1) : 0}%</td>
       </tr>
@@ -308,7 +325,7 @@ export function Reports() {
       const pct = goal.target > 0 ? Math.min(100, (goal.current / goal.target) * 100) : 0;
       return `
         <tr>
-          <td>${goal.title}</td>
+          <td>${escapeHtml(goal.title)}</td>
           <td>${formatCurrency(goal.current)}</td>
           <td>${formatCurrency(goal.target)}</td>
           <td>${pct.toFixed(1)}%</td>
@@ -337,9 +354,9 @@ export function Reports() {
       const result = item.currentValue - item.invested;
       return `
         <tr>
-          <td>${item.name}</td>
-          <td>${item.type}</td>
-          <td>${item.institution || "-"}</td>
+          <td>${escapeHtml(item.name)}</td>
+          <td>${escapeHtml(item.type)}</td>
+          <td>${escapeHtml(item.institution || "-")}</td>
           <td>${formatCurrency(item.invested)}</td>
           <td>${formatCurrency(item.currentValue)}</td>
           <td class="${result >= 0 ? "income" : "expense"}">${formatCurrency(result)}</td>

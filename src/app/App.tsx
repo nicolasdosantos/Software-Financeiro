@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
+import { Toaster } from "./components/ui/sonner";
 import { FinanceProvider } from "./context/FinanceContext";
 
 import MainLayout from "./layouts/MainLayout";
@@ -23,6 +24,7 @@ import { ProtectedRoute } from "../routes/ProtectedRoute";
 export default function App() {
   return (
     <FinanceProvider>
+      <Toaster theme="dark" richColors position="top-right" />
       <BrowserRouter>
         <Routes>
 

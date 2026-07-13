@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion } from "motion/react";
 import { Link, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { supabase } from "../../lib/supabase";
 import { Wallet, Eye, EyeOff, Mail, Lock } from "lucide-react";
 import { useEffect } from "react";
@@ -23,29 +24,35 @@ export function Login() {
     useEffect(() => {
         supabase.auth.getSession().then(({ data }) => {
             if (data.session) {
-                navigate("/");
+                navigate("/home");
             }
         });
     }, []);
 
     async function handleLogin(e: React.FormEvent) {
         e.preventDefault();
+        if (loading) return;
         setLoading(true);
 
-        const { error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-        });
+        try {
+            const { error } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            });
 
-        setLoading(false);
+            if (error) {
+                console.error("Erro ao fazer login:", error);
+                toast.error(error.message || "Não foi possível entrar. Verifique seus dados.");
+                return;
+            }
 
-        if (error) {
-            console.log(error);
-            console.log("ERRO COMPLETO:", error);
-            alert(error.message); return;
+            navigate("/home");
+        } catch (err) {
+            console.error("Erro inesperado ao fazer login:", err);
+            toast.error("Não foi possível entrar. Verifique sua conexão e tente novamente.");
+        } finally {
+            setLoading(false);
         }
-
-        navigate("/home");
     }
 
     return (
@@ -165,12 +172,14 @@ export function Login() {
 
                         <button
                             type="submit"
+                            disabled={loading}
                             className="w-full py-3 rounded-xl text-white font-medium transition-all hover:opacity-90"
                             style={{
                                 background: "var(--primary)",
+                                opacity: loading ? 0.7 : 1,
                             }}
                         >
-                            Entrar
+                            {loading ? "Entrando..." : "Entrar"}
                         </button>
                     </form>
 

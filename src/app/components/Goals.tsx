@@ -1,22 +1,33 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Plus, Edit2, Trash2, X, CheckCircle, CircleDollarSign } from "lucide-react";
+import { toast } from "sonner";
 import { useFinance, formatCurrency, Goal, toLocalDate } from "../context/FinanceContext";
 
-function GoalForm({ initial, onSave, onClose }: { initial?: Goal; onSave: (g: any) => void; onClose: () => void }) {
+function GoalForm({ initial, onSave, onClose }: { initial?: Goal; onSave: (g: any) => Promise<void>; onClose: () => void }) {
   const [form, setForm] = useState({
     title: initial?.title || "", description: initial?.description || "",
     target: initial?.target?.toString() || "", current: initial?.current?.toString() || "0",
     deadline: initial?.deadline || "", icon: initial?.icon || "🎯", color: initial?.color || "#204bca",
   });
+  const [submitting, setSubmitting] = useState(false);
 
   const ICONS = ["🎯", "🏠", "✈️", "💻", "🚗", "🛡️", "📚", "💍", "🎓", "🏖️", "💰", "🏋️"];
   const COLORS = ["#204bca", "#10d9a4", "#8b5cf6", "#f59e0b", "#ef4444", "#ec4899", "#3b82f6", "#22c55e"];
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    onSave({ ...form, target: parseFloat(form.target), current: parseFloat(form.current) });
-    onClose();
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      await onSave({ ...form, target: parseFloat(form.target), current: parseFloat(form.current) });
+      toast.success(initial ? "Meta atualizada com sucesso!" : "Meta criada com sucesso!");
+      onClose();
+    } catch (err) {
+      console.error("Erro ao salvar meta:", err);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   const inp = { background: "var(--input-background)", border: "1px solid var(--border)", borderRadius: "10px", color: "var(--foreground)", padding: "10px 14px", width: "100%", fontSize: "0.875rem", outline: "none" };
@@ -68,10 +79,10 @@ function GoalForm({ initial, onSave, onClose }: { initial?: Goal; onSave: (g: an
         </div>
       </div>
       <div className="flex gap-3 pt-2">
-        <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-medium"
+        <button type="button" onClick={onClose} disabled={submitting} className="flex-1 py-2.5 rounded-xl text-sm font-medium"
           style={{ background: "var(--secondary)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>Cancelar</button>
-        <button type="submit" className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white hover:opacity-90"
-          style={{ background: "var(--primary)" }}>{initial ? "Salvar" : "Criar Meta"}</button>
+        <button type="submit" disabled={submitting} className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white hover:opacity-90"
+          style={{ background: "var(--primary)", opacity: submitting ? 0.7 : 1 }}>{submitting ? "Salvando..." : initial ? "Salvar" : "Criar Meta"}</button>
       </div>
     </form>
   );
@@ -79,15 +90,28 @@ function GoalForm({ initial, onSave, onClose }: { initial?: Goal; onSave: (g: an
 
 function GoalContributionForm({ goal, onSave, onClose }: { goal: Goal; onSave: (amount: number) => Promise<void>; onClose: () => void }) {
   const [amount, setAmount] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const remaining = Math.max(0, goal.target - goal.current);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (submitting) return;
     const value = parseFloat(amount);
-    if (Number.isNaN(value) || value <= 0) return;
+    if (Number.isNaN(value) || value <= 0) {
+      toast.error("Informe um valor válido maior que zero.");
+      return;
+    }
 
-    await onSave(value);
-    onClose();
+    setSubmitting(true);
+    try {
+      await onSave(value);
+      toast.success("Valor guardado com sucesso!");
+      onClose();
+    } catch (err) {
+      console.error("Erro ao guardar valor na meta:", err);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   const inp = { background: "var(--input-background)", border: "1px solid var(--border)", borderRadius: "10px", color: "var(--foreground)", padding: "10px 14px", width: "100%", fontSize: "0.875rem", outline: "none" };
@@ -118,10 +142,10 @@ function GoalContributionForm({ goal, onSave, onClose }: { goal: Goal; onSave: (
       </div>
 
       <div className="flex gap-3 pt-2">
-        <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-medium"
+        <button type="button" onClick={onClose} disabled={submitting} className="flex-1 py-2.5 rounded-xl text-sm font-medium"
           style={{ background: "var(--secondary)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>Cancelar</button>
-        <button type="submit" className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white hover:opacity-90"
-          style={{ background: "var(--primary)" }}>Adicionar</button>
+        <button type="submit" disabled={submitting} className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white hover:opacity-90"
+          style={{ background: "var(--primary)", opacity: submitting ? 0.7 : 1 }}>{submitting ? "Salvando..." : "Adicionar"}</button>
       </div>
     </form>
   );
@@ -133,6 +157,7 @@ export function Goals() {
   const [editing, setEditing] = useState<Goal | null>(null);
   const [contributing, setContributing] = useState<Goal | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const overlay = { position: "fixed" as const, inset: 0, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: "16px" };
   const dialog = { background: "var(--popover)", border: "1px solid var(--border)", borderRadius: "20px", padding: "24px", width: "100%", maxWidth: "460px", maxHeight: "90vh", overflowY: "auto" as const };
@@ -300,10 +325,26 @@ export function Goals() {
               <h3 className="text-white mb-2" style={{ fontWeight: 600 }}>Excluir meta?</h3>
               <p style={{ color: "var(--muted-foreground)", fontSize: "0.875rem", marginBottom: "24px" }}>Esta ação não pode ser desfeita.</p>
               <div className="flex gap-3">
-                <button onClick={() => setDeleting(null)} className="flex-1 py-2.5 rounded-xl text-sm font-medium"
+                <button onClick={() => setDeleting(null)} disabled={isDeleting} className="flex-1 py-2.5 rounded-xl text-sm font-medium"
                   style={{ background: "var(--secondary)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>Cancelar</button>
-                <button onClick={() => { deleteGoal(deleting); setDeleting(null); }}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white" style={{ background: "var(--destructive)" }}>Excluir</button>
+                <button
+                  disabled={isDeleting}
+                  onClick={async () => {
+                    if (isDeleting) return;
+                    setIsDeleting(true);
+                    try {
+                      await deleteGoal(deleting);
+                      toast.success("Meta excluída com sucesso!");
+                      setDeleting(null);
+                    } catch (err) {
+                      console.error("Erro ao excluir meta:", err);
+                    } finally {
+                      setIsDeleting(false);
+                    }
+                  }}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white" style={{ background: "var(--destructive)", opacity: isDeleting ? 0.7 : 1 }}>
+                  {isDeleting ? "Excluindo..." : "Excluir"}
+                </button>
               </div>
             </motion.div>
           </motion.div>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Plus, Edit2, Trash2, X, TrendingUp, TrendingDown } from "lucide-react";
+import { toast } from "sonner";
 import { useFinance, formatCurrency, getTodayDateInput, Investment } from "../context/FinanceContext";
 
 const TYPES = ["Renda Fixa", "Renda Variável", "FII", "Criptomoeda", "Previdência", "Outro"];
@@ -9,17 +10,27 @@ const TYPE_COLORS: Record<string, string> = {
   "Criptomoeda": "#f59e0b", "Previdência": "#ec4899", "Outro": "#94a3b8",
 };
 
-function InvestForm({ initial, onSave, onClose }: { initial?: Investment; onSave: (i: any) => void; onClose: () => void }) {
+function InvestForm({ initial, onSave, onClose }: { initial?: Investment; onSave: (i: any) => Promise<void>; onClose: () => void }) {
   const [form, setForm] = useState({
     name: initial?.name || "", type: initial?.type || "Renda Fixa",
     invested: initial?.invested?.toString() || "", currentValue: initial?.currentValue?.toString() || "",
     startDate: initial?.startDate || getTodayDateInput(), institution: initial?.institution || "",
   });
+  const [submitting, setSubmitting] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    onSave({ ...form, invested: parseFloat(form.invested), currentValue: parseFloat(form.currentValue) });
-    onClose();
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      await onSave({ ...form, invested: parseFloat(form.invested), currentValue: parseFloat(form.currentValue) });
+      toast.success(initial ? "Investimento atualizado com sucesso!" : "Investimento adicionado com sucesso!");
+      onClose();
+    } catch (err) {
+      console.error("Erro ao salvar investimento:", err);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   const inp = { background: "var(--input-background)", border: "1px solid var(--border)", borderRadius: "10px", color: "var(--foreground)", padding: "10px 14px", width: "100%", fontSize: "0.875rem", outline: "none" };
@@ -57,10 +68,10 @@ function InvestForm({ initial, onSave, onClose }: { initial?: Investment; onSave
         <input style={inp} type="date" required value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} />
       </div>
       <div className="flex gap-3 pt-1">
-        <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-medium"
+        <button type="button" onClick={onClose} disabled={submitting} className="flex-1 py-2.5 rounded-xl text-sm font-medium"
           style={{ background: "var(--secondary)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>Cancelar</button>
-        <button type="submit" className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white hover:opacity-90"
-          style={{ background: "var(--primary)" }}>{initial ? "Salvar" : "Adicionar"}</button>
+        <button type="submit" disabled={submitting} className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white hover:opacity-90"
+          style={{ background: "var(--primary)", opacity: submitting ? 0.7 : 1 }}>{submitting ? "Salvando..." : initial ? "Salvar" : "Adicionar"}</button>
       </div>
     </form>
   );
@@ -71,6 +82,7 @@ export function Investments() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Investment | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const totalInvested = investments.reduce((s, i) => s + i.invested, 0);
   const totalCurrent = investments.reduce((s, i) => s + i.currentValue, 0);
@@ -127,7 +139,7 @@ export function Investments() {
           <h3 className="text-white mb-4" style={{ fontWeight: 600 }}>Por Tipo de Ativo</h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
             {Object.entries(byType).map(([type, data]) => {
-              const ret = ((data.current - data.invested) / data.invested * 100).toFixed(2);
+              const ret = (data.invested > 0 ? (data.current - data.invested) / data.invested * 100 : 0).toFixed(2);
               const up = data.current >= data.invested;
               return (
                 <div key={type} className="p-3 rounded-xl" style={{ background: "var(--secondary)" }}>
@@ -167,7 +179,7 @@ export function Investments() {
             <div className="block sm:hidden divide-y" style={{ borderColor: "var(--border)" }}>
               {investments.map((inv, i) => {
                 const ret = inv.currentValue - inv.invested;
-                const retPct = (ret / inv.invested) * 100;
+                const retPct = inv.invested > 0 ? (ret / inv.invested) * 100 : 0;
                 const color = TYPE_COLORS[inv.type] || "#94a3b8";
                 return (
                   <div key={inv.id} className="p-4">
@@ -221,7 +233,7 @@ export function Investments() {
                 <tbody>
                   {investments.map((inv, i) => {
                     const ret = inv.currentValue - inv.invested;
-                    const retPct = (ret / inv.invested) * 100;
+                    const retPct = inv.invested > 0 ? (ret / inv.invested) * 100 : 0;
                     const color = TYPE_COLORS[inv.type] || "#94a3b8";
                     return (
                       <tr key={inv.id} style={{ borderBottom: "1px solid var(--border)" }}
@@ -296,10 +308,26 @@ export function Investments() {
               <h3 className="text-white mb-2" style={{ fontWeight: 600 }}>Excluir investimento?</h3>
               <p style={{ color: "var(--muted-foreground)", fontSize: "0.875rem", marginBottom: "24px" }}>Esta ação não pode ser desfeita.</p>
               <div className="flex gap-3">
-                <button onClick={() => setDeleting(null)} className="flex-1 py-2.5 rounded-xl text-sm font-medium"
+                <button onClick={() => setDeleting(null)} disabled={isDeleting} className="flex-1 py-2.5 rounded-xl text-sm font-medium"
                   style={{ background: "var(--secondary)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>Cancelar</button>
-                <button onClick={() => { deleteInvestment(deleting); setDeleting(null); }}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white" style={{ background: "var(--destructive)" }}>Excluir</button>
+                <button
+                  disabled={isDeleting}
+                  onClick={async () => {
+                    if (isDeleting) return;
+                    setIsDeleting(true);
+                    try {
+                      await deleteInvestment(deleting);
+                      toast.success("Investimento excluído com sucesso!");
+                      setDeleting(null);
+                    } catch (err) {
+                      console.error("Erro ao excluir investimento:", err);
+                    } finally {
+                      setIsDeleting(false);
+                    }
+                  }}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white" style={{ background: "var(--destructive)", opacity: isDeleting ? 0.7 : 1 }}>
+                  {isDeleting ? "Excluindo..." : "Excluir"}
+                </button>
               </div>
             </motion.div>
           </motion.div>

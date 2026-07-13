@@ -1,23 +1,34 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Plus, Edit2, Trash2, X } from "lucide-react";
+import { Plus, Edit2, Trash2, X, Tag } from "lucide-react";
+import { toast } from "sonner";
 import { useFinance, Category } from "../context/FinanceContext";
 
 const ICONS = ["🍽️", "🚗", "🏠", "❤️", "📚", "🎮", "📈", "💼", "💻", "📦", "🛒", "☕", "✈️", "🎵", "🎨", "🐶", "💊", "🎁", "⚽", "📱"];
 const COLORS = ["#f59e0b", "#3b82f6", "#8b5cf6", "#ef4444", "#10b981", "#ec4899", "#10d9a4", "#22c55e", "#6366f1", "#94a3b8", "#f97316", "#06b6d4"];
 
-function CategoryForm({ initial, onSave, onClose }: { initial?: Category; onSave: (c: any) => void; onClose: () => void }) {
+function CategoryForm({ initial, onSave, onClose }: { initial?: Category; onSave: (c: any) => Promise<void>; onClose: () => void }) {
   const [form, setForm] = useState({
     name: initial?.name || "",
     icon: initial?.icon || "📦",
     color: initial?.color || "#8892b0",
     type: initial?.type || "custom" as "default" | "custom",
   });
+  const [submitting, setSubmitting] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    onSave(form);
-    onClose();
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      await onSave(form);
+      toast.success(initial ? "Categoria atualizada com sucesso!" : "Categoria criada com sucesso!");
+      onClose();
+    } catch (err) {
+      console.error("Erro ao salvar categoria:", err);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   const inputStyle = {
@@ -35,11 +46,14 @@ function CategoryForm({ initial, onSave, onClose }: { initial?: Category; onSave
         <label className="block text-sm mb-2" style={{ color: "var(--muted-foreground)" }}>Ícone</label>
         <div className="flex flex-wrap gap-2">
           {ICONS.map(ic => (
-            <button key={ic} type="button" onClick={() => setForm(f => ({ ...f, icon: ic }))}
-              className="w-10 h-10 rounded-xl text-xl flex items-center justify-center transition-all"
+            <motion.button key={ic} type="button" onClick={() => setForm(f => ({ ...f, icon: ic }))}
+              whileTap={{ scale: 0.88 }}
+              animate={{ scale: form.icon === ic ? 1.08 : 1 }}
+              transition={{ type: "spring", stiffness: 400, damping: 20 }}
+              className="w-10 h-10 rounded-xl text-xl flex items-center justify-center"
               style={{ background: form.icon === ic ? "var(--primary)" : "var(--secondary)", border: `2px solid ${form.icon === ic ? "var(--primary)" : "transparent"}` }}>
               {ic}
-            </button>
+            </motion.button>
           ))}
         </div>
       </div>
@@ -47,20 +61,23 @@ function CategoryForm({ initial, onSave, onClose }: { initial?: Category; onSave
         <label className="block text-sm mb-2" style={{ color: "var(--muted-foreground)" }}>Cor</label>
         <div className="flex flex-wrap gap-2">
           {COLORS.map(c => (
-            <button key={c} type="button" onClick={() => setForm(f => ({ ...f, color: c }))}
-              className="w-8 h-8 rounded-full transition-transform hover:scale-110"
+            <motion.button key={c} type="button" onClick={() => setForm(f => ({ ...f, color: c }))}
+              whileTap={{ scale: 0.85 }}
+              animate={{ scale: form.color === c ? 1.15 : 1 }}
+              transition={{ type: "spring", stiffness: 400, damping: 20 }}
+              className="w-8 h-8 rounded-full"
               style={{ background: c, border: `3px solid ${form.color === c ? "white" : "transparent"}` }} />
           ))}
         </div>
       </div>
       <div className="flex gap-3 pt-2">
-        <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-medium"
+        <button type="button" onClick={onClose} disabled={submitting} className="flex-1 py-2.5 rounded-xl text-sm font-medium"
           style={{ background: "var(--secondary)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>
           Cancelar
         </button>
-        <button type="submit" className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white hover:opacity-90"
-          style={{ background: "var(--primary)" }}>
-          {initial ? "Salvar" : "Criar Categoria"}
+        <button type="submit" disabled={submitting} className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white hover:opacity-90"
+          style={{ background: "var(--primary)", opacity: submitting ? 0.7 : 1 }}>
+          {submitting ? "Salvando..." : initial ? "Salvar" : "Criar Categoria"}
         </button>
       </div>
     </form>
@@ -72,6 +89,7 @@ export function Categories() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Category | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   function getSpend(catId: string) {
     return transactions.filter(t => t.category === catId && t.type === "expense").reduce((s, t) => s + t.amount, 0);
@@ -90,48 +108,63 @@ export function Categories() {
 
   return (
     <div className="space-y-4 sm:space-y-5">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-white" style={{ fontSize: "clamp(1.2rem,4vw,1.5rem)", fontWeight: 700 }}>Categorias</h1>
-          <p style={{ color: "var(--muted-foreground)", fontSize: "0.875rem" }}>{categories.length} categorias cadastradas</p>
+      <motion.div
+        initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}
+        className="flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shrink-0"
+            style={{ background: "rgba(32,75,202,0.14)" }}>
+            <Tag size={18} style={{ color: "var(--primary)" }} />
+          </div>
+          <div>
+            <h1 className="text-white" style={{ fontSize: "clamp(1.2rem,4vw,1.5rem)", fontWeight: 700 }}>Categorias</h1>
+            <p style={{ color: "var(--muted-foreground)", fontSize: "0.875rem" }}>{categories.length} categorias cadastradas</p>
+          </div>
         </div>
-        <button onClick={() => setShowForm(true)}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white hover:opacity-90 w-full sm:w-auto"
+        <motion.button
+          whileTap={{ scale: 0.96 }} whileHover={{ scale: 1.02 }}
+          onClick={() => setShowForm(true)}
+          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white w-full sm:w-auto"
           style={{ background: "var(--primary)" }}>
           <Plus size={16} /> Nova Categoria
-        </button>
-      </div>
+        </motion.button>
+      </motion.div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
         {categories.map((cat, i) => {
           const spend = getSpend(cat.id);
           const txCount = transactions.filter(t => t.category === cat.id).length;
+          const pct = maxSpend > 0 ? (spend / maxSpend) * 100 : 0;
           return (
             <motion.div
               key={cat.id}
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05 }}
-              whileHover={{ y: -2 }}
+              transition={{ delay: Math.min(i * 0.04, 0.4), duration: 0.35 }}
+              whileHover={{ y: -3 }}
               className="rounded-2xl p-4 relative overflow-hidden group"
               style={{ background: "var(--card)", border: "1px solid var(--border)" }}
             >
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                style={{ background: `linear-gradient(135deg, ${cat.color}08, transparent)` }} />
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                style={{ background: `linear-gradient(135deg, ${cat.color}0c, transparent)` }} />
               <div className="relative flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl"
+                <div className="flex items-center gap-3 min-w-0">
+                  <motion.div
+                    whileHover={{ scale: 1.08, rotate: 3 }}
+                    transition={{ type: "spring", stiffness: 350, damping: 15 }}
+                    className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0"
                     style={{ background: `${cat.color}20` }}>
                     {cat.icon}
-                  </div>
-                  <div>
-                    <p className="text-white" style={{ fontWeight: 600, fontSize: "0.95rem" }}>{cat.name}</p>
+                  </motion.div>
+                  <div className="min-w-0">
+                    <p className="text-white truncate" style={{ fontWeight: 600, fontSize: "0.95rem" }}>{cat.name}</p>
                     <p style={{ color: "var(--muted-foreground)", fontSize: "0.75rem" }}>
                       {txCount} transaç{txCount !== 1 ? "ões" : "ão"}
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200 shrink-0">
                   <button onClick={() => setEditing(cat)} className="p-1.5 rounded-lg hover:bg-white/5" style={{ color: "var(--muted-foreground)" }}>
                     <Edit2 size={14} />
                   </button>
@@ -150,11 +183,13 @@ export function Categories() {
                   </span>
                 </div>
                 <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: "var(--secondary)" }}>
-                  <div className="h-full rounded-full" style={{
-                    background: cat.color,
-                    width: `${maxSpend > 0 ? (spend / maxSpend) * 100 : 0}%`,
-                    transition: "width 1s ease"
-                  }} />
+                  <motion.div
+                    className="h-full rounded-full"
+                    style={{ background: cat.color }}
+                    initial={{ width: 0 }}
+                    animate={{ width: `${pct}%` }}
+                    transition={{ duration: 0.8, delay: Math.min(i * 0.04, 0.4) + 0.15, ease: "easeOut" }}
+                  />
                 </div>
               </div>
               {cat.type === "default" && (
@@ -208,10 +243,26 @@ export function Categories() {
               <h3 className="text-white mb-2" style={{ fontWeight: 600 }}>Excluir categoria?</h3>
               <p style={{ color: "var(--muted-foreground)", fontSize: "0.875rem", marginBottom: "24px" }}>As transações desta categoria não serão excluídas.</p>
               <div className="flex gap-3">
-                <button onClick={() => setDeleting(null)} className="flex-1 py-2.5 rounded-xl text-sm font-medium"
+                <button onClick={() => setDeleting(null)} disabled={isDeleting} className="flex-1 py-2.5 rounded-xl text-sm font-medium"
                   style={{ background: "var(--secondary)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>Cancelar</button>
-                <button onClick={() => { deleteCategory(deleting); setDeleting(null); }}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white" style={{ background: "var(--destructive)" }}>Excluir</button>
+                <button
+                  disabled={isDeleting}
+                  onClick={async () => {
+                    if (isDeleting) return;
+                    setIsDeleting(true);
+                    try {
+                      await deleteCategory(deleting);
+                      toast.success("Categoria excluída com sucesso!");
+                      setDeleting(null);
+                    } catch (err) {
+                      console.error("Erro ao excluir categoria:", err);
+                    } finally {
+                      setIsDeleting(false);
+                    }
+                  }}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white" style={{ background: "var(--destructive)", opacity: isDeleting ? 0.7 : 1 }}>
+                  {isDeleting ? "Excluindo..." : "Excluir"}
+                </button>
               </div>
             </motion.div>
           </motion.div>

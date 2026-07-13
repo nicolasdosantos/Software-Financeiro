@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { User } from "@supabase/supabase-js";
+import { toast } from "sonner";
 import { supabase } from "../../lib/supabase";
 
 export type TransactionType = "income" | "expense";
@@ -202,45 +203,55 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const loadFinanceData = useCallback(async () => {
     setLoading(true);
 
-    const user = await getCurrentUser();
-    if (!user) {
-      setTransactions([]);
-      setCategories([]);
-      setGoals([]);
-      setInvestments([]);
-      setBudgets([]);
+    try {
+      const user = await getCurrentUser();
+      if (!user) {
+        setTransactions([]);
+        setCategories([]);
+        setGoals([]);
+        setInvestments([]);
+        setBudgets([]);
+        return;
+      }
+
+      const [
+        transactionsResult,
+        categoriesResult,
+        goalsResult,
+        investmentsResult,
+        budgetsResult,
+      ] = await Promise.all([
+        supabase.from("transactions").select("*").eq("user_id", user.id).order("date", { ascending: false }),
+        supabase.from("categories").select("*").eq("user_id", user.id).order("name", { ascending: true }),
+        supabase.from("goals").select("*").eq("user_id", user.id).order("deadline", { ascending: true }),
+        supabase.from("investments").select("*").eq("user_id", user.id).order("start_date", { ascending: false }),
+        supabase.from("budgets").select("category_id, limit_amount").eq("user_id", user.id),
+      ]);
+
+      const failures: string[] = [];
+      if (transactionsResult.error) { console.error("Erro ao carregar transações:", transactionsResult.error); failures.push("transações"); }
+      if (categoriesResult.error) { console.error("Erro ao carregar categorias:", categoriesResult.error); failures.push("categorias"); }
+      if (goalsResult.error) { console.error("Erro ao carregar metas:", goalsResult.error); failures.push("metas"); }
+      if (investmentsResult.error) { console.error("Erro ao carregar investimentos:", investmentsResult.error); failures.push("investimentos"); }
+      if (budgetsResult.error) { console.error("Erro ao carregar orçamentos:", budgetsResult.error); failures.push("orçamentos"); }
+
+      if (failures.length > 0) {
+        toast.error(`Não foi possível carregar: ${failures.join(", ")}. Tente recarregar a página.`);
+      }
+
+      const userCategories = await ensureDefaultCategories(user, (categoriesResult.data ?? []) as Category[]);
+
+      setTransactions((transactionsResult.data ?? []) as Transaction[]);
+      setCategories(userCategories);
+      setGoals(((goalsResult.data ?? []) as GoalRow[]).map(mapGoal));
+      setInvestments(((investmentsResult.data ?? []) as InvestmentRow[]).map(mapInvestment));
+      setBudgets(((budgetsResult.data ?? []) as BudgetRow[]).map(mapBudget));
+    } catch (err) {
+      console.error("Erro inesperado ao carregar dados financeiros:", err);
+      toast.error("Não foi possível carregar seus dados. Verifique sua conexão e tente novamente.");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    const [
-      transactionsResult,
-      categoriesResult,
-      goalsResult,
-      investmentsResult,
-      budgetsResult,
-    ] = await Promise.all([
-      supabase.from("transactions").select("*").eq("user_id", user.id).order("date", { ascending: false }),
-      supabase.from("categories").select("*").eq("user_id", user.id).order("name", { ascending: true }),
-      supabase.from("goals").select("*").eq("user_id", user.id).order("deadline", { ascending: true }),
-      supabase.from("investments").select("*").eq("user_id", user.id).order("start_date", { ascending: false }),
-      supabase.from("budgets").select("category_id, limit_amount").eq("user_id", user.id),
-    ]);
-
-    if (transactionsResult.error) console.error("Erro ao carregar transações:", transactionsResult.error);
-    if (categoriesResult.error) console.error("Erro ao carregar categorias:", categoriesResult.error);
-    if (goalsResult.error) console.error("Erro ao carregar metas:", goalsResult.error);
-    if (investmentsResult.error) console.error("Erro ao carregar investimentos:", investmentsResult.error);
-    if (budgetsResult.error) console.error("Erro ao carregar orçamentos:", budgetsResult.error);
-
-    const userCategories = await ensureDefaultCategories(user, (categoriesResult.data ?? []) as Category[]);
-
-    setTransactions((transactionsResult.data ?? []) as Transaction[]);
-    setCategories(userCategories);
-    setGoals(((goalsResult.data ?? []) as GoalRow[]).map(mapGoal));
-    setInvestments(((investmentsResult.data ?? []) as InvestmentRow[]).map(mapInvestment));
-    setBudgets(((budgetsResult.data ?? []) as BudgetRow[]).map(mapBudget));
-    setLoading(false);
   }, [ensureDefaultCategories, getCurrentUser]);
 
   useEffect(() => {
@@ -265,7 +276,10 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
     addTransaction: async (transaction) => {
       const user = await getCurrentUser();
-      if (!user) return;
+      if (!user) {
+        toast.error("Sua sessão expirou. Faça login novamente para continuar.");
+        throw new Error("Usuário não autenticado");
+      }
 
       const { data, error } = await supabase
         .from("transactions")
@@ -275,7 +289,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         console.error("Erro ao adicionar transação:", error);
-        return;
+        toast.error("Não foi possível adicionar a transação. Tente novamente.");
+        throw error;
       }
 
       setTransactions((prev) => [data as Transaction, ...prev]);
@@ -283,7 +298,10 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
     updateTransaction: async (transaction) => {
       const user = await getCurrentUser();
-      if (!user) return;
+      if (!user) {
+        toast.error("Sua sessão expirou. Faça login novamente para continuar.");
+        throw new Error("Usuário não autenticado");
+      }
 
       const { id, ...payload } = transaction;
       const { error } = await supabase
@@ -294,7 +312,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         console.error("Erro ao atualizar transação:", error);
-        return;
+        toast.error("Não foi possível salvar as alterações da transação.");
+        throw error;
       }
 
       setTransactions((prev) => prev.map((item) => item.id === id ? transaction : item));
@@ -302,7 +321,10 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
     deleteTransaction: async (id) => {
       const user = await getCurrentUser();
-      if (!user) return;
+      if (!user) {
+        toast.error("Sua sessão expirou. Faça login novamente para continuar.");
+        throw new Error("Usuário não autenticado");
+      }
 
       const { error } = await supabase
         .from("transactions")
@@ -312,7 +334,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         console.error("Erro ao excluir transação:", error);
-        return;
+        toast.error("Não foi possível excluir a transação.");
+        throw error;
       }
 
       setTransactions((prev) => prev.filter((item) => item.id !== id));
@@ -320,7 +343,10 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
     addCategory: async (category) => {
       const user = await getCurrentUser();
-      if (!user) return;
+      if (!user) {
+        toast.error("Sua sessão expirou. Faça login novamente para continuar.");
+        throw new Error("Usuário não autenticado");
+      }
 
       const { data, error } = await supabase
         .from("categories")
@@ -330,7 +356,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         console.error("Erro ao adicionar categoria:", error);
-        return;
+        toast.error("Não foi possível adicionar a categoria.");
+        throw error;
       }
 
       setCategories((prev) => [...prev, data as Category].sort((a, b) => a.name.localeCompare(b.name)));
@@ -338,7 +365,10 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
     updateCategory: async (category) => {
       const user = await getCurrentUser();
-      if (!user) return;
+      if (!user) {
+        toast.error("Sua sessão expirou. Faça login novamente para continuar.");
+        throw new Error("Usuário não autenticado");
+      }
 
       const { id, ...payload } = category;
       const { error } = await supabase
@@ -349,7 +379,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         console.error("Erro ao atualizar categoria:", error);
-        return;
+        toast.error("Não foi possível salvar as alterações da categoria.");
+        throw error;
       }
 
       setCategories((prev) => prev.map((item) => item.id === id ? category : item));
@@ -357,7 +388,10 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
     deleteCategory: async (id) => {
       const user = await getCurrentUser();
-      if (!user) return;
+      if (!user) {
+        toast.error("Sua sessão expirou. Faça login novamente para continuar.");
+        throw new Error("Usuário não autenticado");
+      }
 
       const { error } = await supabase
         .from("categories")
@@ -368,7 +402,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         console.error("Erro ao excluir categoria:", error);
-        return;
+        toast.error("Não foi possível excluir a categoria.");
+        throw error;
       }
 
       setCategories((prev) => prev.filter((item) => item.id !== id));
@@ -377,7 +412,10 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
     addGoal: async (goal) => {
       const user = await getCurrentUser();
-      if (!user) return;
+      if (!user) {
+        toast.error("Sua sessão expirou. Faça login novamente para continuar.");
+        throw new Error("Usuário não autenticado");
+      }
 
       const { data, error } = await supabase
         .from("goals")
@@ -387,7 +425,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         console.error("Erro ao adicionar meta:", error);
-        return;
+        toast.error("Não foi possível adicionar a meta.");
+        throw error;
       }
 
       setGoals((prev) => [...prev, mapGoal(data as GoalRow)]);
@@ -395,7 +434,10 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
     updateGoal: async (goal) => {
       const user = await getCurrentUser();
-      if (!user) return;
+      if (!user) {
+        toast.error("Sua sessão expirou. Faça login novamente para continuar.");
+        throw new Error("Usuário não autenticado");
+      }
 
       const { id, ...payload } = goal;
       const { error } = await supabase
@@ -406,7 +448,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         console.error("Erro ao atualizar meta:", error);
-        return;
+        toast.error("Não foi possível salvar as alterações da meta.");
+        throw error;
       }
 
       setGoals((prev) => prev.map((item) => item.id === id ? goal : item));
@@ -414,7 +457,10 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
     deleteGoal: async (id) => {
       const user = await getCurrentUser();
-      if (!user) return;
+      if (!user) {
+        toast.error("Sua sessão expirou. Faça login novamente para continuar.");
+        throw new Error("Usuário não autenticado");
+      }
 
       const { error } = await supabase
         .from("goals")
@@ -424,7 +470,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         console.error("Erro ao excluir meta:", error);
-        return;
+        toast.error("Não foi possível excluir a meta.");
+        throw error;
       }
 
       setGoals((prev) => prev.filter((item) => item.id !== id));
@@ -432,7 +479,10 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
     addInvestment: async (investment) => {
       const user = await getCurrentUser();
-      if (!user) return;
+      if (!user) {
+        toast.error("Sua sessão expirou. Faça login novamente para continuar.");
+        throw new Error("Usuário não autenticado");
+      }
 
       const { currentValue, startDate, ...payload } = investment;
       const { data, error } = await supabase
@@ -448,7 +498,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         console.error("Erro ao adicionar investimento:", error);
-        return;
+        toast.error("Não foi possível adicionar o investimento.");
+        throw error;
       }
 
       setInvestments((prev) => [mapInvestment(data as InvestmentRow), ...prev]);
@@ -456,7 +507,10 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
     updateInvestment: async (investment) => {
       const user = await getCurrentUser();
-      if (!user) return;
+      if (!user) {
+        toast.error("Sua sessão expirou. Faça login novamente para continuar.");
+        throw new Error("Usuário não autenticado");
+      }
 
       const { id, currentValue, startDate, ...payload } = investment;
       const { error } = await supabase
@@ -471,7 +525,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         console.error("Erro ao atualizar investimento:", error);
-        return;
+        toast.error("Não foi possível salvar as alterações do investimento.");
+        throw error;
       }
 
       setInvestments((prev) => prev.map((item) => item.id === id ? investment : item));
@@ -479,7 +534,10 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
     deleteInvestment: async (id) => {
       const user = await getCurrentUser();
-      if (!user) return;
+      if (!user) {
+        toast.error("Sua sessão expirou. Faça login novamente para continuar.");
+        throw new Error("Usuário não autenticado");
+      }
 
       const { error } = await supabase
         .from("investments")
@@ -489,7 +547,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         console.error("Erro ao excluir investimento:", error);
-        return;
+        toast.error("Não foi possível excluir o investimento.");
+        throw error;
       }
 
       setInvestments((prev) => prev.filter((item) => item.id !== id));
@@ -497,7 +556,10 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
     updateBudget: async (budget) => {
       const user = await getCurrentUser();
-      if (!user) return;
+      if (!user) {
+        toast.error("Sua sessão expirou. Faça login novamente para continuar.");
+        throw new Error("Usuário não autenticado");
+      }
 
       const { error } = await supabase
         .from("budgets")
@@ -509,7 +571,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         console.error("Erro ao atualizar orçamento:", error);
-        return;
+        toast.error("Não foi possível salvar o limite de orçamento.");
+        throw error;
       }
 
       setBudgets((prev) => {

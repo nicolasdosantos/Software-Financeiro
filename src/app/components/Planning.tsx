@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { motion } from "motion/react";
 import { AlertTriangle, CheckCircle, Edit2, X } from "lucide-react";
+import { toast } from "sonner";
 import { useFinance, formatCurrency, getMonthName } from "../context/FinanceContext";
 
 export function Planning() {
   const { transactions, categories, budgets, updateBudget, currentMonth } = useFinance();
   const [editingCat, setEditingCat] = useState<string | null>(null);
   const [newLimit, setNewLimit] = useState("");
+  const [savingLimit, setSavingLimit] = useState(false);
 
   function getSpend(catId: string) {
     return transactions.filter(t => t.date.startsWith(currentMonth) && t.category === catId && t.type === "expense")
@@ -23,10 +25,25 @@ export function Planning() {
   const overBudget = expenseCategories.filter(c => { const l = getBudget(c.id); return l > 0 && getSpend(c.id) > l; }).length;
   const nearLimit = expenseCategories.filter(c => { const l = getBudget(c.id); const sp = getSpend(c.id); return l > 0 && sp >= l * 0.8 && sp <= l; }).length;
 
-  function saveLimit(catId: string) {
+  async function saveLimit(catId: string) {
+    if (savingLimit) return;
     const val = parseFloat(newLimit);
-    if (!isNaN(val) && val >= 0) updateBudget({ categoryId: catId, limit: val });
-    setEditingCat(null); setNewLimit("");
+    if (isNaN(val) || val < 0) {
+      toast.error("Informe um valor de limite válido.");
+      return;
+    }
+
+    setSavingLimit(true);
+    try {
+      await updateBudget({ categoryId: catId, limit: val });
+      toast.success("Limite de orçamento atualizado com sucesso!");
+      setEditingCat(null);
+      setNewLimit("");
+    } catch (err) {
+      console.error("Erro ao salvar limite de orçamento:", err);
+    } finally {
+      setSavingLimit(false);
+    }
   }
 
   return (
@@ -108,8 +125,8 @@ export function Planning() {
                         placeholder="Limite R$"
                         style={{ background: "var(--input-background)", border: "1px solid var(--border)", borderRadius: "8px", color: "var(--foreground)", padding: "4px 10px", fontSize: "0.8rem", outline: "none", width: "110px" }}
                         onKeyDown={e => { if (e.key === "Enter") saveLimit(cat.id); if (e.key === "Escape") setEditingCat(null); }} />
-                      <button onClick={() => saveLimit(cat.id)} style={{ color: "#10d9a4" }}><CheckCircle size={16} /></button>
-                      <button onClick={() => setEditingCat(null)} style={{ color: "var(--muted-foreground)" }}><X size={16} /></button>
+                      <button onClick={() => saveLimit(cat.id)} disabled={savingLimit} style={{ color: "#10d9a4", opacity: savingLimit ? 0.6 : 1 }}><CheckCircle size={16} /></button>
+                      <button onClick={() => setEditingCat(null)} disabled={savingLimit} style={{ color: "var(--muted-foreground)" }}><X size={16} /></button>
                     </div>
                   ) : (
                     <button onClick={() => { setEditingCat(cat.id); setNewLimit(limit.toString()); }}

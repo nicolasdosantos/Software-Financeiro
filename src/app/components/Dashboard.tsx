@@ -4,7 +4,7 @@ import {
   AreaChart, Area, PieChart, Pie, Cell, Sector,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from "recharts";
-import { TrendingUp, TrendingDown, Wallet, PiggyBank, ArrowUpRight, ArrowDownRight, Eye, EyeOff } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet, PiggyBank, ArrowUpRight, ArrowDownRight, Eye, EyeOff, Sparkles } from "lucide-react";
 import { useFinance, formatCurrency, getMonthName, getShortMonthName } from "../context/FinanceContext";
 import { useUser } from "../../hooks/useUser";
 import { useNavigate } from "react-router-dom";
@@ -76,12 +76,30 @@ export function Dashboard() {
   const savings = transactions.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0)
     - transactions.filter(t => t.type === "expense").reduce((s, t) => s + t.amount, 0);
 
+  const savingsUntil = (month: string) => {
+    const txs = transactions.filter(t => t.date?.slice(0, 7) <= month);
+    const income = txs.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0);
+    const expense = txs.filter(t => t.type === "expense").reduce((s, t) => s + t.amount, 0);
+    return income - expense;
+  };
+  const savingsCurrMonth = savingsUntil(currentMonth);
+  const savingsPrevMonth = savingsUntil(prevMonth);
+  const savingsChange = ((savingsCurrMonth - savingsPrevMonth) / Math.max(Math.abs(savingsPrevMonth), 1)) * 100;
+  const balanceChange = ((curr.balance - prev.balance) / Math.max(Math.abs(prev.balance), 1)) * 100;
+
   const statCards = [
-    { title: "Saldo Total", value: savings, icon: Wallet, color: "#204bca", bg: "rgba(32,75,202,0.12)", change: "+12,3%", up: true },
+    { title: "Saldo Total", value: savings, icon: Wallet, color: "#204bca", bg: "rgba(32,75,202,0.12)", change: `${savingsChange >= 0 ? "+" : ""}${savingsChange.toFixed(1)}%`, up: savingsCurrMonth >= savingsPrevMonth },
     { title: `Receitas (${getShortMonthName(currentMonth)})`, value: curr.income, icon: TrendingUp, color: "#10d9a4", bg: "rgba(16,217,164,0.12)", change: `${((curr.income - prev.income) / Math.max(prev.income, 1) * 100).toFixed(1)}%`, up: curr.income >= prev.income },
     { title: `Despesas (${getShortMonthName(currentMonth)})`, value: curr.expense, icon: TrendingDown, color: "#ef4444", bg: "rgba(239,68,68,0.12)", change: `${((curr.expense - prev.expense) / Math.max(prev.expense, 1) * 100).toFixed(1)}%`, up: curr.expense < prev.expense },
-    { title: `Economia (${getShortMonthName(currentMonth)})`, value: curr.balance, icon: PiggyBank, color: "#8b5cf6", bg: "rgba(139,92,246,0.12)", change: "+28,5%", up: true },
+    { title: `Economia (${getShortMonthName(currentMonth)})`, value: curr.balance, icon: PiggyBank, color: "#8b5cf6", bg: "rgba(139,92,246,0.12)", change: `${balanceChange >= 0 ? "+" : ""}${balanceChange.toFixed(1)}%`, up: curr.balance >= prev.balance },
   ];
+
+  const dataYears = [...new Set(months.map(m => m.slice(0, 4)))];
+  const dataYearLabel = dataYears.length === 0
+    ? String(new Date().getFullYear())
+    : dataYears.length === 1
+      ? dataYears[0]
+      : `${dataYears[0]}–${dataYears[dataYears.length - 1]}`;
 
   const monthlyData = months.map((m) => {
     const inc = transactions
@@ -123,24 +141,39 @@ export function Dashboard() {
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-white" style={{ fontSize: "clamp(1.2rem, 4vw, 1.5rem)", fontWeight: 700 }}>
-            Bem-vindo, {user?.user_metadata?.name || "Usuário"}! 👋
-          </h1>
-          <p style={{ color: "var(--muted-foreground)", fontSize: "0.875rem" }}>
-            Aqui está seu resumo financeiro de {getMonthName(currentMonth)}.
-          </p>
+      <motion.div
+        initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}
+        className="flex items-start justify-between gap-3 flex-wrap"
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <motion.div
+            initial={{ scale: 0.6, opacity: 0, rotate: -8 }}
+            animate={{ scale: 1, opacity: 1, rotate: 0 }}
+            transition={{ type: "spring", stiffness: 260, damping: 18 }}
+            className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shrink-0"
+            style={{ background: "linear-gradient(135deg, rgba(32,75,202,0.25), rgba(139,92,246,0.2))" }}
+          >
+            <Sparkles size={18} style={{ color: "#8b9cff" }} />
+          </motion.div>
+          <div className="min-w-0">
+            <h1 className="text-white truncate" style={{ fontSize: "clamp(1.2rem, 4vw, 1.5rem)", fontWeight: 700 }}>
+              Bem-vindo, {user?.user_metadata?.name || "Usuário"}! 👋
+            </h1>
+            <p style={{ color: "var(--muted-foreground)", fontSize: "0.875rem" }}>
+              Aqui está seu resumo financeiro de {getMonthName(currentMonth)}.
+            </p>
+          </div>
         </div>
-        <button
+        <motion.button
+          whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }}
           onClick={() => setHideValues(!hideValues)}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition-colors shrink-0"
+          className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm shrink-0"
           style={{ background: "var(--secondary)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}
         >
           {hideValues ? <Eye size={14} /> : <EyeOff size={14} />}
           <span className="hidden sm:inline">{hideValues ? "Mostrar" : "Ocultar"} valores</span>
-        </button>
-      </div>
+        </motion.button>
+      </motion.div>
 
       {/* Stat Cards — 1 col on xs, 2 on sm, 4 on xl */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
@@ -159,9 +192,10 @@ export function Dashboard() {
               <div className="absolute top-0 right-0 w-24 h-24 rounded-full opacity-20 -translate-y-8 translate-x-8"
                 style={{ background: card.color }} />
               <div className="flex items-start justify-between mb-3 sm:mb-4">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: card.bg }}>
+                <motion.div whileHover={{ scale: 1.08 }} transition={{ type: "spring", stiffness: 350, damping: 15 }}
+                  className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: card.bg }}>
                   <Icon size={18} style={{ color: card.color }} />
-                </div>
+                </motion.div>
                 <span className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full"
                   style={{ background: card.up ? "rgba(16,217,164,0.1)" : "rgba(239,68,68,0.1)", color: card.up ? "#10d9a4" : "#ef4444" }}>
                   {card.up ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
@@ -187,7 +221,7 @@ export function Dashboard() {
         >
           <h3 className="text-white mb-0.5" style={{ fontWeight: 600 }}>Evolução Financeira</h3>
           <p style={{ color: "var(--muted-foreground)", fontSize: "0.78rem", marginBottom: "12px" }}>
-            Receitas vs Despesas — 2026
+            Receitas vs Despesas — {dataYearLabel}
           </p>
           <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={monthlyData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
@@ -317,10 +351,12 @@ export function Dashboard() {
             style={{ color: "var(--primary)", fontSize: "0.8rem", cursor: "pointer" }}>Ver todas</span>
         </div>
         <div className="space-y-1">
-          {recentTxs.map(tx => {
+          {recentTxs.map((tx, i) => {
             const cat = categories.find(c => c.id === tx.category);
             return (
-              <div key={tx.id}
+              <motion.div key={tx.id}
+                initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.55 + Math.min(i * 0.05, 0.3), duration: 0.3 }}
                 className="flex items-center justify-between py-2.5 px-3 rounded-xl transition-colors"
                 onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--secondary)"; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}>
@@ -342,7 +378,7 @@ export function Dashboard() {
                   style={{ color: tx.type === "income" ? "#10d9a4" : "#ef4444", fontWeight: 600, fontSize: "0.875rem", fontFamily: "var(--font-mono)" }}>
                   {tx.type === "income" ? "+" : "-"}{hideValues ? "••••" : formatCurrency(tx.amount)}
                 </span>
-              </div>
+              </motion.div>
             );
           })}
         </div>

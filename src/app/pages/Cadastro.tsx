@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { supabase } from "../../lib/supabase";
 import { motion } from "motion/react";
 import {
@@ -31,39 +32,54 @@ export function Register() {
 
     async function handleRegister(e: React.FormEvent) {
         e.preventDefault();
+        if (loading) return;
+
+        if (!name.trim()) {
+            toast.error("Informe seu nome.");
+            return;
+        }
 
         if (password !== confirmPassword) {
-            alert("As senhas não coincidem");
+            toast.error("As senhas não coincidem.");
             return;
         }
 
         if (password.length < 6) {
-            alert("Senha muito fraca (mínimo 6 caracteres)");
+            toast.error("Senha muito fraca (mínimo 6 caracteres).");
             return;
         }
 
         setLoading(true);
 
-        const { data, error } = await supabase.auth.signUp({
-            email: email.trim(),
-            password: password.trim(),
-            options: {
-                data: {
-                    name: name.trim(),
+        try {
+            const { data, error } = await supabase.auth.signUp({
+                email: email.trim(),
+                password,
+                options: {
+                    data: {
+                        name: name.trim(),
+                    },
                 },
-            },
-        });
+            });
 
-        setLoading(false);
+            if (error) {
+                console.error("Erro ao criar conta:", error);
+                toast.error(error.message || "Não foi possível criar sua conta.");
+                return;
+            }
 
-        if (error) {
-            console.log(error);
-            alert(error.message);
-            return;
+            if (!data.session) {
+                toast.success("Conta criada! Verifique seu e-mail para confirmar o cadastro.");
+            } else {
+                toast.success("Conta criada com sucesso!");
+            }
+            navigate("/");
+        } catch (err) {
+            console.error("Erro inesperado ao criar conta:", err);
+            toast.error("Não foi possível criar sua conta. Verifique sua conexão e tente novamente.");
+        } finally {
+            setLoading(false);
         }
-
-        alert("Conta criada com sucesso!");
-        navigate("/");
     }
 
     return (
@@ -257,37 +273,6 @@ export function Register() {
                             }}
                         >
                             {loading ? "Criando..." : "Criar Conta"}
-                        </button>
-
-                        <div className="relative py-2">
-                            <div
-                                style={{
-                                    height: "1px",
-                                    background: "var(--border)",
-                                }}
-                            />
-                            <span
-                                className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 px-3"
-                                style={{
-                                    background: "var(--card)",
-                                    color: "var(--muted-foreground)",
-                                    fontSize: "0.8rem",
-                                }}
-                            >
-                                ou
-                            </span>
-                        </div>
-
-                        <button
-                            type="button"
-                            className="w-full py-3 rounded-xl font-medium"
-                            style={{
-                                background: "var(--secondary)",
-                                border: "1px solid var(--border)",
-                                color: "var(--foreground)",
-                            }}
-                        >
-                            Continuar com Google
                         </button>
                     </form>
 
