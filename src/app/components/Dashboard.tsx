@@ -1,13 +1,28 @@
 import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import {
-  AreaChart, Area, PieChart, Pie, Cell,
+  AreaChart, Area, PieChart, Pie, Cell, Sector,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from "recharts";
 import { TrendingUp, TrendingDown, Wallet, PiggyBank, ArrowUpRight, ArrowDownRight, Eye, EyeOff } from "lucide-react";
 import { useFinance, formatCurrency, getMonthName, getShortMonthName } from "../context/FinanceContext";
 import { useUser } from "../../hooks/useUser";
 import { useNavigate } from "react-router-dom";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "./ui/select";
+
+function renderActivePieShape(props: any) {
+  const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
+  return (
+    <g>
+      <Sector cx={cx} cy={cy} innerRadius={innerRadius} outerRadius={outerRadius + 6}
+        startAngle={startAngle} endAngle={endAngle} fill={fill} />
+      <Sector cx={cx} cy={cy} innerRadius={outerRadius + 9} outerRadius={outerRadius + 11}
+        startAngle={startAngle} endAngle={endAngle} fill={fill} opacity={0.35} />
+    </g>
+  );
+}
 
 
 function AnimatedCounter({ value }: { value: number }) {
@@ -29,6 +44,7 @@ function AnimatedCounter({ value }: { value: number }) {
 
 export function Dashboard() {
   const [hideValues, setHideValues] = useState(false);
+  const [activePieIndex, setActivePieIndex] = useState(-1);
 
   const { transactions, categories, currentMonth } = useFinance();
 
@@ -41,6 +57,9 @@ export function Dashboard() {
         .filter(Boolean)
     )
   ].sort();
+
+  const pieMonths = [...new Set([...months, currentMonth])].sort();
+  const [pieMonth, setPieMonth] = useState(currentMonth);
 
   const prevMonthIndex = months.indexOf(currentMonth) - 1;
   const prevMonth = months[prevMonthIndex] ?? currentMonth;
@@ -81,18 +100,22 @@ export function Dashboard() {
   });
 
   const catSpend: Record<string, number> = {};
-  transactions.filter(t => t.date.startsWith(currentMonth) && t.type === "expense").forEach(t => {
+  transactions.filter(t => t.date.startsWith(pieMonth) && t.type === "expense").forEach(t => {
     catSpend[t.category] = (catSpend[t.category] || 0) + t.amount;
   });
   const pieData = Object.entries(catSpend).map(([id, value]) => {
     const cat = categories.find(c => c.id === id);
     return { name: cat?.name || id, value, color: cat?.color || "#8892b0" };
   }).sort((a, b) => b.value - a.value).slice(0, 6);
+  const pieTotal = pieData.reduce((s, d) => s + d.value, 0);
+  const activePieSlice = activePieIndex >= 0 ? pieData[activePieIndex] : null;
 
   const recentTxs = [...transactions].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6);
 
   const tooltipStyle = {
-    contentStyle: { background: "#141828", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "12px", color: "#e8eeff" },
+    contentStyle: { background: "#141828", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "12px", color: "#ffffff" },
+    itemStyle: { color: "#ffffff" },
+    labelStyle: { color: "#ffffff" },
   };
 
   const navigate = useNavigate();
@@ -195,27 +218,86 @@ export function Dashboard() {
           className="rounded-2xl p-4 sm:p-5"
           style={{ background: "var(--card)", border: "1px solid var(--border)" }}
         >
-          <h3 className="text-white mb-0.5" style={{ fontWeight: 600 }}>Gastos por Categoria</h3>
-          <p style={{ color: "var(--muted-foreground)", fontSize: "0.78rem", marginBottom: "8px" }}>{getMonthName(currentMonth)}</p>
-          <ResponsiveContainer width="100%" height={140}>
-            <PieChart>
-              <Pie data={pieData} cx="50%" cy="50%" innerRadius={40} outerRadius={62}
-                paddingAngle={3} dataKey="value" style={{ color: "white" }}>
-                {pieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-              </Pie>
-              <Tooltip {...tooltipStyle} formatter={(val: number) => [formatCurrency(val), ""]} />
-            </PieChart>
-          </ResponsiveContainer>
+          <div className="flex items-start justify-between gap-2 mb-0.5">
+            <div>
+              <h3 className="text-white" style={{ fontWeight: 600 }}>Gastos por Categoria</h3>
+              <p style={{ color: "var(--muted-foreground)", fontSize: "0.78rem" }}>{getMonthName(pieMonth)}</p>
+            </div>
+            <Select value={pieMonth} onValueChange={setPieMonth}>
+              <SelectTrigger size="sm" className="w-[118px] shrink-0" style={{ background: "var(--secondary)", borderColor: "var(--border)", color: "var(--foreground)" }}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {pieMonths.map(m => (
+                  <SelectItem key={m} value={m}>{getShortMonthName(m)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {pieData.length === 0 ? (
+            <div className="flex items-center justify-center" style={{ height: 140, color: "var(--muted-foreground)", fontSize: "0.8rem" }}>
+              Sem despesas em {getMonthName(pieMonth)}
+            </div>
+          ) : (
+            <div className="relative" style={{ height: 170 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    key={pieMonth}
+                    data={pieData} cx="50%" cy="50%" innerRadius={48} outerRadius={72}
+                    paddingAngle={3} dataKey="value" style={{ color: "white" }}
+                    activeIndex={activePieIndex} activeShape={renderActivePieShape}
+                    onMouseEnter={(_, i) => setActivePieIndex(i)}
+                    onMouseLeave={() => setActivePieIndex(-1)}
+                    isAnimationActive animationBegin={0} animationDuration={650} animationEasing="ease-out"
+                  >
+                    {pieData.map((entry, i) => (
+                      <Cell
+                        key={i} fill={entry.color}
+                        style={{ cursor: "pointer", filter: activePieIndex === i ? "brightness(1.15)" : undefined, transition: "filter 0.2s ease" }}
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip {...tooltipStyle} formatter={(val: number, name: string) => [`${formatCurrency(val)} (${((val / pieTotal) * 100).toFixed(0)}%)`, name]} />
+                </PieChart>
+              </ResponsiveContainer>
+              {!activePieSlice && (
+                <motion.div
+                  key="total"
+                  initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }}
+                  className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none"
+                >
+                  <span style={{ color: "var(--muted-foreground)", fontSize: "0.68rem" }}>Total gasto</span>
+                  <span className="text-white" style={{ fontSize: "1rem", fontWeight: 700 }}>
+                    {formatCurrency(pieTotal)}
+                  </span>
+                </motion.div>
+              )}
+            </div>
+          )}
+
           <div className="space-y-1.5 mt-1">
-            {pieData.slice(0, 4).map(d => (
-              <div key={d.name} className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
+            {pieData.map((d, i) => (
+              <div
+                key={d.name}
+                className="flex items-center justify-between rounded-lg px-1.5 py-1 -mx-1.5 transition-colors cursor-pointer"
+                style={{ background: activePieIndex === i ? "var(--secondary)" : "transparent" }}
+                onMouseEnter={() => setActivePieIndex(i)}
+                onMouseLeave={() => setActivePieIndex(-1)}
+              >
+                <div className="flex items-center gap-1.5 min-w-0">
                   <div className="w-2 h-2 rounded-full shrink-0" style={{ background: d.color }} />
-                  <span style={{ color: "var(--muted-foreground)", fontSize: "0.72rem" }}>{d.name}</span>
+                  <span className="truncate" style={{ color: "var(--muted-foreground)", fontSize: "0.72rem" }}>{d.name}</span>
                 </div>
-                <span className="text-white" style={{ fontSize: "0.72rem", fontWeight: 500 }}>
-                  {formatCurrency(d.value)}
-                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span style={{ color: "var(--muted-foreground)", fontSize: "0.68rem" }}>
+                    {pieTotal ? ((d.value / pieTotal) * 100).toFixed(0) : 0}%
+                  </span>
+                  <span className="text-white" style={{ fontSize: "0.72rem", fontWeight: 500 }}>
+                    {formatCurrency(d.value)}
+                  </span>
+                </div>
               </div>
             ))}
           </div>
