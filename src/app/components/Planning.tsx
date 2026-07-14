@@ -130,10 +130,8 @@ export function Planning() {
                     </div>
                   ) : (
                     <button onClick={() => { setEditingCat(cat.id); setNewLimit(limit.toString()); }}
-                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs"
-                      style={{ color: "var(--muted-foreground)" }}
-                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "var(--foreground)"; }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "var(--muted-foreground)"; }}>
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition-colors hover:text-[var(--foreground)]"
+                      style={{ color: "var(--muted-foreground)" }}>
                       <Edit2 size={11} />{limit > 0 ? formatCurrency(limit) : "Definir limite"}
                     </button>
                   )}

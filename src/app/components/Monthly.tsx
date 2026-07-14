@@ -2,7 +2,8 @@ import { useState } from "react";
 import { motion } from "motion/react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useFinance, formatCurrency, getMonthName, getShortMonthName, getTodayDateInput } from "../context/FinanceContext";
+import { useFinance, formatCurrency, getMonthName, getMonthTotals, getShortMonthName, getTodayDateInput, toLocalDate } from "../context/FinanceContext";
+import type { Category } from "../context/FinanceContext";
 
 export function Monthly() {
 
@@ -23,9 +24,7 @@ export function Monthly() {
     }
   }
   const txs = transactions.filter(t => t.date.startsWith(currentMonth));
-  const income = txs.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0);
-  const expense = txs.filter(t => t.type === "expense").reduce((s, t) => s + t.amount, 0);
-  const balance = income - expense;
+  const { income, expense, balance } = getMonthTotals(transactions, currentMonth);
 
   const [year, month] = currentMonth.split("-").map(Number);
   const daysInMonth = new Date(year, month, 0).getDate();
@@ -36,7 +35,7 @@ export function Monthly() {
     return transactions.filter(t => t.date === d);
   }
 
-  const catSpend: { cat: any; total: number }[] = [];
+  const catSpend: { cat: Category; total: number }[] = [];
   categories.forEach(cat => {
     const total = txs.filter(t => t.category === cat.id && t.type === "expense").reduce((s, t) => s + t.amount, 0);
     if (total > 0) catSpend.push({ cat, total });
@@ -50,15 +49,10 @@ export function Monthly() {
       ? compDataYears[0]
       : `${compDataYears[0]}–${compDataYears[compDataYears.length - 1]}`;
 
-  const compData = months.map((m) => {
-    const mt = transactions.filter(t => t.date.startsWith(m));
-    const inc = mt.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0);
-    const exp = mt.filter(t => t.type === "expense").reduce((s, t) => s + t.amount, 0);
-    return {
-      name: getShortMonthName(m),
-      saldo: inc - exp,
-    };
-  });
+  const compData = months.map((m) => ({
+    name: getShortMonthName(m),
+    saldo: getMonthTotals(transactions, m).balance,
+  }));
 
   const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
   const today = getTodayDateInput();
@@ -153,7 +147,7 @@ export function Monthly() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
                 <div>
                   <h4 className="text-white" style={{ fontWeight: 600 }}>
-                    Relatório do dia {selectedDate ? new Date(selectedDate + "T12:00:00").toLocaleDateString("pt-BR") : ""}
+                    Relatório do dia {selectedDate ? toLocalDate(selectedDate).toLocaleDateString("pt-BR") : ""}
                   </h4>
                   <p style={{ color: "var(--muted-foreground)", fontSize: "0.78rem" }}>
                     {selectedTxs.length} transaç{selectedTxs.length !== 1 ? "ões" : "ão"} registrada{selectedTxs.length !== 1 ? "s" : ""}
@@ -266,9 +260,7 @@ export function Monthly() {
             {txs.sort((a, b) => b.date.localeCompare(a.date)).map(tx => {
               const cat = categories.find(c => c.id === tx.category);
               return (
-                <div key={tx.id} className="flex items-center justify-between py-2.5 px-3 rounded-xl transition-colors"
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--secondary)"; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}>
+                <div key={tx.id} className="flex items-center justify-between py-2.5 px-3 rounded-xl transition-colors hover:bg-[var(--secondary)]">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: cat ? `${cat.color}20` : "var(--secondary)" }}>
                       <span style={{ fontSize: "13px" }}>{cat?.icon || "💳"}</span>
@@ -276,7 +268,7 @@ export function Monthly() {
                     <div className="min-w-0">
                       <p className="text-white truncate" style={{ fontSize: "0.875rem", fontWeight: 500 }}>{tx.description}</p>
                       <p style={{ color: "var(--muted-foreground)", fontSize: "0.72rem" }}>
-                        {new Date(tx.date + "T12:00:00").toLocaleDateString("pt-BR")}
+                        {toLocalDate(tx.date).toLocaleDateString("pt-BR")}
                       </p>
                     </div>
                   </div>

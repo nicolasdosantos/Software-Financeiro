@@ -6,7 +6,6 @@ import {
   Bell, Wallet, X
 } from "lucide-react";
 import { useUser } from "../../hooks/useUser";
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 

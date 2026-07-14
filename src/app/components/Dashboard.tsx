@@ -4,16 +4,17 @@ import {
   AreaChart, Area, PieChart, Pie, Cell, Sector,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from "recharts";
+import type { PieSectorDataItem } from "recharts/types/polar/Pie";
 import { TrendingUp, TrendingDown, Wallet, PiggyBank, ArrowUpRight, ArrowDownRight, Eye, EyeOff, Sparkles } from "lucide-react";
-import { useFinance, formatCurrency, getMonthName, getShortMonthName } from "../context/FinanceContext";
+import { useFinance, formatCurrency, getMonthName, getMonthTotals, getShortMonthName, toLocalDate } from "../context/FinanceContext";
 import { useUser } from "../../hooks/useUser";
 import { useNavigate } from "react-router-dom";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "./ui/select";
 
-function renderActivePieShape(props: any) {
-  const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
+function renderActivePieShape(props: PieSectorDataItem) {
+  const { cx = 0, cy = 0, innerRadius = 0, outerRadius = 0, startAngle = 0, endAngle = 0, fill } = props;
   return (
     <g>
       <Sector cx={cx} cy={cy} innerRadius={innerRadius} outerRadius={outerRadius + 6}
@@ -64,15 +65,8 @@ export function Dashboard() {
   const prevMonthIndex = months.indexOf(currentMonth) - 1;
   const prevMonth = months[prevMonthIndex] ?? currentMonth;
 
-  function monthTotals(month: string) {
-    const txs = transactions.filter(t => t.date.startsWith(month));
-    const income = txs.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0);
-    const expense = txs.filter(t => t.type === "expense").reduce((s, t) => s + t.amount, 0);
-    return { income, expense, balance: income - expense };
-  }
-
-  const curr = monthTotals(currentMonth);
-  const prev = monthTotals(prevMonth);
+  const curr = getMonthTotals(transactions, currentMonth);
+  const prev = getMonthTotals(transactions, prevMonth);
   const savings = transactions.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0)
     - transactions.filter(t => t.type === "expense").reduce((s, t) => s + t.amount, 0);
 
@@ -346,9 +340,12 @@ export function Dashboard() {
       >
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-white" style={{ fontWeight: 600 }}>Últimas Transações</h3>
-          <span   onClick={() => navigate("/transacoes")}
-
-            style={{ color: "var(--primary)", fontSize: "0.8rem", cursor: "pointer" }}>Ver todas</span>
+          <span
+            onClick={() => navigate("/transacoes")}
+            style={{ color: "var(--primary)", fontSize: "0.8rem", cursor: "pointer" }}
+          >
+            Ver todas
+          </span>
         </div>
         <div className="space-y-1">
           {recentTxs.map((tx, i) => {
@@ -357,9 +354,7 @@ export function Dashboard() {
               <motion.div key={tx.id}
                 initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.55 + Math.min(i * 0.05, 0.3), duration: 0.3 }}
-                className="flex items-center justify-between py-2.5 px-3 rounded-xl transition-colors"
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--secondary)"; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}>
+                className="flex items-center justify-between py-2.5 px-3 rounded-xl transition-colors hover:bg-[var(--secondary)]">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
                     style={{ background: cat ? `${cat.color}20` : "var(--secondary)" }}>
@@ -370,7 +365,7 @@ export function Dashboard() {
                       {tx.description}
                     </p>
                     <p className="truncate" style={{ color: "var(--muted-foreground)", fontSize: "0.72rem" }}>
-                      {cat?.name} · {new Date(tx.date + "T12:00:00").toLocaleDateString("pt-BR")}
+                      {cat?.name} · {toLocalDate(tx.date).toLocaleDateString("pt-BR")}
                     </p>
                   </div>
                 </div>

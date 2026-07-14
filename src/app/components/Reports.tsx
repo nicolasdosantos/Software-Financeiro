@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import { Download, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import XLSX from "xlsx-js-style";
-import { useFinance, formatCurrency, getMonthName, toLocalDate } from "../context/FinanceContext";
+import { useFinance, formatCurrency, getMonthName, getMonthTotals, toLocalDate } from "../context/FinanceContext";
 
 const HTML_ESCAPE_MAP: Record<string, string> = {
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
@@ -20,10 +20,6 @@ function normalizeFileName(value: string) {
     .replace(/[^a-zA-Z0-9-]+/g, "-")
     .replace(/^-|-$/g, "")
     .toLowerCase();
-}
-
-function escapeCsv(value: string | number) {
-  return `"${String(value).replace(/"/g, '""')}"`;
 }
 
 function downloadFile(content: string, filename: string, type: string) {
@@ -75,7 +71,6 @@ function buildHtmlReport(title: string, subtitle: string, sections: string) {
 }
 
 export function Reports() {
-  const workbook = XLSX.utils.book_new();
   const { transactions, categories, goals, investments, currentMonth } = useFinance();
   const [generating, setGenerating] = useState<string | null>(null);
   const [done, setDone] = useState<string[]>([]);
@@ -114,9 +109,8 @@ export function Reports() {
 
   function getMonthStats(month: string) {
     const txs = transactions.filter(t => t.date.startsWith(month));
-    const income = txs.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0);
-    const expense = txs.filter(t => t.type === "expense").reduce((s, t) => s + t.amount, 0);
-    return { txs, count: txs.length, income, expense, balance: income - expense };
+    const { income, expense, balance } = getMonthTotals(transactions, month);
+    return { txs, count: txs.length, income, expense, balance };
   }
 
   function getCategoryName(id: string) {
@@ -162,34 +156,6 @@ export function Reports() {
     );
 
     downloadFile(html, `extrato-${normalizeFileName(getMonthName(month))}.html`, "text/html;charset=utf-8");
-  }
-
-  function downloadTransactionsExcel() {
-    const data = transactions
-      .sort((a, b) => b.date.localeCompare(a.date))
-      .map(tx => ({
-        Data: toLocalDate(tx.date).toLocaleDateString("pt-BR"),
-        Descrição: tx.description,
-        Categoria: getCategoryName(tx.category),
-        Tipo: tx.type === "income" ? "Receita" : "Despesa",
-        Valor: tx.type === "income" ? tx.amount : -tx.amount,
-        Observações: tx.notes || ""
-      }));
-
-    const worksheet = XLSX.utils.json_to_sheet(data);
-
-    const workbook = XLSX.utils.book_new();
-
-    XLSX.utils.book_append_sheet(
-      workbook,
-      worksheet,
-      "Transações"
-    );
-
-    XLSX.writeFile(
-      workbook,
-      "transacoes-financeiras.xlsx"
-    );
   }
 
   function downloadFullExcelReport() {
@@ -386,9 +352,9 @@ export function Reports() {
   function downloadAnnualReport() {
     const currentYear = selectedMonth.slice(0, 4);
     const yearMonths = months.filter(month => month.startsWith(currentYear));
-    const rows = yearMonths.map(month => {
-      const stats = getMonthStats(month);
-      return `
+    const monthStats = yearMonths.map(month => ({ month, stats: getMonthStats(month) }));
+
+    const rows = monthStats.map(({ month, stats }) => `
         <tr>
           <td>${getMonthName(month)}</td>
           <td>${stats.count}</td>
@@ -396,19 +362,15 @@ export function Reports() {
           <td class="expense">${formatCurrency(stats.expense)}</td>
           <td>${formatCurrency(stats.balance)}</td>
         </tr>
-      `;
-    }).join("");
+      `).join("");
 
-    const totals = yearMonths.reduce((acc, month) => {
-      const stats = getMonthStats(month);
-      return {
-        txs: [...acc.txs, ...stats.txs],
-        count: acc.count + stats.count,
-        income: acc.income + stats.income,
-        expense: acc.expense + stats.expense,
-        balance: acc.balance + stats.balance,
-      };
-    }, { txs: [], count: 0, income: 0, expense: 0, balance: 0 } as ReturnType<typeof getMonthStats>);
+    const totals = monthStats.reduce((acc, { stats }) => ({
+      txs: [...acc.txs, ...stats.txs],
+      count: acc.count + stats.count,
+      income: acc.income + stats.income,
+      expense: acc.expense + stats.expense,
+      balance: acc.balance + stats.balance,
+    }), { txs: [], count: 0, income: 0, expense: 0, balance: 0 } as ReturnType<typeof getMonthStats>);
 
     const html = buildHtmlReport(
       `Balanço anual ${currentYear}`,
@@ -538,9 +500,7 @@ export function Reports() {
                 const stats = getMonthStats(m);
                 const monthId = `month-${m}`;
                 return (
-                  <tr key={m} style={{ borderBottom: "1px solid var(--border)" }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--secondary)"; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}>
+                  <tr key={m} className="hover:bg-[var(--secondary)]" style={{ borderBottom: "1px solid var(--border)" }}>
                     <td style={{ padding: "12px 16px" }}>
                       <span className="text-white" style={{ fontWeight: 500, fontSize: "0.875rem" }}>{getMonthName(m)}</span>
                     </td>

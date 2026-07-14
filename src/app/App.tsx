@@ -6,7 +6,7 @@ import { FinanceProvider } from "./context/FinanceContext";
 import MainLayout from "./layouts/MainLayout";
 
 import { Login } from "./pages/Login";
-import { Register } from "./pages/Cadastro";
+import { Cadastro } from "./pages/Cadastro";
 
 import { Dashboard } from "./components/Dashboard";
 import { Transactions } from "./components/Transactions";
@@ -32,7 +32,7 @@ export default function App() {
               ROTAS PÚBLICAS
           ========================= */}
           <Route path="/" element={<Login />} />
-          <Route path="/cadastro" element={<Register />} />
+          <Route path="/cadastro" element={<Cadastro />} />
 
           {/* =========================
               ROTAS PROTEGIDAS

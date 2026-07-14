@@ -4,8 +4,16 @@ import {
   PieChart, Pie, Cell, BarChart, Bar, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from "recharts";
-import { useFinance, formatCurrency, getMonthName, getShortMonthName, toLocalDate } from "../context/FinanceContext";
+import { useFinance, formatCurrency, getMonthName, getMonthTotals, getShortMonthName, toLocalDate } from "../context/FinanceContext";
 import { TrendingUp, TrendingDown, Lightbulb } from "lucide-react";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "./ui/select";
+
+const PANEL_BACKGROUND = "#141828";
+const PANEL_BORDER = "#2a2f45";
+const PANEL_BORDER_STYLE = `1px solid ${PANEL_BORDER}`;
+const MUTED_TEXT = "#8892b0";
 
 export function Charts() {
   const { transactions, categories, currentMonth, setCurrentMonth } = useFinance();
@@ -23,24 +31,6 @@ export function Charts() {
     );
   }
 
-  function getMonthData(month: string) {
-    const txs = safeTransactions.filter(t => t.date.startsWith(month));
-
-    const income = txs
-      .filter(t => t.type === "income")
-      .reduce((s, t) => s + t.amount, 0);
-
-    const expense = txs
-      .filter(t => t.type === "expense")
-      .reduce((s, t) => s + t.amount, 0);
-
-    return {
-      income,
-      expense,
-      balance: income - expense
-    };
-  }
-
   // 📌 lista de meses
   const months = [
     ...new Set(
@@ -55,11 +45,11 @@ export function Charts() {
   const prevMonthIndex = months.indexOf(selectedMonth) - 1;
   const prevMonth = months[prevMonthIndex] ?? selectedMonth;
 
-  const curr = getMonthData(selectedMonth);
-  const prevData = getMonthData(prevMonth);
+  const curr = getMonthTotals(safeTransactions, selectedMonth);
+  const prevData = getMonthTotals(safeTransactions, prevMonth);
 
   const barData = months.map((m, i) => {
-    const d = getMonthData(m);
+    const d = getMonthTotals(safeTransactions, m);
     return {
       name: monthNames[i],
       receitas: d.income,
@@ -70,7 +60,7 @@ export function Charts() {
   let acumulado = 0;
 
   const lineData = months.map((m, i) => {
-    const d = getMonthData(m);
+    const d = getMonthTotals(safeTransactions, m);
     acumulado += d.balance;
 
     return {
@@ -96,7 +86,7 @@ export function Charts() {
       id,
       name: cat?.name || id,
       value,
-      color: cat?.color || "#8892b0",
+      color: cat?.color || MUTED_TEXT,
       icon: cat?.icon || "💳"
     };
   }).sort((a, b) => b.value - a.value);
@@ -118,7 +108,7 @@ export function Charts() {
 
   const tooltipStyle = {
     contentStyle: {
-      background: "#141828",
+      background: PANEL_BACKGROUND,
       border: "1px solid rgba(255,255,255,0.1)",
       borderRadius: "12px",
       color: "#e8eeff"
@@ -142,28 +132,26 @@ export function Charts() {
           <h1 className="text-white" style={{ fontSize: "1.5rem", fontWeight: 700 }}>
             Gráficos & Relatórios
           </h1>
-          <p style={{ color: "#8892b0", fontSize: "0.875rem" }}>
+          <p style={{ color: MUTED_TEXT, fontSize: "0.875rem" }}>
             Análise visual das suas finanças
           </p>
         </div>
 
-        <select
-          value={selectedMonth}
-          onChange={e => setCurrentMonth(e.target.value)}
-          style={{
-            background: "#141828",
-            border: "1px solid #2a2f45",
-            borderRadius: "10px",
-            color: "#fff",
-            padding: "9px 12px"
-          }}
-        >
-          {months.map(m => (
-            <option key={m} value={m}>
-              {getMonthName(m)}
-            </option>
-          ))}
-        </select>
+        <Select value={selectedMonth} onValueChange={setCurrentMonth}>
+          <SelectTrigger
+            className="w-[160px]"
+            style={{ background: PANEL_BACKGROUND, borderColor: PANEL_BORDER, color: "#fff" }}
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {months.map(m => (
+              <SelectItem key={m} value={m}>
+                {getMonthName(m)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* CARDS */}
@@ -185,13 +173,13 @@ export function Charts() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1 }}
               style={{
-                background: "#141828",
-                border: "1px solid #2a2f45",
+                background: PANEL_BACKGROUND,
+                border: PANEL_BORDER_STYLE,
                 padding: 16,
                 borderRadius: 12
               }}
             >
-              <p style={{ color: "#8892b0", fontSize: 12 }}>{c.label}</p>
+              <p style={{ color: MUTED_TEXT, fontSize: 12 }}>{c.label}</p>
               <p style={{ color: "#fff", fontWeight: 700 }}>
                 {formatCurrency(c.value)}
               </p>
@@ -212,14 +200,14 @@ export function Charts() {
       </div>
 
       {/* BAR CHART */}
-      <div style={{ background: "#141828", padding: 16, borderRadius: 12 }}>
+      <div style={{ background: PANEL_BACKGROUND, padding: 16, borderRadius: 12 }}>
         <h3 style={{ color: "#fff" }}>Receitas vs Despesas</h3>
 
         <ResponsiveContainer width="100%" height={220}>
           <BarChart data={barData}>
-            <CartesianGrid stroke="#2a2f45" />
-            <XAxis dataKey="name" stroke="#8892b0" />
-            <YAxis stroke="#8892b0" />
+            <CartesianGrid stroke={PANEL_BORDER} />
+            <XAxis dataKey="name" stroke={MUTED_TEXT} />
+            <YAxis stroke={MUTED_TEXT} />
             <Tooltip {...tooltipStyle} />
             <Bar dataKey="receitas" fill="#7bc779" />
             <Bar dataKey="despesas" fill="#ef4444" />
@@ -228,13 +216,13 @@ export function Charts() {
       </div>
 
       {/* PIE CHART */}
-      <div style={{ background: "#141828", padding: 16, borderRadius: 12 }}>
+      <div style={{ background: PANEL_BACKGROUND, padding: 16, borderRadius: 12 }}>
         <div className="flex flex-col lg:flex-row gap-4">
           <div className="flex-1 min-w-0">
             <h3 style={{ color: "#fff" }}>Gastos por categoria</h3>
 
             {pieData.length === 0 ? (
-              <div className="flex items-center justify-center rounded-xl mt-3" style={{ height: 220, color: "#8892b0", background: "rgba(255,255,255,0.03)" }}>
+              <div className="flex items-center justify-center rounded-xl mt-3" style={{ height: 220, color: MUTED_TEXT, background: "rgba(255,255,255,0.03)" }}>
                 Sem despesas neste mês
               </div>
             ) : (
@@ -257,7 +245,7 @@ export function Charts() {
                         <Cell
                           key={d.id}
                           fill={d.color}
-                          stroke={active || hovered ? "#e8eeff" : "#141828"}
+                          stroke={active || hovered ? "#e8eeff" : PANEL_BACKGROUND}
                           strokeWidth={active || hovered ? 3 : 1}
                           style={{ cursor: "pointer", filter: hovered ? "brightness(1.18)" : "none", outline: "none" }}
                         />
@@ -293,7 +281,7 @@ export function Charts() {
                           {item.name}
                         </span>
                       </span>
-                      <span style={{ color: hovered || active ? item.color : "#8892b0", fontSize: "0.78rem", fontFamily: "var(--font-mono)", fontWeight: 700 }}>
+                      <span style={{ color: hovered || active ? item.color : MUTED_TEXT, fontSize: "0.78rem", fontFamily: "var(--font-mono)", fontWeight: 700 }}>
                         {totalExpense > 0 ? ((item.value / totalExpense) * 100).toFixed(0) : 0}%
                       </span>
                     </button>
@@ -318,24 +306,24 @@ export function Charts() {
                       <span style={{ fontSize: "1.15rem" }}>{activeCategory.icon}</span>
                       <h4 className="text-white truncate" style={{ fontWeight: 700 }}>{activeCategory.name}</h4>
                     </div>
-                    <p style={{ color: "#8892b0", fontSize: "0.78rem" }}>{getMonthName(selectedMonth)}</p>
+                    <p style={{ color: MUTED_TEXT, fontSize: "0.78rem" }}>{getMonthName(selectedMonth)}</p>
                   </div>
                   <div className="text-right shrink-0">
                     <p style={{ color: activeCategory.color, fontWeight: 800, fontFamily: "var(--font-mono)" }}>{formatCurrency(activeCategory.value)}</p>
-                    <p style={{ color: "#8892b0", fontSize: "0.72rem" }}>{activeCategoryTransactions.length} gasto{activeCategoryTransactions.length !== 1 ? "s" : ""}</p>
+                    <p style={{ color: MUTED_TEXT, fontSize: "0.72rem" }}>{activeCategoryTransactions.length} gasto{activeCategoryTransactions.length !== 1 ? "s" : ""}</p>
                   </div>
                 </div>
 
                 <div className="space-y-2 overflow-y-auto pr-1" style={{ maxHeight: 260 }}>
                   {activeCategoryTransactions.map(tx => (
-                    <div key={tx.id} className="rounded-lg px-3 py-2" style={{ background: "#141828", border: "1px solid rgba(255,255,255,0.06)" }}>
+                    <div key={tx.id} className="rounded-lg px-3 py-2" style={{ background: PANEL_BACKGROUND, border: "1px solid rgba(255,255,255,0.06)" }}>
                       <div className="flex items-center justify-between gap-3">
                         <p className="text-white truncate" style={{ fontSize: "0.82rem", fontWeight: 600 }}>{tx.description}</p>
                         <span className="shrink-0" style={{ color: "#ef4444", fontWeight: 700, fontSize: "0.8rem", fontFamily: "var(--font-mono)" }}>
                           -{formatCurrency(tx.amount)}
                         </span>
                       </div>
-                      <p style={{ color: "#8892b0", fontSize: "0.7rem" }}>
+                      <p style={{ color: MUTED_TEXT, fontSize: "0.7rem" }}>
                         {toLocalDate(tx.date).toLocaleDateString("pt-BR")}
                       </p>
                     </div>
@@ -343,7 +331,7 @@ export function Charts() {
                 </div>
               </>
             ) : (
-              <div className="h-full flex items-center justify-center text-center" style={{ color: "#8892b0", minHeight: 220 }}>
+              <div className="h-full flex items-center justify-center text-center" style={{ color: MUTED_TEXT, minHeight: 220 }}>
                 Sem categoria selecionada
               </div>
             )}
@@ -352,14 +340,14 @@ export function Charts() {
       </div>
 
       {/* LINE CHART */}
-      <div style={{ background: "#141828", padding: 16, borderRadius: 12 }}>
+      <div style={{ background: PANEL_BACKGROUND, padding: 16, borderRadius: 12 }}>
         <h3 style={{ color: "#fff" }}>Evolução</h3>
 
         <ResponsiveContainer width="100%" height={220}>
           <LineChart data={lineData}>
-            <CartesianGrid stroke="#2a2f45" />
-            <XAxis dataKey="name" stroke="#8892b0" />
-            <YAxis stroke="#8892b0" />
+            <CartesianGrid stroke={PANEL_BORDER} />
+            <XAxis dataKey="name" stroke={MUTED_TEXT} />
+            <YAxis stroke={MUTED_TEXT} />
             <Tooltip {...tooltipStyle} />
             <Line type="monotone" dataKey="saldo" stroke="#204bca" />
             <Line type="monotone" dataKey="acumulado" stroke="#10d9a4" />
@@ -368,17 +356,17 @@ export function Charts() {
       </div>
 
       {/* INSIGHTS */}
-      <div style={{ background: "#141828", padding: 16, borderRadius: 12 }}>
+      <div style={{ background: PANEL_BACKGROUND, padding: 16, borderRadius: 12 }}>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <Lightbulb color="#f59e0b" />
           <h3 style={{ color: "#fff" }}>Insights</h3>
         </div>
 
-        <p style={{ color: "#8892b0" }}>
+        <p style={{ color: MUTED_TEXT }}>
           Taxa de poupança: {savings}%
         </p>
 
-        <p style={{ color: "#8892b0" }}>
+        <p style={{ color: MUTED_TEXT }}>
           Maior gasto: {topCategory?.name || "sem dados"}
         </p>
       </div>

@@ -1,13 +1,24 @@
 import { useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
-import { Plus, Edit2, Trash2, X, Tag } from "lucide-react";
+import type { FormEvent } from "react";
+import { motion } from "motion/react";
+import { Plus, Edit2, Trash2, Tag } from "lucide-react";
 import { toast } from "sonner";
-import { useFinance, Category } from "../context/FinanceContext";
+import { useFinance } from "../context/FinanceContext";
+import type { Category } from "../context/FinanceContext";
+import { Modal } from "./shared/Modal";
+import { ConfirmDeleteDialog } from "./shared/ConfirmDeleteDialog";
 
 const ICONS = ["🍽️", "🚗", "🏠", "❤️", "📚", "🎮", "📈", "💼", "💻", "📦", "🛒", "☕", "✈️", "🎵", "🎨", "🐶", "💊", "🎁", "⚽", "📱"];
 const COLORS = ["#f59e0b", "#3b82f6", "#8b5cf6", "#ef4444", "#10b981", "#ec4899", "#10d9a4", "#22c55e", "#6366f1", "#94a3b8", "#f97316", "#06b6d4"];
 
-function CategoryForm({ initial, onSave, onClose }: { initial?: Category; onSave: (c: any) => Promise<void>; onClose: () => void }) {
+interface CategoryFormProps {
+  initial?: Category;
+  onAdd: (c: Omit<Category, "id">) => Promise<void>;
+  onUpdate: (c: Category) => Promise<void>;
+  onClose: () => void;
+}
+
+function CategoryForm({ initial, onAdd, onUpdate, onClose }: CategoryFormProps) {
   const [form, setForm] = useState({
     name: initial?.name || "",
     icon: initial?.icon || "📦",
@@ -16,12 +27,13 @@ function CategoryForm({ initial, onSave, onClose }: { initial?: Category; onSave
   });
   const [submitting, setSubmitting] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (submitting) return;
     setSubmitting(true);
     try {
-      await onSave(form);
+      if (initial) await onUpdate({ ...form, id: initial.id });
+      else await onAdd(form);
       toast.success(initial ? "Categoria atualizada com sucesso!" : "Categoria criada com sucesso!");
       onClose();
     } catch (err) {
@@ -31,16 +43,13 @@ function CategoryForm({ initial, onSave, onClose }: { initial?: Category; onSave
     }
   }
 
-  const inputStyle = {
-    background: "var(--input-background)", border: "1px solid var(--border)", borderRadius: "10px",
-    color: "var(--foreground)", padding: "10px 14px", width: "100%", fontSize: "0.875rem", outline: "none",
-  };
-
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <label className="block text-sm mb-1.5" style={{ color: "var(--muted-foreground)" }}>Nome</label>
-        <input style={inputStyle} required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Nome da categoria" />
+        <input
+          style={{ background: "var(--input-background)", border: "1px solid var(--border)", borderRadius: "10px", color: "var(--foreground)", padding: "10px 14px", width: "100%", fontSize: "0.875rem", outline: "none" }}
+          required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Nome da categoria" />
       </div>
       <div>
         <label className="block text-sm mb-2" style={{ color: "var(--muted-foreground)" }}>Ícone</label>
@@ -89,22 +98,12 @@ export function Categories() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Category | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   function getSpend(catId: string) {
     return transactions.filter(t => t.category === catId && t.type === "expense").reduce((s, t) => s + t.amount, 0);
   }
 
   const maxSpend = Math.max(0, ...categories.map(cat => getSpend(cat.id)));
-
-  const overlayStyle = {
-    position: "fixed" as const, inset: 0, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)",
-    display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: "16px",
-  };
-  const dialogStyle = {
-    background: "var(--popover)", border: "1px solid var(--border)", borderRadius: "20px",
-    padding: "24px", width: "100%", maxWidth: "440px", maxHeight: "90vh", overflowY: "auto" as const,
-  };
 
   return (
     <div className="space-y-4 sm:space-y-5">
@@ -205,69 +204,25 @@ export function Categories() {
         })}
       </div>
 
-      <AnimatePresence>
-        {showForm && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={overlayStyle} onClick={() => setShowForm(false)}>
-            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} style={dialogStyle} onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-5">
-                <h2 className="text-white" style={{ fontWeight: 600 }}>Nova Categoria</h2>
-                <button onClick={() => setShowForm(false)} style={{ color: "var(--muted-foreground)" }}><X size={20} /></button>
-              </div>
-              <CategoryForm onSave={addCategory} onClose={() => setShowForm(false)} />
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <Modal open={showForm} onClose={() => setShowForm(false)} title="Nova Categoria" maxWidth={440}>
+        <CategoryForm onAdd={addCategory} onUpdate={updateCategory} onClose={() => setShowForm(false)} />
+      </Modal>
 
-      <AnimatePresence>
+      <Modal open={editing !== null} onClose={() => setEditing(null)} title="Editar Categoria" maxWidth={440}>
         {editing && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={overlayStyle} onClick={() => setEditing(null)}>
-            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} style={dialogStyle} onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-5">
-                <h2 className="text-white" style={{ fontWeight: 600 }}>Editar Categoria</h2>
-                <button onClick={() => setEditing(null)} style={{ color: "var(--muted-foreground)" }}><X size={20} /></button>
-              </div>
-              <CategoryForm initial={editing} onSave={updateCategory} onClose={() => setEditing(null)} />
-            </motion.div>
-          </motion.div>
+          <CategoryForm initial={editing} onAdd={addCategory} onUpdate={updateCategory} onClose={() => setEditing(null)} />
         )}
-      </AnimatePresence>
+      </Modal>
 
-      <AnimatePresence>
-        {deleting && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            style={overlayStyle} onClick={() => setDeleting(null)}>
-            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
-              style={{ ...dialogStyle, width: "360px", textAlign: "center" }} onClick={e => e.stopPropagation()}>
-              <p style={{ fontSize: "2.5rem", marginBottom: "12px" }}>🗑️</p>
-              <h3 className="text-white mb-2" style={{ fontWeight: 600 }}>Excluir categoria?</h3>
-              <p style={{ color: "var(--muted-foreground)", fontSize: "0.875rem", marginBottom: "24px" }}>As transações desta categoria não serão excluídas.</p>
-              <div className="flex gap-3">
-                <button onClick={() => setDeleting(null)} disabled={isDeleting} className="flex-1 py-2.5 rounded-xl text-sm font-medium"
-                  style={{ background: "var(--secondary)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>Cancelar</button>
-                <button
-                  disabled={isDeleting}
-                  onClick={async () => {
-                    if (isDeleting) return;
-                    setIsDeleting(true);
-                    try {
-                      await deleteCategory(deleting);
-                      toast.success("Categoria excluída com sucesso!");
-                      setDeleting(null);
-                    } catch (err) {
-                      console.error("Erro ao excluir categoria:", err);
-                    } finally {
-                      setIsDeleting(false);
-                    }
-                  }}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white" style={{ background: "var(--destructive)", opacity: isDeleting ? 0.7 : 1 }}>
-                  {isDeleting ? "Excluindo..." : "Excluir"}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <ConfirmDeleteDialog
+        open={deleting !== null}
+        onClose={() => setDeleting(null)}
+        onConfirm={() => deleteCategory(deleting!)}
+        title="Excluir categoria?"
+        description="As transações desta categoria não serão excluídas."
+        successMessage="Categoria excluída com sucesso!"
+        errorLog="Erro ao excluir categoria:"
+      />
     </div>
   );
 }

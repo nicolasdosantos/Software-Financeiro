@@ -1,10 +1,24 @@
 import { useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
-import { Plus, Edit2, Trash2, X, CheckCircle, CircleDollarSign } from "lucide-react";
+import type { FormEvent } from "react";
+import { motion } from "motion/react";
+import { Plus, Edit2, Trash2, CheckCircle, CircleDollarSign } from "lucide-react";
 import { toast } from "sonner";
-import { useFinance, formatCurrency, Goal, toLocalDate } from "../context/FinanceContext";
+import { useFinance, formatCurrency, toLocalDate } from "../context/FinanceContext";
+import type { Goal } from "../context/FinanceContext";
+import { Modal } from "./shared/Modal";
+import { ConfirmDeleteDialog } from "./shared/ConfirmDeleteDialog";
 
-function GoalForm({ initial, onSave, onClose }: { initial?: Goal; onSave: (g: any) => Promise<void>; onClose: () => void }) {
+const ICONS = ["🎯", "🏠", "✈️", "💻", "🚗", "🛡️", "📚", "💍", "🎓", "🏖️", "💰", "🏋️"];
+const COLORS = ["#204bca", "#10d9a4", "#8b5cf6", "#f59e0b", "#ef4444", "#ec4899", "#3b82f6", "#22c55e"];
+
+interface GoalFormProps {
+  initial?: Goal;
+  onAdd: (g: Omit<Goal, "id">) => Promise<void>;
+  onUpdate: (g: Goal) => Promise<void>;
+  onClose: () => void;
+}
+
+function GoalForm({ initial, onAdd, onUpdate, onClose }: GoalFormProps) {
   const [form, setForm] = useState({
     title: initial?.title || "", description: initial?.description || "",
     target: initial?.target?.toString() || "", current: initial?.current?.toString() || "0",
@@ -12,15 +26,14 @@ function GoalForm({ initial, onSave, onClose }: { initial?: Goal; onSave: (g: an
   });
   const [submitting, setSubmitting] = useState(false);
 
-  const ICONS = ["🎯", "🏠", "✈️", "💻", "🚗", "🛡️", "📚", "💍", "🎓", "🏖️", "💰", "🏋️"];
-  const COLORS = ["#204bca", "#10d9a4", "#8b5cf6", "#f59e0b", "#ef4444", "#ec4899", "#3b82f6", "#22c55e"];
-
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (submitting) return;
     setSubmitting(true);
     try {
-      await onSave({ ...form, target: parseFloat(form.target), current: parseFloat(form.current) });
+      const data = { ...form, target: parseFloat(form.target), current: parseFloat(form.current) };
+      if (initial) await onUpdate({ ...data, id: initial.id });
+      else await onAdd(data);
       toast.success(initial ? "Meta atualizada com sucesso!" : "Meta criada com sucesso!");
       onClose();
     } catch (err) {
@@ -88,12 +101,18 @@ function GoalForm({ initial, onSave, onClose }: { initial?: Goal; onSave: (g: an
   );
 }
 
-function GoalContributionForm({ goal, onSave, onClose }: { goal: Goal; onSave: (amount: number) => Promise<void>; onClose: () => void }) {
+interface GoalContributionFormProps {
+  goal: Goal;
+  onSave: (amount: number) => Promise<void>;
+  onClose: () => void;
+}
+
+function GoalContributionForm({ goal, onSave, onClose }: GoalContributionFormProps) {
   const [amount, setAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const remaining = Math.max(0, goal.target - goal.current);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (submitting) return;
     const value = parseFloat(amount);
@@ -157,10 +176,6 @@ export function Goals() {
   const [editing, setEditing] = useState<Goal | null>(null);
   const [contributing, setContributing] = useState<Goal | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  const overlay = { position: "fixed" as const, inset: 0, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: "16px" };
-  const dialog = { background: "var(--popover)", border: "1px solid var(--border)", borderRadius: "20px", padding: "24px", width: "100%", maxWidth: "460px", maxHeight: "90vh", overflowY: "auto" as const };
 
   async function addContribution(goal: Goal, amount: number) {
     await updateGoal({
@@ -243,7 +258,7 @@ export function Goals() {
                   <div>
                     <p style={{ color: "var(--muted-foreground)", fontSize: "0.7rem" }}>Prazo</p>
                     <p style={{ color: "var(--foreground)", fontSize: "0.78rem", fontWeight: 500 }}>
-                      {new Date(goal.deadline + "T12:00:00").toLocaleDateString("pt-BR")}
+                      {toLocalDate(goal.deadline).toLocaleDateString("pt-BR")}
                     </p>
                   </div>
                   <div>
@@ -273,83 +288,35 @@ export function Goals() {
         </div>
       )}
 
-      <AnimatePresence>
-        {showForm && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={overlay} onClick={() => setShowForm(false)}>
-            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} style={dialog} onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-5">
-                <h2 className="text-white" style={{ fontWeight: 600 }}>Nova Meta</h2>
-                <button onClick={() => setShowForm(false)} style={{ color: "var(--muted-foreground)" }}><X size={20} /></button>
-              </div>
-              <GoalForm onSave={addGoal} onClose={() => setShowForm(false)} />
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      <AnimatePresence>
+      <Modal open={showForm} onClose={() => setShowForm(false)} title="Nova Meta" maxWidth={460}>
+        <GoalForm onAdd={addGoal} onUpdate={updateGoal} onClose={() => setShowForm(false)} />
+      </Modal>
+
+      <Modal open={editing !== null} onClose={() => setEditing(null)} title="Editar Meta" maxWidth={460}>
         {editing && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={overlay} onClick={() => setEditing(null)}>
-            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} style={dialog} onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-5">
-                <h2 className="text-white" style={{ fontWeight: 600 }}>Editar Meta</h2>
-                <button onClick={() => setEditing(null)} style={{ color: "var(--muted-foreground)" }}><X size={20} /></button>
-              </div>
-              <GoalForm initial={editing} onSave={updateGoal} onClose={() => setEditing(null)} />
-            </motion.div>
-          </motion.div>
+          <GoalForm initial={editing} onAdd={addGoal} onUpdate={updateGoal} onClose={() => setEditing(null)} />
         )}
-      </AnimatePresence>
-      <AnimatePresence>
+      </Modal>
+
+      <Modal open={contributing !== null} onClose={() => setContributing(null)} title="Adicionar valor" maxWidth={460}>
         {contributing && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={overlay} onClick={() => setContributing(null)}>
-            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} style={dialog} onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-5">
-                <h2 className="text-white" style={{ fontWeight: 600 }}>Adicionar valor</h2>
-                <button onClick={() => setContributing(null)} style={{ color: "var(--muted-foreground)" }}><X size={20} /></button>
-              </div>
-              <GoalContributionForm
-                goal={contributing}
-                onSave={(amount) => addContribution(contributing, amount)}
-                onClose={() => setContributing(null)}
-              />
-            </motion.div>
-          </motion.div>
+          <GoalContributionForm
+            goal={contributing}
+            onSave={(amount) => addContribution(contributing, amount)}
+            onClose={() => setContributing(null)}
+          />
         )}
-      </AnimatePresence>
-      <AnimatePresence>
-        {deleting && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={overlay} onClick={() => setDeleting(null)}>
-            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
-              style={{ ...dialog, maxWidth: "360px", textAlign: "center" }} onClick={e => e.stopPropagation()}>
-              <p style={{ fontSize: "2.5rem", marginBottom: "12px" }}>🗑️</p>
-              <h3 className="text-white mb-2" style={{ fontWeight: 600 }}>Excluir meta?</h3>
-              <p style={{ color: "var(--muted-foreground)", fontSize: "0.875rem", marginBottom: "24px" }}>Esta ação não pode ser desfeita.</p>
-              <div className="flex gap-3">
-                <button onClick={() => setDeleting(null)} disabled={isDeleting} className="flex-1 py-2.5 rounded-xl text-sm font-medium"
-                  style={{ background: "var(--secondary)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>Cancelar</button>
-                <button
-                  disabled={isDeleting}
-                  onClick={async () => {
-                    if (isDeleting) return;
-                    setIsDeleting(true);
-                    try {
-                      await deleteGoal(deleting);
-                      toast.success("Meta excluída com sucesso!");
-                      setDeleting(null);
-                    } catch (err) {
-                      console.error("Erro ao excluir meta:", err);
-                    } finally {
-                      setIsDeleting(false);
-                    }
-                  }}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white" style={{ background: "var(--destructive)", opacity: isDeleting ? 0.7 : 1 }}>
-                  {isDeleting ? "Excluindo..." : "Excluir"}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      </Modal>
+
+      <ConfirmDeleteDialog
+        open={deleting !== null}
+        onClose={() => setDeleting(null)}
+        onConfirm={() => deleteGoal(deleting!)}
+        title="Excluir meta?"
+        description="Esta ação não pode ser desfeita."
+        successMessage="Meta excluída com sucesso!"
+        errorLog="Erro ao excluir meta:"
+      />
     </div>
   );
 }

@@ -1,12 +1,23 @@
 import { useState } from "react";
+import type { FormEvent } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Plus, Search, Edit2, Trash2, X, ChevronDown } from "lucide-react";
+import { Plus, Search, Edit2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { useFinance, formatCurrency, getMonthName, getTodayDateInput, Transaction } from "../context/FinanceContext";
+import { useFinance, formatCurrency, getMonthName, getTodayDateInput, toLocalDate } from "../context/FinanceContext";
+import type { Transaction } from "../context/FinanceContext";
+import { Modal } from "./shared/Modal";
+import { ConfirmDeleteDialog } from "./shared/ConfirmDeleteDialog";
 
 const ITEMS_PER_PAGE = 8;
 
-function TransactionForm({ initial, onSave, onClose }: { initial?: Transaction; onSave: (t: any) => Promise<void>; onClose: () => void }) {
+interface TransactionFormProps {
+  initial?: Transaction;
+  onAdd: (t: Omit<Transaction, "id">) => Promise<void>;
+  onUpdate: (t: Transaction) => Promise<void>;
+  onClose: () => void;
+}
+
+function TransactionForm({ initial, onAdd, onUpdate, onClose }: TransactionFormProps) {
   const { categories } = useFinance();
   const [form, setForm] = useState({
     type: initial?.type || "expense" as "income" | "expense",
@@ -18,14 +29,14 @@ function TransactionForm({ initial, onSave, onClose }: { initial?: Transaction; 
   });
   const [submitting, setSubmitting] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (submitting) return;
     setSubmitting(true);
     try {
       const data = { ...form, amount: parseFloat(form.amount) };
-      if (initial) await onSave({ ...data, id: initial.id });
-      else await onSave(data);
+      if (initial) await onUpdate({ ...data, id: initial.id });
+      else await onAdd(data);
       toast.success(initial ? "Transação atualizada com sucesso!" : "Transação adicionada com sucesso!");
       onClose();
     } catch (err) {
@@ -105,7 +116,6 @@ export function Transactions() {
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   const filtered = transactions.filter(t => {
     if (filterType !== "all" && t.type !== filterType) return false;
@@ -120,9 +130,6 @@ export function Transactions() {
   const months = Array.from(new Set(transactions.map(t => t.date.slice(0, 7)))).sort().reverse();
 
   const sel = { background: "var(--secondary)", border: "1px solid var(--border)", borderRadius: "10px", color: "var(--foreground)", padding: "9px 12px", fontSize: "0.82rem", outline: "none", cursor: "pointer" };
-
-  const overlay = { position: "fixed" as const, inset: 0, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: "16px" };
-  const dialog = { background: "var(--popover)", border: "1px solid var(--border)", borderRadius: "20px", padding: "24px", width: "100%", maxWidth: "480px", maxHeight: "90vh", overflowY: "auto" as const };
 
   return (
     <div className="space-y-4 sm:space-y-5">
@@ -144,7 +151,8 @@ export function Transactions() {
         {/* Search */}
         <div className="flex items-center gap-2 rounded-xl px-3 py-2.5"
           style={{ background: "var(--secondary)", border: "1px solid var(--border)" }}>
-          <Search size={15} className="shrink-0" style={{ color: "var(--muted-foreground)" }} />          <input
+          <Search size={15} className="shrink-0" style={{ color: "var(--muted-foreground)" }} />
+          <input
             style={{ background: "transparent", outline: "none", color: "var(--foreground)", width: "100%", fontSize: "0.875rem" }}
             placeholder="Buscar transações..."
             value={search}
@@ -153,7 +161,7 @@ export function Transactions() {
         </div>
         {/* Filter selects */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-          <select style={sel} value={filterType} onChange={e => { setFilterType(e.target.value as any); setPage(1); }}>
+          <select style={sel} value={filterType} onChange={e => { setFilterType(e.target.value as "all" | "income" | "expense"); setPage(1); }}>
             <option value="all" style={{ background: "#141828" }}>Todos os tipos</option>
             <option value="income" style={{ background: "#141828" }}>Receitas</option>
             <option value="expense" style={{ background: "#141828" }}>Despesas</option>
@@ -203,7 +211,7 @@ export function Transactions() {
                             {cat?.name}
                           </span>
                           <span style={{ color: "var(--muted-foreground)", fontSize: "0.7rem" }}>
-                            {new Date(tx.date + "T12:00:00").toLocaleDateString("pt-BR")}
+                            {toLocalDate(tx.date).toLocaleDateString("pt-BR")}
                           </span>
                         </div>
                       </div>
@@ -244,9 +252,9 @@ export function Transactions() {
                   const cat = categories.find(c => c.id === tx.category);
                   return (
                     <motion.tr key={tx.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                      transition={{ delay: i * 0.04 }} style={{ borderBottom: "1px solid var(--border)" }}
-                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--secondary)"; }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}>
+                      transition={{ delay: i * 0.04 }}
+                      className="hover:bg-[var(--secondary)]"
+                      style={{ borderBottom: "1px solid var(--border)" }}>
                       <td style={{ padding: "12px 16px" }}>
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
@@ -262,7 +270,7 @@ export function Transactions() {
                         </span>
                       </td>
                       <td style={{ padding: "12px 16px", color: "var(--muted-foreground)", fontSize: "0.8rem", whiteSpace: "nowrap" }}>
-                        {new Date(tx.date + "T12:00:00").toLocaleDateString("pt-BR")}
+                        {toLocalDate(tx.date).toLocaleDateString("pt-BR")}
                       </td>
                       <td style={{ padding: "12px 16px" }}>
                         <span className="px-2 py-1 rounded-full text-xs font-medium" style={{
@@ -314,72 +322,25 @@ export function Transactions() {
         )}
       </motion.div>
 
-      {/* Add Modal */}
-      <AnimatePresence>
-        {showAdd && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={overlay} onClick={() => setShowAdd(false)}>
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-              style={dialog} onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-5">
-                <h2 className="text-white" style={{ fontWeight: 600 }}>Nova Transação</h2>
-                <button onClick={() => setShowAdd(false)} style={{ color: "var(--muted-foreground)" }}><X size={20} /></button>
-              </div>
-              <TransactionForm onSave={addTransaction} onClose={() => setShowAdd(false)} />
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Nova Transação">
+        <TransactionForm onAdd={addTransaction} onUpdate={updateTransaction} onClose={() => setShowAdd(false)} />
+      </Modal>
 
-      <AnimatePresence>
+      <Modal open={editingTx !== null} onClose={() => setEditingTx(null)} title="Editar Transação">
         {editingTx && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={overlay} onClick={() => setEditingTx(null)}>
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-              style={dialog} onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-5">
-                <h2 className="text-white" style={{ fontWeight: 600 }}>Editar Transação</h2>
-                <button onClick={() => setEditingTx(null)} style={{ color: "var(--muted-foreground)" }}><X size={20} /></button>
-              </div>
-              <TransactionForm initial={editingTx} onSave={updateTransaction} onClose={() => setEditingTx(null)} />
-            </motion.div>
-          </motion.div>
+          <TransactionForm initial={editingTx} onAdd={addTransaction} onUpdate={updateTransaction} onClose={() => setEditingTx(null)} />
         )}
-      </AnimatePresence>
+      </Modal>
 
-      <AnimatePresence>
-        {deletingId && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            style={overlay} onClick={() => setDeletingId(null)}>
-            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
-              style={{ ...dialog, maxWidth: "360px", textAlign: "center" }} onClick={e => e.stopPropagation()}>
-              <p style={{ fontSize: "2.5rem", marginBottom: "12px" }}>🗑️</p>
-              <h3 className="text-white mb-2" style={{ fontWeight: 600 }}>Excluir transação?</h3>
-              <p style={{ color: "var(--muted-foreground)", fontSize: "0.875rem", marginBottom: "24px" }}>Esta ação não pode ser desfeita.</p>
-              <div className="flex gap-3">
-                <button onClick={() => setDeletingId(null)} disabled={isDeleting} className="flex-1 py-2.5 rounded-xl text-sm font-medium"
-                  style={{ background: "var(--secondary)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>Cancelar</button>
-                <button
-                  disabled={isDeleting}
-                  onClick={async () => {
-                    if (isDeleting) return;
-                    setIsDeleting(true);
-                    try {
-                      await deleteTransaction(deletingId);
-                      toast.success("Transação excluída com sucesso!");
-                      setDeletingId(null);
-                    } catch (err) {
-                      console.error("Erro ao excluir transação:", err);
-                    } finally {
-                      setIsDeleting(false);
-                    }
-                  }}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white" style={{ background: "var(--destructive)", opacity: isDeleting ? 0.7 : 1 }}>
-                  {isDeleting ? "Excluindo..." : "Excluir"}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <ConfirmDeleteDialog
+        open={deletingId !== null}
+        onClose={() => setDeletingId(null)}
+        onConfirm={() => deleteTransaction(deletingId!)}
+        title="Excluir transação?"
+        description="Esta ação não pode ser desfeita."
+        successMessage="Transação excluída com sucesso!"
+        errorLog="Erro ao excluir transação:"
+      />
     </div>
   );
 }

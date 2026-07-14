@@ -1,303 +1,148 @@
 import { useState } from "react";
+import type { FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { Mail, Lock, User } from "lucide-react";
 import { supabase } from "../../lib/supabase";
-import { motion } from "motion/react";
-import {
-    Wallet,
-    Eye,
-    EyeOff,
-    Mail,
-    Lock,
-    User
-} from "lucide-react";
+import { AuthCard } from "../components/auth/AuthCard";
+import { AuthField } from "../components/auth/AuthField";
+import { PasswordVisibilityToggle } from "../components/auth/PasswordVisibilityToggle";
 
-export function Register() {
-    const [showPassword, setShowPassword] = useState(false);
-    const [showConfirm, setShowConfirm] = useState(false);
+const MIN_PASSWORD_LENGTH = 6;
 
-    const navigate = useNavigate();
+export function Cadastro() {
+  const navigate = useNavigate();
 
-    const [name, setName] = useState("");
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [confirmPassword, setConfirmPassword] = useState("");
-    const [loading, setLoading] = useState(false);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-    const inputStyle = {
-        background: "var(--input-background)",
-        border: "1px solid var(--border)",
-        color: "var(--foreground)",
-    };
+  async function handleRegister(e: FormEvent) {
+    e.preventDefault();
+    if (loading) return;
 
-    async function handleRegister(e: React.FormEvent) {
-        e.preventDefault();
-        if (loading) return;
-
-        if (!name.trim()) {
-            toast.error("Informe seu nome.");
-            return;
-        }
-
-        if (password !== confirmPassword) {
-            toast.error("As senhas não coincidem.");
-            return;
-        }
-
-        if (password.length < 6) {
-            toast.error("Senha muito fraca (mínimo 6 caracteres).");
-            return;
-        }
-
-        setLoading(true);
-
-        try {
-            const { data, error } = await supabase.auth.signUp({
-                email: email.trim(),
-                password,
-                options: {
-                    data: {
-                        name: name.trim(),
-                    },
-                },
-            });
-
-            if (error) {
-                console.error("Erro ao criar conta:", error);
-                toast.error(error.message || "Não foi possível criar sua conta.");
-                return;
-            }
-
-            if (!data.session) {
-                toast.success("Conta criada! Verifique seu e-mail para confirmar o cadastro.");
-            } else {
-                toast.success("Conta criada com sucesso!");
-            }
-            navigate("/");
-        } catch (err) {
-            console.error("Erro inesperado ao criar conta:", err);
-            toast.error("Não foi possível criar sua conta. Verifique sua conexão e tente novamente.");
-        } finally {
-            setLoading(false);
-        }
+    if (!name.trim()) {
+      toast.error("Informe seu nome.");
+      return;
     }
 
-    return (
-        <div
-            className="min-h-screen flex items-center justify-center p-6"
-            style={{ background: "var(--background)" }}
+    if (password !== confirmPassword) {
+      toast.error("As senhas não coincidem.");
+      return;
+    }
+
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      toast.error(`Senha muito fraca (mínimo ${MIN_PASSWORD_LENGTH} caracteres).`);
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          data: { name: name.trim() },
+        },
+      });
+
+      if (error) {
+        console.error("Erro ao criar conta:", error);
+        toast.error(error.message || "Não foi possível criar sua conta.");
+        return;
+      }
+
+      toast.success(
+        data.session
+          ? "Conta criada com sucesso!"
+          : "Conta criada! Verifique seu e-mail para confirmar o cadastro."
+      );
+      navigate("/");
+    } catch (err) {
+      console.error("Erro inesperado ao criar conta:", err);
+      toast.error("Não foi possível criar sua conta. Verifique sua conexão e tente novamente.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <AuthCard
+      title="Criar Conta"
+      subtitle="Comece a controlar suas finanças"
+      footer={
+        <>
+          <p style={{ color: "var(--muted-foreground)", fontSize: "0.9rem" }}>
+            Já possui conta?
+          </p>
+          <Link to="/" className="mt-2 inline-block font-medium" style={{ color: "var(--primary)" }}>
+            Fazer Login
+          </Link>
+        </>
+      }
+    >
+      <form className="space-y-4" onSubmit={handleRegister}>
+        <AuthField
+          label="Nome"
+          icon={User}
+          placeholder="Seu nome"
+          value={name}
+          onChange={setName}
+        />
+
+        <AuthField
+          label="E-mail"
+          icon={Mail}
+          type="email"
+          placeholder="seu@email.com"
+          value={email}
+          onChange={setEmail}
+        />
+
+        <AuthField
+          label="Senha"
+          icon={Lock}
+          type={showPassword ? "text" : "password"}
+          placeholder="••••••••"
+          value={password}
+          onChange={setPassword}
+          rightSlot={
+            <PasswordVisibilityToggle
+              visible={showPassword}
+              onToggle={() => setShowPassword((prev) => !prev)}
+            />
+          }
+        />
+
+        <AuthField
+          label="Confirmar Senha"
+          icon={Lock}
+          type={showConfirmPassword ? "text" : "password"}
+          placeholder="••••••••"
+          value={confirmPassword}
+          onChange={setConfirmPassword}
+          rightSlot={
+            <PasswordVisibilityToggle
+              visible={showConfirmPassword}
+              onToggle={() => setShowConfirmPassword((prev) => !prev)}
+            />
+          }
+        />
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full py-3 rounded-xl text-white font-medium transition-all hover:opacity-90"
+          style={{ background: "var(--primary)", opacity: loading ? 0.7 : 1 }}
         >
-            <motion.div
-                initial={{ opacity: 0, y: 25 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4 }}
-                className="w-full max-w-md"
-            >
-                <div
-                    className="rounded-3xl p-8"
-                    style={{
-                        background: "var(--card)",
-                        border: "1px solid var(--border)",
-                        boxShadow: "0 20px 60px rgba(0,0,0,0.35)",
-                    }}
-                >
-                    {/* Logo */}
-                    <div className="text-center mb-8">
-                        <div
-                            className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center"
-                            style={{
-                                background: "var(--primary)",
-                            }}
-                        >
-                            <Wallet size={28} color="white" />
-                        </div>
-
-                        <h1
-                            className="text-white"
-                            style={{
-                                fontSize: "1.8rem",
-                                fontWeight: 700,
-                            }}
-                        >
-                            Criar Conta
-                        </h1>
-
-                        <p
-                            style={{
-                                color: "var(--muted-foreground)",
-                                marginTop: "6px",
-                            }}
-                        >
-                            Comece a controlar suas finanças
-                        </p>
-                    </div>
-
-                    <form className="space-y-4" onSubmit={handleRegister}>
-                        {/* Nome */}
-                        <div>
-                            <label
-                                className="block mb-2 text-sm"
-                                style={{ color: "var(--muted-foreground)" }}
-                            >
-                                Nome
-                            </label>
-
-                            <div className="relative">
-                                <User
-                                    size={18}
-                                    className="absolute left-3 top-1/2 -translate-y-1/2"
-                                    style={{ color: "var(--muted-foreground)" }}
-                                />
-
-                                <input
-                                    type="text"
-                                    placeholder="Seu nome"
-                                    className="w-full rounded-xl py-3 pl-11 pr-4 outline-none"
-                                    style={inputStyle}
-                                    value={name}
-                                    onChange={(e) => setName(e.target.value)}
-                                />
-                            </div>
-                        </div>
-
-                        {/* Email */}
-                        <div>
-                            <label
-                                className="block mb-2 text-sm"
-                                style={{ color: "var(--muted-foreground)" }}
-                            >
-                                E-mail
-                            </label>
-
-                            <div className="relative">
-                                <Mail
-                                    size={18}
-                                    className="absolute left-3 top-1/2 -translate-y-1/2"
-                                    style={{ color: "var(--muted-foreground)" }}
-                                />
-
-                                <input
-                                    type="email"
-                                    placeholder="seu@email.com"
-                                    className="w-full rounded-xl py-3 pl-11 pr-4 outline-none"
-                                    style={inputStyle}
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                />
-                            </div>
-                        </div>
-
-                        {/* Senha */}
-                        <div>
-                            <label
-                                className="block mb-2 text-sm"
-                                style={{ color: "var(--muted-foreground)" }}
-                            >
-                                Senha
-                            </label>
-
-                            <div className="relative">
-                                <Lock
-                                    size={18}
-                                    className="absolute left-3 top-1/2 -translate-y-1/2"
-                                    style={{ color: "var(--muted-foreground)" }}
-                                />
-                                <input
-                                    type={showPassword ? "text" : "password"}
-                                    placeholder="••••••••"
-                                    className="w-full rounded-xl py-3 pl-11 pr-12 outline-none"
-                                    style={inputStyle}
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                />
-
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2"
-                                >
-                                    {showPassword ? (
-                                        <EyeOff size={18} color="#94a3b8" />
-                                    ) : (
-                                        <Eye size={18} color="#94a3b8" />
-                                    )}
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Confirmar senha */}
-                        <div>
-                            <label
-                                className="block mb-2 text-sm"
-                                style={{ color: "var(--muted-foreground)" }}
-                            >
-                                Confirmar Senha
-                            </label>
-
-                            <div className="relative">
-                                <Lock
-                                    size={18}
-                                    className="absolute left-3 top-1/2 -translate-y-1/2"
-                                    style={{ color: "var(--muted-foreground)" }}
-                                />
-                                <input
-                                    type={showConfirm ? "text" : "password"}
-                                    placeholder="••••••••"
-                                    className="w-full rounded-xl py-3 pl-11 pr-12 outline-none"
-                                    style={inputStyle}
-                                    value={confirmPassword}
-                                    onChange={(e) => setConfirmPassword(e.target.value)}
-                                />
-
-                                <button
-                                    type="button"
-                                    onClick={() => setShowConfirm(!showConfirm)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2"
-                                >
-                                    {showConfirm ? (
-                                        <EyeOff size={18} color="#94a3b8" />
-                                    ) : (
-                                        <Eye size={18} color="#94a3b8" />
-                                    )}
-                                </button>
-                            </div>
-                        </div>
-
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="w-full py-3 rounded-xl text-white font-medium transition-all hover:opacity-90"
-                            style={{
-                                background: "var(--primary)",
-                                opacity: loading ? 0.7 : 1,
-                            }}
-                        >
-                            {loading ? "Criando..." : "Criar Conta"}
-                        </button>
-                    </form>
-
-                    <div className="mt-6 text-center">
-                        <p
-                            style={{
-                                color: "var(--muted-foreground)",
-                                fontSize: "0.9rem",
-                            }}
-                        >
-                            Já possui conta?
-                        </p>
-
-                        <Link
-                            to="/login"
-                            className="mt-2 inline-block font-medium"
-                            style={{
-                                color: "var(--primary)",
-                            }}
-                        >
-                            Fazer Login
-                        </Link>
-                    </div>
-                </div>
-            </motion.div>
-        </div>
-    );
+          {loading ? "Criando..." : "Criar Conta"}
+        </button>
+      </form>
+    </AuthCard>
+  );
 }

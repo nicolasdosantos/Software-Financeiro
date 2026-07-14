@@ -1,14 +1,14 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import type { CSSProperties } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import type { Variants } from "motion/react";
 import {
   User, Shield, Bell, Save, CheckCircle,
   Mail, Phone, MapPin, Briefcase, KeyRound, LogOut, Sparkles,
 } from "lucide-react";
-import { useEffect } from "react";
 import { toast } from "sonner";
 import { supabase } from "../../lib/supabase";
 import { useNavigate } from "react-router-dom";
-
 
 export function Profile() {
 
@@ -125,14 +125,14 @@ export function Profile() {
       outline: "none",
       transition: "border-color 0.2s ease, box-shadow 0.2s ease",
       boxShadow: focusedField === name ? "0 0 0 3px rgba(32,75,202,0.15)" : "none",
-    } as React.CSSProperties;
+    } as CSSProperties;
   }
 
-  const containerVariants = {
+  const containerVariants: Variants = {
     hidden: { opacity: 0 },
     show: { opacity: 1, transition: { staggerChildren: 0.09, delayChildren: 0.05 } },
   };
-  const itemVariants = {
+  const itemVariants: Variants = {
     hidden: { opacity: 0, y: 18 },
     show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1] } },
   };

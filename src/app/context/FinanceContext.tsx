@@ -135,6 +135,24 @@ export function toLocalMonthDate(month: string): Date {
   return new Date(year, monthNumber - 1, 1, 12);
 }
 
+export interface MonthTotals {
+  income: number;
+  expense: number;
+  balance: number;
+}
+
+export function getMonthTotals(transactions: Transaction[], month: string): MonthTotals {
+  const monthTransactions = transactions.filter((t) => t.date.startsWith(month));
+  const income = monthTransactions
+    .filter((t) => t.type === "income")
+    .reduce((sum, t) => sum + t.amount, 0);
+  const expense = monthTransactions
+    .filter((t) => t.type === "expense")
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  return { income, expense, balance: income - expense };
+}
+
 function mapGoal(row: GoalRow): Goal {
   return {
     id: row.id,
@@ -182,6 +200,15 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     const { data: { user } } = await supabase.auth.getUser();
     return user;
   }, []);
+
+  const requireUser = useCallback(async () => {
+    const user = await getCurrentUser();
+    if (!user) {
+      toast.error("Sua sessão expirou. Faça login novamente para continuar.");
+      throw new Error("Usuário não autenticado");
+    }
+    return user;
+  }, [getCurrentUser]);
 
   const ensureDefaultCategories = useCallback(async (user: User, existing: Category[]) => {
     if (existing.length > 0) return existing;
@@ -275,11 +302,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     setCurrentMonth,
 
     addTransaction: async (transaction) => {
-      const user = await getCurrentUser();
-      if (!user) {
-        toast.error("Sua sessão expirou. Faça login novamente para continuar.");
-        throw new Error("Usuário não autenticado");
-      }
+      const user = await requireUser();
 
       const { data, error } = await supabase
         .from("transactions")
@@ -297,11 +320,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     },
 
     updateTransaction: async (transaction) => {
-      const user = await getCurrentUser();
-      if (!user) {
-        toast.error("Sua sessão expirou. Faça login novamente para continuar.");
-        throw new Error("Usuário não autenticado");
-      }
+      const user = await requireUser();
 
       const { id, ...payload } = transaction;
       const { error } = await supabase
@@ -320,11 +339,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     },
 
     deleteTransaction: async (id) => {
-      const user = await getCurrentUser();
-      if (!user) {
-        toast.error("Sua sessão expirou. Faça login novamente para continuar.");
-        throw new Error("Usuário não autenticado");
-      }
+      const user = await requireUser();
 
       const { error } = await supabase
         .from("transactions")
@@ -342,11 +357,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     },
 
     addCategory: async (category) => {
-      const user = await getCurrentUser();
-      if (!user) {
-        toast.error("Sua sessão expirou. Faça login novamente para continuar.");
-        throw new Error("Usuário não autenticado");
-      }
+      const user = await requireUser();
 
       const { data, error } = await supabase
         .from("categories")
@@ -364,11 +375,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     },
 
     updateCategory: async (category) => {
-      const user = await getCurrentUser();
-      if (!user) {
-        toast.error("Sua sessão expirou. Faça login novamente para continuar.");
-        throw new Error("Usuário não autenticado");
-      }
+      const user = await requireUser();
 
       const { id, ...payload } = category;
       const { error } = await supabase
@@ -387,11 +394,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     },
 
     deleteCategory: async (id) => {
-      const user = await getCurrentUser();
-      if (!user) {
-        toast.error("Sua sessão expirou. Faça login novamente para continuar.");
-        throw new Error("Usuário não autenticado");
-      }
+      const user = await requireUser();
 
       const { error } = await supabase
         .from("categories")
@@ -411,11 +414,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     },
 
     addGoal: async (goal) => {
-      const user = await getCurrentUser();
-      if (!user) {
-        toast.error("Sua sessão expirou. Faça login novamente para continuar.");
-        throw new Error("Usuário não autenticado");
-      }
+      const user = await requireUser();
 
       const { data, error } = await supabase
         .from("goals")
@@ -433,11 +432,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     },
 
     updateGoal: async (goal) => {
-      const user = await getCurrentUser();
-      if (!user) {
-        toast.error("Sua sessão expirou. Faça login novamente para continuar.");
-        throw new Error("Usuário não autenticado");
-      }
+      const user = await requireUser();
 
       const { id, ...payload } = goal;
       const { error } = await supabase
@@ -456,11 +451,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     },
 
     deleteGoal: async (id) => {
-      const user = await getCurrentUser();
-      if (!user) {
-        toast.error("Sua sessão expirou. Faça login novamente para continuar.");
-        throw new Error("Usuário não autenticado");
-      }
+      const user = await requireUser();
 
       const { error } = await supabase
         .from("goals")
@@ -478,11 +469,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     },
 
     addInvestment: async (investment) => {
-      const user = await getCurrentUser();
-      if (!user) {
-        toast.error("Sua sessão expirou. Faça login novamente para continuar.");
-        throw new Error("Usuário não autenticado");
-      }
+      const user = await requireUser();
 
       const { currentValue, startDate, ...payload } = investment;
       const { data, error } = await supabase
@@ -506,11 +493,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     },
 
     updateInvestment: async (investment) => {
-      const user = await getCurrentUser();
-      if (!user) {
-        toast.error("Sua sessão expirou. Faça login novamente para continuar.");
-        throw new Error("Usuário não autenticado");
-      }
+      const user = await requireUser();
 
       const { id, currentValue, startDate, ...payload } = investment;
       const { error } = await supabase
@@ -533,11 +516,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     },
 
     deleteInvestment: async (id) => {
-      const user = await getCurrentUser();
-      if (!user) {
-        toast.error("Sua sessão expirou. Faça login novamente para continuar.");
-        throw new Error("Usuário não autenticado");
-      }
+      const user = await requireUser();
 
       const { error } = await supabase
         .from("investments")
@@ -555,11 +534,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     },
 
     updateBudget: async (budget) => {
-      const user = await getCurrentUser();
-      if (!user) {
-        toast.error("Sua sessão expirou. Faça login novamente para continuar.");
-        throw new Error("Usuário não autenticado");
-      }
+      const user = await requireUser();
 
       const { error } = await supabase
         .from("budgets")
@@ -586,7 +561,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     budgets,
     categories,
     currentMonth,
-    getCurrentUser,
+    requireUser,
     goals,
     investments,
     loading,

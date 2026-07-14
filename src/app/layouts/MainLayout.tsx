@@ -67,10 +67,6 @@ export default function MainLayout() {
         }}
         isMobile={isMobile}
         mobileOpen={mobileOpen}
-
-        // props temporárias
-        currentPage="dashboard"
-        onNavigate={() => {}}
       />
 
       {/* Conteúdo */}

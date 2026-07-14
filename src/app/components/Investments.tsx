@@ -1,8 +1,12 @@
 import { useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
-import { Plus, Edit2, Trash2, X, TrendingUp, TrendingDown } from "lucide-react";
+import type { FormEvent } from "react";
+import { motion } from "motion/react";
+import { Plus, Edit2, Trash2, TrendingUp, TrendingDown } from "lucide-react";
 import { toast } from "sonner";
-import { useFinance, formatCurrency, getTodayDateInput, Investment } from "../context/FinanceContext";
+import { useFinance, formatCurrency, getTodayDateInput } from "../context/FinanceContext";
+import type { Investment } from "../context/FinanceContext";
+import { Modal } from "./shared/Modal";
+import { ConfirmDeleteDialog } from "./shared/ConfirmDeleteDialog";
 
 const TYPES = ["Renda Fixa", "Renda Variável", "FII", "Criptomoeda", "Previdência", "Outro"];
 const TYPE_COLORS: Record<string, string> = {
@@ -10,7 +14,14 @@ const TYPE_COLORS: Record<string, string> = {
   "Criptomoeda": "#f59e0b", "Previdência": "#ec4899", "Outro": "#94a3b8",
 };
 
-function InvestForm({ initial, onSave, onClose }: { initial?: Investment; onSave: (i: any) => Promise<void>; onClose: () => void }) {
+interface InvestFormProps {
+  initial?: Investment;
+  onAdd: (i: Omit<Investment, "id">) => Promise<void>;
+  onUpdate: (i: Investment) => Promise<void>;
+  onClose: () => void;
+}
+
+function InvestForm({ initial, onAdd, onUpdate, onClose }: InvestFormProps) {
   const [form, setForm] = useState({
     name: initial?.name || "", type: initial?.type || "Renda Fixa",
     invested: initial?.invested?.toString() || "", currentValue: initial?.currentValue?.toString() || "",
@@ -18,12 +29,14 @@ function InvestForm({ initial, onSave, onClose }: { initial?: Investment; onSave
   });
   const [submitting, setSubmitting] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (submitting) return;
     setSubmitting(true);
     try {
-      await onSave({ ...form, invested: parseFloat(form.invested), currentValue: parseFloat(form.currentValue) });
+      const data = { ...form, invested: parseFloat(form.invested), currentValue: parseFloat(form.currentValue) };
+      if (initial) await onUpdate({ ...data, id: initial.id });
+      else await onAdd(data);
       toast.success(initial ? "Investimento atualizado com sucesso!" : "Investimento adicionado com sucesso!");
       onClose();
     } catch (err) {
@@ -82,7 +95,6 @@ export function Investments() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Investment | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   const totalInvested = investments.reduce((s, i) => s + i.invested, 0);
   const totalCurrent = investments.reduce((s, i) => s + i.currentValue, 0);
@@ -95,9 +107,6 @@ export function Investments() {
     byType[inv.type].invested += inv.invested;
     byType[inv.type].current += inv.currentValue;
   });
-
-  const overlay = { position: "fixed" as const, inset: 0, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: "16px" };
-  const dialog = { background: "var(--popover)", border: "1px solid var(--border)", borderRadius: "20px", padding: "24px", width: "100%", maxWidth: "460px", maxHeight: "90vh", overflowY: "auto" as const };
 
   return (
     <div className="space-y-4 sm:space-y-5">
@@ -177,7 +186,7 @@ export function Investments() {
           <>
             {/* Mobile cards */}
             <div className="block sm:hidden divide-y" style={{ borderColor: "var(--border)" }}>
-              {investments.map((inv, i) => {
+              {investments.map((inv) => {
                 const ret = inv.currentValue - inv.invested;
                 const retPct = inv.invested > 0 ? (ret / inv.invested) * 100 : 0;
                 const color = TYPE_COLORS[inv.type] || "#94a3b8";
@@ -231,14 +240,12 @@ export function Investments() {
                   </tr>
                 </thead>
                 <tbody>
-                  {investments.map((inv, i) => {
+                  {investments.map((inv) => {
                     const ret = inv.currentValue - inv.invested;
                     const retPct = inv.invested > 0 ? (ret / inv.invested) * 100 : 0;
                     const color = TYPE_COLORS[inv.type] || "#94a3b8";
                     return (
-                      <tr key={inv.id} style={{ borderBottom: "1px solid var(--border)" }}
-                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--secondary)"; }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}>
+                      <tr key={inv.id} className="hover:bg-[var(--secondary)]" style={{ borderBottom: "1px solid var(--border)" }}>
                         <td style={{ padding: "12px 16px" }}>
                           <p className="text-white" style={{ fontWeight: 500, fontSize: "0.875rem" }}>{inv.name}</p>
                           <p style={{ color: "var(--muted-foreground)", fontSize: "0.72rem" }}>{inv.institution}</p>
@@ -273,66 +280,25 @@ export function Investments() {
         )}
       </motion.div>
 
-      <AnimatePresence>
-        {showForm && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={overlay} onClick={() => setShowForm(false)}>
-            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} style={dialog} onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-5">
-                <h2 className="text-white" style={{ fontWeight: 600 }}>Novo Investimento</h2>
-                <button onClick={() => setShowForm(false)} style={{ color: "var(--muted-foreground)" }}><X size={20} /></button>
-              </div>
-              <InvestForm onSave={addInvestment} onClose={() => setShowForm(false)} />
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      <AnimatePresence>
+      <Modal open={showForm} onClose={() => setShowForm(false)} title="Novo Investimento" maxWidth={460}>
+        <InvestForm onAdd={addInvestment} onUpdate={updateInvestment} onClose={() => setShowForm(false)} />
+      </Modal>
+
+      <Modal open={editing !== null} onClose={() => setEditing(null)} title="Editar Investimento" maxWidth={460}>
         {editing && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={overlay} onClick={() => setEditing(null)}>
-            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} style={dialog} onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-5">
-                <h2 className="text-white" style={{ fontWeight: 600 }}>Editar Investimento</h2>
-                <button onClick={() => setEditing(null)} style={{ color: "var(--muted-foreground)" }}><X size={20} /></button>
-              </div>
-              <InvestForm initial={editing} onSave={updateInvestment} onClose={() => setEditing(null)} />
-            </motion.div>
-          </motion.div>
+          <InvestForm initial={editing} onAdd={addInvestment} onUpdate={updateInvestment} onClose={() => setEditing(null)} />
         )}
-      </AnimatePresence>
-      <AnimatePresence>
-        {deleting && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={overlay} onClick={() => setDeleting(null)}>
-            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
-              style={{ ...dialog, maxWidth: "360px", textAlign: "center" }} onClick={e => e.stopPropagation()}>
-              <p style={{ fontSize: "2.5rem", marginBottom: "12px" }}>🗑️</p>
-              <h3 className="text-white mb-2" style={{ fontWeight: 600 }}>Excluir investimento?</h3>
-              <p style={{ color: "var(--muted-foreground)", fontSize: "0.875rem", marginBottom: "24px" }}>Esta ação não pode ser desfeita.</p>
-              <div className="flex gap-3">
-                <button onClick={() => setDeleting(null)} disabled={isDeleting} className="flex-1 py-2.5 rounded-xl text-sm font-medium"
-                  style={{ background: "var(--secondary)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>Cancelar</button>
-                <button
-                  disabled={isDeleting}
-                  onClick={async () => {
-                    if (isDeleting) return;
-                    setIsDeleting(true);
-                    try {
-                      await deleteInvestment(deleting);
-                      toast.success("Investimento excluído com sucesso!");
-                      setDeleting(null);
-                    } catch (err) {
-                      console.error("Erro ao excluir investimento:", err);
-                    } finally {
-                      setIsDeleting(false);
-                    }
-                  }}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white" style={{ background: "var(--destructive)", opacity: isDeleting ? 0.7 : 1 }}>
-                  {isDeleting ? "Excluindo..." : "Excluir"}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      </Modal>
+
+      <ConfirmDeleteDialog
+        open={deleting !== null}
+        onClose={() => setDeleting(null)}
+        onConfirm={() => deleteInvestment(deleting!)}
+        title="Excluir investimento?"
+        description="Esta ação não pode ser desfeita."
+        successMessage="Investimento excluído com sucesso!"
+        errorLog="Erro ao excluir investimento:"
+      />
     </div>
   );
 }
