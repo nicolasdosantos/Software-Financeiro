@@ -7,6 +7,7 @@ import { useFinance, formatCurrency, getMonthName, getTodayDateInput, toLocalDat
 import type { Transaction } from "../context/FinanceContext";
 import { Modal } from "./shared/Modal";
 import { ConfirmDeleteDialog } from "./shared/ConfirmDeleteDialog";
+import { EmptyState } from "./shared/EmptyState";
 import { Skeleton } from "./ui/skeleton";
 
 function TransactionsSkeleton() {
@@ -227,10 +228,11 @@ export function Transactions() {
         {/* Mobile card list */}
         <div className="block sm:hidden">
           {paged.length === 0 ? (
-            <div className="py-16 text-center" style={{ color: "var(--muted-foreground)" }}>
-              <p style={{ fontSize: "2rem", marginBottom: "8px" }}>🔍</p>
-              <p>Nenhuma transação encontrada</p>
-            </div>
+            transactions.length === 0 ? (
+              <EmptyState icon="📭" title="Nenhuma transação ainda" subtitle="Adicione a primeira pra começar a acompanhar suas finanças" />
+            ) : (
+              <EmptyState icon="🔍" title="Nenhuma transação encontrada" subtitle="Tente ajustar a busca ou os filtros" />
+            )
           ) : (
             <div className="divide-y" style={{ borderColor: "var(--border)" }}>
               {paged.map(tx => {
@@ -334,10 +336,11 @@ export function Transactions() {
               </AnimatePresence>
               {paged.length === 0 && (
                 <tr><td colSpan={6}>
-                  <div className="py-16 text-center" style={{ color: "var(--muted-foreground)" }}>
-                    <p style={{ fontSize: "2rem", marginBottom: "8px" }}>🔍</p>
-                    <p>Nenhuma transação encontrada</p>
-                  </div>
+                  {transactions.length === 0 ? (
+                    <EmptyState icon="📭" title="Nenhuma transação ainda" subtitle="Adicione a primeira pra começar a acompanhar suas finanças" />
+                  ) : (
+                    <EmptyState icon="🔍" title="Nenhuma transação encontrada" subtitle="Tente ajustar a busca ou os filtros" />
+                  )}
                 </td></tr>
               )}
             </tbody>
