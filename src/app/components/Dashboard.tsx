@@ -15,6 +15,57 @@ import { useNavigate } from "react-router-dom";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "./ui/select";
+import { Skeleton } from "./ui/skeleton";
+
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex items-center gap-3">
+        <Skeleton className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl shrink-0" />
+        <div className="space-y-2">
+          <Skeleton className="h-5 w-48" />
+          <Skeleton className="h-3.5 w-64" />
+        </div>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+        {Array.from({ length: 4 }, (_, i) => (
+          <div key={i} className="rounded-2xl p-4 sm:p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+            <Skeleton className="w-10 h-10 rounded-xl mb-4" />
+            <Skeleton className="h-3 w-20 mb-2" />
+            <Skeleton className="h-6 w-28" />
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
+        <div className="lg:col-span-2 rounded-2xl p-4 sm:p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+          <Skeleton className="h-4 w-40 mb-1" />
+          <Skeleton className="h-3 w-32 mb-4" />
+          <Skeleton className="h-[200px] w-full rounded-xl" />
+        </div>
+        <div className="rounded-2xl p-4 sm:p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+          <Skeleton className="h-4 w-32 mb-4" />
+          <div className="flex justify-center mb-4">
+            <Skeleton className="w-[170px] h-[170px] rounded-full" />
+          </div>
+          {Array.from({ length: 3 }, (_, i) => <Skeleton key={i} className="h-4 w-full mb-2" />)}
+        </div>
+      </div>
+      <div className="rounded-2xl p-4 sm:p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+        <Skeleton className="h-4 w-40 mb-4" />
+        {Array.from({ length: 4 }, (_, i) => (
+          <div key={i} className="flex items-center gap-3 py-2.5">
+            <Skeleton className="w-8 h-8 rounded-xl shrink-0" />
+            <div className="flex-1 space-y-1.5">
+              <Skeleton className="h-3.5 w-40" />
+              <Skeleton className="h-3 w-24" />
+            </div>
+            <Skeleton className="h-4 w-16 shrink-0" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function renderActivePieShape(props: PieSectorDataItem) {
   const { cx = 0, cy = 0, innerRadius = 0, outerRadius = 0, startAngle = 0, endAngle = 0, fill } = props;
@@ -50,7 +101,7 @@ export function Dashboard() {
   const [hideValues, setHideValues] = useState(false);
   const [activePieIndex, setActivePieIndex] = useState(-1);
 
-  const { transactions, categories, currentMonth } = useFinance();
+  const { transactions, categories, currentMonth, loading } = useFinance();
 
   const user = useUser();
 
@@ -119,6 +170,8 @@ export function Dashboard() {
   };
 
   const navigate = useNavigate();
+
+  if (loading) return <DashboardSkeleton />;
 
   return (
     <div className="space-y-4 sm:space-y-6">

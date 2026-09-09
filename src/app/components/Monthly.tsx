@@ -7,11 +7,43 @@ import {
   getDistinctMonths, sumExpensesByCategory,
 } from "../context/FinanceContext";
 import type { Category } from "../context/FinanceContext";
+import { Skeleton } from "./ui/skeleton";
+
+function MonthlySkeleton() {
+  return (
+    <div className="space-y-4 sm:space-y-5">
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-6 w-48" />
+        <Skeleton className="h-9 w-32 rounded-xl" />
+      </div>
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
+        {Array.from({ length: 3 }, (_, i) => (
+          <div key={i} className="rounded-2xl p-3 sm:p-4" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+            <Skeleton className="h-3 w-16 mb-2" />
+            <Skeleton className="h-5 w-20" />
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
+        <div className="lg:col-span-2 rounded-2xl p-4 sm:p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+          <Skeleton className="h-4 w-40 mb-4" />
+          <Skeleton className="h-[260px] w-full rounded-xl" />
+        </div>
+        <div className="rounded-2xl p-4 sm:p-5 space-y-2" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+          <Skeleton className="h-4 w-32 mb-3" />
+          {Array.from({ length: 5 }, (_, i) => <Skeleton key={i} className="h-4 w-full" />)}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function Monthly() {
 
-  const { transactions, categories, currentMonth, setCurrentMonth } = useFinance();
+  const { transactions, categories, currentMonth, setCurrentMonth, loading } = useFinance();
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
+
+  if (loading) return <MonthlySkeleton />;
 
   const months = getDistinctMonths(transactions, [currentMonth]);
 
