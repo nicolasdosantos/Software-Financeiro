@@ -1,22 +1,30 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Fragment } from "react";
 import { motion } from "motion/react";
 import {
   AreaChart, Area, PieChart, Pie, Cell, Sector,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from "recharts";
 import type { PieSectorDataItem } from "recharts/types/polar/Pie";
-import { TrendingUp, TrendingDown, Wallet, PiggyBank, ArrowUpRight, ArrowDownRight, Eye, EyeOff, Sparkles } from "lucide-react";
+import {
+  TrendingUp, TrendingDown, Wallet, PiggyBank, ArrowUpRight, ArrowDownRight, Eye, EyeOff, Sparkles,
+  Settings2, GripVertical, ChevronUp, ChevronDown,
+} from "lucide-react";
 import {
   useFinance, formatCurrency, getMonthName, getMonthTotals, getShortMonthName, toLocalDate,
   getDistinctMonths, getAccumulatedBalance, sumExpensesByCategory,
 } from "../context/FinanceContext";
 import { useUser } from "../../hooks/useUser";
+import { supabase } from "../../lib/supabase";
+import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "./ui/select";
 import { Skeleton } from "./ui/skeleton";
 import { EmptyState } from "./shared/EmptyState";
+import { Modal } from "./shared/Modal";
+import { DASHBOARD_WIDGETS, DEFAULT_DASHBOARD_LAYOUT, normalizeDashboardLayout } from "../../lib/dashboardWidgets";
+import type { DashboardLayout } from "../../lib/dashboardWidgets";
 
 function DashboardSkeleton() {
   return (
@@ -101,10 +109,45 @@ function AnimatedCounter({ value }: { value: number }) {
 export function Dashboard() {
   const [hideValues, setHideValues] = useState(false);
   const [activePieIndex, setActivePieIndex] = useState(-1);
+  const [layout, setLayout] = useState<DashboardLayout>(DEFAULT_DASHBOARD_LAYOUT);
+  const [showCustomize, setShowCustomize] = useState(false);
 
   const { transactions, categories, currentMonth, loading } = useFinance();
 
   const user = useUser();
+
+  useEffect(() => {
+    setLayout(normalizeDashboardLayout(user?.user_metadata?.dashboardLayout));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  async function saveLayout(next: DashboardLayout) {
+    const previous = layout;
+    setLayout(next); // aplica na hora, sem esperar o Supabase responder
+    try {
+      const { error } = await supabase.auth.updateUser({ data: { dashboardLayout: next } });
+      if (error) throw error;
+    } catch (err) {
+      console.error("Erro ao salvar layout do dashboard:", err);
+      toast.error("Não foi possível salvar a personalização do dashboard.");
+      setLayout(previous);
+    }
+  }
+
+  function moveWidget(id: string, direction: -1 | 1) {
+    const index = layout.order.indexOf(id);
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= layout.order.length) return;
+    const nextOrder = [...layout.order];
+    [nextOrder[index], nextOrder[targetIndex]] = [nextOrder[targetIndex], nextOrder[index]];
+    saveLayout({ ...layout, order: nextOrder });
+  }
+
+  function toggleWidgetHidden(id: string) {
+    const isHidden = layout.hidden.includes(id);
+    const nextHidden = isHidden ? layout.hidden.filter((h) => h !== id) : [...layout.hidden, id];
+    saveLayout({ ...layout, hidden: nextHidden });
+  }
 
   const months = getDistinctMonths(transactions);
 
@@ -200,229 +243,294 @@ export function Dashboard() {
             </p>
           </div>
         </div>
-        <motion.button
-          whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }}
-          onClick={() => setHideValues(!hideValues)}
-          aria-label={hideValues ? "Mostrar valores" : "Ocultar valores"}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm shrink-0"
-          style={{ background: "var(--secondary)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}
-        >
-          {hideValues ? <Eye size={14} /> : <EyeOff size={14} />}
-          <span className="hidden sm:inline">{hideValues ? "Mostrar" : "Ocultar"} valores</span>
-        </motion.button>
+        <div className="flex items-center gap-2 shrink-0">
+          <motion.button
+            whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }}
+            onClick={() => setShowCustomize(true)}
+            aria-label="Personalizar dashboard"
+            className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm"
+            style={{ background: "var(--secondary)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}
+          >
+            <Settings2 size={14} />
+            <span className="hidden sm:inline">Personalizar</span>
+          </motion.button>
+          <motion.button
+            whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }}
+            onClick={() => setHideValues(!hideValues)}
+            aria-label={hideValues ? "Mostrar valores" : "Ocultar valores"}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm"
+            style={{ background: "var(--secondary)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}
+          >
+            {hideValues ? <Eye size={14} /> : <EyeOff size={14} />}
+            <span className="hidden sm:inline">{hideValues ? "Mostrar" : "Ocultar"} valores</span>
+          </motion.button>
+        </div>
       </motion.div>
 
-      {/* Stat Cards — 1 col on xs, 2 on sm, 4 on xl */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
-        {statCards.map((card, i) => {
-          const Icon = card.icon;
-          return (
-            <motion.div
-              key={card.title}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.08 }}
-              whileHover={{ y: -3 }}
-              className="rounded-2xl p-4 sm:p-5 relative overflow-hidden"
-              style={{ background: "var(--card)", border: "1px solid var(--border)" }}
-            >
-              <div className="absolute top-0 right-0 w-24 h-24 rounded-full opacity-20 -translate-y-8 translate-x-8"
-                style={{ background: card.color }} />
-              <div className="flex items-start justify-between mb-3 sm:mb-4">
-                <motion.div whileHover={{ scale: 1.08 }} transition={{ type: "spring", stiffness: 350, damping: 15 }}
-                  className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: card.bg }}>
-                  <Icon size={18} style={{ color: card.color }} />
-                </motion.div>
-                <span className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full"
-                  style={{ background: card.up ? "rgba(16,217,164,0.1)" : "rgba(239,68,68,0.1)", color: card.up ? "var(--success)" : "var(--red)" }}>
-                  {card.up ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-                  {card.change}
-                </span>
-              </div>
-              <p style={{ color: "var(--muted-foreground)", fontSize: "0.78rem" }}>{card.title}</p>
-              <p className="text-white mt-1" style={{ fontSize: "clamp(1.1rem, 3vw, 1.4rem)", fontWeight: 700 }}>
-                {hideValues ? "••••••" : <AnimatedCounter value={card.value} />}
-              </p>
-            </motion.div>
-          );
-        })}
-      </div>
-
-      {/* Charts Row — stacks on mobile */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
-        {/* Area chart — takes 2/3 on desktop */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
-          className="lg:col-span-2 rounded-2xl p-4 sm:p-5"
-          style={{ background: "var(--card)", border: "1px solid var(--border)" }}
-        >
-          <h3 className="text-white mb-0.5" style={{ fontWeight: 600 }}>Evolução Financeira</h3>
-          <p style={{ color: "var(--muted-foreground)", fontSize: "0.78rem", marginBottom: "12px" }}>
-            Receitas vs Despesas — {dataYearLabel}
-          </p>
-          <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={monthlyData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-              <defs>
-                <linearGradient id="incGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#7bc779" stopOpacity={0.3} />
-                  <stop offset="100%" stopColor="#7bc779" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="expGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="var(--red)" stopOpacity={0.2} />
-                  <stop offset="95%" stopColor="var(--red)" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="name" tick={{ fill: "#8892b0", fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: "#8892b0", fontSize: 10 }} axisLine={false} tickLine={false}
-                tickFormatter={v => `R$${(v / 1000).toFixed(0)}k`} />
-              <Tooltip {...tooltipStyle} formatter={(val: number) => [formatCurrency(val), ""]} />
-              <Area type="monotone" dataKey="receitas" name="Receitas" stroke="#45a342" strokeWidth={2} fill="url(#incGrad)" dot={{ fill: "#6ac067", r: 3, strokeWidth: 0 }} />
-              <Area type="monotone" dataKey="despesas" name="Despesas" stroke="var(--red)" strokeWidth={2} fill="url(#expGrad)" dot={{ fill: "var(--red)", r: 3, strokeWidth: 0 }} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </motion.div>
-
-        {/* Pie chart */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.42 }}
-          className="rounded-2xl p-4 sm:p-5"
-          style={{ background: "var(--card)", border: "1px solid var(--border)" }}
-        >
-          <div className="flex items-start justify-between gap-2 mb-0.5">
-            <div>
-              <h3 className="text-white" style={{ fontWeight: 600 }}>Gastos por Categoria</h3>
-              <p style={{ color: "var(--muted-foreground)", fontSize: "0.78rem" }}>{getMonthName(pieMonth)}</p>
-            </div>
-            <Select value={pieMonth} onValueChange={setPieMonth}>
-              <SelectTrigger size="sm" className="w-[118px] shrink-0" style={{ background: "var(--secondary)", borderColor: "var(--border)", color: "var(--foreground)" }}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {pieMonths.map(m => (
-                  <SelectItem key={m} value={m}>{getShortMonthName(m)}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {pieData.length === 0 ? (
-            <div className="flex items-center justify-center" style={{ height: 140 }}>
-              <EmptyState icon="🧾" title={`Sem despesas em ${getMonthName(pieMonth)}`} compact />
-            </div>
-          ) : (
-            <div className="relative" style={{ height: 170 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    key={pieMonth}
-                    data={pieData} cx="50%" cy="50%" innerRadius={48} outerRadius={72}
-                    paddingAngle={3} dataKey="value" style={{ color: "white" }}
-                    activeIndex={activePieIndex} activeShape={renderActivePieShape}
-                    onMouseEnter={(_, i) => setActivePieIndex(i)}
-                    onMouseLeave={() => setActivePieIndex(-1)}
-                    isAnimationActive animationBegin={0} animationDuration={650} animationEasing="ease-out"
-                  >
-                    {pieData.map((entry, i) => (
-                      <Cell
-                        key={i} fill={entry.color}
-                        style={{ cursor: "pointer", filter: activePieIndex === i ? "brightness(1.15)" : undefined, transition: "filter 0.2s ease" }}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip {...tooltipStyle} formatter={(val: number, name: string) => [`${formatCurrency(val)} (${((val / pieTotal) * 100).toFixed(0)}%)`, name]} />
-                </PieChart>
-              </ResponsiveContainer>
-              {!activePieSlice && (
-                <motion.div
-                  key="total"
-                  initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }}
-                  className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none"
-                >
-                  <span style={{ color: "var(--muted-foreground)", fontSize: "0.68rem" }}>Total gasto</span>
-                  <span className="text-white" style={{ fontSize: "1rem", fontWeight: 700 }}>
-                    {formatCurrency(pieTotal)}
-                  </span>
-                </motion.div>
-              )}
-            </div>
-          )}
-
-          <div className="space-y-1.5 mt-1">
-            {pieData.map((d, i) => (
-              <div
-                key={d.name}
-                className="flex items-center justify-between rounded-lg px-1.5 py-1 -mx-1.5 transition-colors cursor-pointer"
-                style={{ background: activePieIndex === i ? "var(--secondary)" : "transparent" }}
-                onMouseEnter={() => setActivePieIndex(i)}
-                onMouseLeave={() => setActivePieIndex(-1)}
-              >
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <div className="w-2 h-2 rounded-full shrink-0" style={{ background: d.color }} />
-                  <span className="truncate" style={{ color: "var(--muted-foreground)", fontSize: "0.72rem" }}>{d.name}</span>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span style={{ color: "var(--muted-foreground)", fontSize: "0.68rem" }}>
-                    {pieTotal ? ((d.value / pieTotal) * 100).toFixed(0) : 0}%
-                  </span>
-                  <span className="text-white" style={{ fontSize: "0.72rem", fontWeight: 500 }}>
-                    {formatCurrency(d.value)}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </motion.div>
-      </div>
-
-      {/* Recent Transactions */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
-        className="rounded-2xl p-4 sm:p-5"
-        style={{ background: "var(--card)", border: "1px solid var(--border)" }}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-white" style={{ fontWeight: 600 }}>Últimas Transações</h3>
-          <button
-            type="button"
-            onClick={() => navigate("/transacoes")}
-            className="hover:underline"
-            style={{ color: "var(--primary)", fontSize: "0.8rem", cursor: "pointer", background: "none", border: "none", padding: 0 }}
-          >
-            Ver todas
-          </button>
-        </div>
-        <div className="space-y-1">
-          {recentTxs.map((tx, i) => {
-            const cat = categories.find(c => c.id === tx.category);
+      {/* Modal de personalização */}
+      <Modal open={showCustomize} onClose={() => setShowCustomize(false)} title="Personalizar Dashboard">
+        <p style={{ color: "var(--muted-foreground)", fontSize: "0.8rem", marginBottom: "16px" }}>
+          Reordene ou oculte seções do seu dashboard.
+        </p>
+        <div className="space-y-2">
+          {layout.order.map((id, i) => {
+            const widget = DASHBOARD_WIDGETS.find((w) => w.id === id);
+            if (!widget) return null;
+            const isHidden = layout.hidden.includes(id);
             return (
-              <motion.div key={tx.id}
-                initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.55 + Math.min(i * 0.05, 0.3), duration: 0.3 }}
-                className="flex items-center justify-between py-2.5 px-3 rounded-xl transition-colors hover:bg-[var(--secondary)]">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                    style={{ background: cat ? `${cat.color}20` : "var(--secondary)" }}>
-                    <span style={{ fontSize: "13px" }}>{cat?.icon || "💳"}</span>
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-white truncate" style={{ fontSize: "0.875rem", fontWeight: 500 }}>
-                      {tx.description}
-                    </p>
-                    <p className="truncate" style={{ color: "var(--muted-foreground)", fontSize: "0.72rem" }}>
-                      {cat?.name} · {toLocalDate(tx.date).toLocaleDateString("pt-BR")}
-                    </p>
-                  </div>
+              <div key={id} className="flex items-center gap-2 p-2.5 rounded-xl"
+                style={{ background: "var(--secondary)", opacity: isHidden ? 0.55 : 1 }}>
+                <GripVertical size={15} style={{ color: "var(--muted-foreground)" }} className="shrink-0" />
+                <span className="flex-1 min-w-0 truncate text-sm" style={{ color: "var(--foreground)" }}>{widget.label}</span>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button type="button" onClick={() => moveWidget(id, -1)} disabled={i === 0}
+                    aria-label={`Mover "${widget.label}" para cima`}
+                    className="p-1.5 rounded-lg disabled:opacity-30" style={{ color: "var(--muted-foreground)" }}>
+                    <ChevronUp size={15} />
+                  </button>
+                  <button type="button" onClick={() => moveWidget(id, 1)} disabled={i === layout.order.length - 1}
+                    aria-label={`Mover "${widget.label}" para baixo`}
+                    className="p-1.5 rounded-lg disabled:opacity-30" style={{ color: "var(--muted-foreground)" }}>
+                    <ChevronDown size={15} />
+                  </button>
+                  <button type="button" onClick={() => toggleWidgetHidden(id)}
+                    role="switch" aria-checked={!isHidden}
+                    aria-label={isHidden ? `Mostrar "${widget.label}"` : `Ocultar "${widget.label}"`}
+                    className="p-1.5 rounded-lg" style={{ color: isHidden ? "var(--muted-foreground)" : "var(--primary)" }}>
+                    {isHidden ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
                 </div>
-                <span className="shrink-0 ml-3"
-                  style={{ color: tx.type === "income" ? "var(--success)" : "var(--red)", fontWeight: 600, fontSize: "0.875rem", fontFamily: "var(--font-mono)" }}>
-                  {tx.type === "income" ? "+" : "-"}{hideValues ? "••••" : formatCurrency(tx.amount)}
-                </span>
-              </motion.div>
+              </div>
             );
           })}
         </div>
-      </motion.div>
+        <button type="button" onClick={() => setShowCustomize(false)}
+          className="w-full mt-4 py-2.5 rounded-xl text-sm font-medium text-white"
+          style={{ background: "var(--primary)" }}>
+          Concluído
+        </button>
+      </Modal>
+
+      {(() => {
+        const sections: Record<string, JSX.Element> = {
+          stats: (
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+              {statCards.map((card, i) => {
+                const Icon = card.icon;
+                return (
+                  <motion.div
+                    key={card.title}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.08 }}
+                    whileHover={{ y: -3 }}
+                    className="rounded-2xl p-4 sm:p-5 relative overflow-hidden"
+                    style={{ background: "var(--card)", border: "1px solid var(--border)" }}
+                  >
+                    <div className="absolute top-0 right-0 w-24 h-24 rounded-full opacity-20 -translate-y-8 translate-x-8"
+                      style={{ background: card.color }} />
+                    <div className="flex items-start justify-between mb-3 sm:mb-4">
+                      <motion.div whileHover={{ scale: 1.08 }} transition={{ type: "spring", stiffness: 350, damping: 15 }}
+                        className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: card.bg }}>
+                        <Icon size={18} style={{ color: card.color }} />
+                      </motion.div>
+                      <span className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full"
+                        style={{ background: card.up ? "rgba(16,217,164,0.1)" : "rgba(239,68,68,0.1)", color: card.up ? "var(--success)" : "var(--red)" }}>
+                        {card.up ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+                        {card.change}
+                      </span>
+                    </div>
+                    <p style={{ color: "var(--muted-foreground)", fontSize: "0.78rem" }}>{card.title}</p>
+                    <p className="text-white mt-1" style={{ fontSize: "clamp(1.1rem, 3vw, 1.4rem)", fontWeight: 700 }}>
+                      {hideValues ? "••••••" : <AnimatedCounter value={card.value} />}
+                    </p>
+                  </motion.div>
+                );
+              })}
+            </div>
+          ),
+          charts: (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
+              {/* Area chart — takes 2/3 on desktop */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
+                className="lg:col-span-2 rounded-2xl p-4 sm:p-5"
+                style={{ background: "var(--card)", border: "1px solid var(--border)" }}
+              >
+                <h3 className="text-white mb-0.5" style={{ fontWeight: 600 }}>Evolução Financeira</h3>
+                <p style={{ color: "var(--muted-foreground)", fontSize: "0.78rem", marginBottom: "12px" }}>
+                  Receitas vs Despesas — {dataYearLabel}
+                </p>
+                <ResponsiveContainer width="100%" height={200}>
+                  <AreaChart data={monthlyData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="incGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#7bc779" stopOpacity={0.3} />
+                        <stop offset="100%" stopColor="#7bc779" stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="expGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="var(--red)" stopOpacity={0.2} />
+                        <stop offset="95%" stopColor="var(--red)" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                    <XAxis dataKey="name" tick={{ fill: "#8892b0", fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: "#8892b0", fontSize: 10 }} axisLine={false} tickLine={false}
+                      tickFormatter={v => `R$${(v / 1000).toFixed(0)}k`} />
+                    <Tooltip {...tooltipStyle} formatter={(val: number) => [formatCurrency(val), ""]} />
+                    <Area type="monotone" dataKey="receitas" name="Receitas" stroke="#45a342" strokeWidth={2} fill="url(#incGrad)" dot={{ fill: "#6ac067", r: 3, strokeWidth: 0 }} />
+                    <Area type="monotone" dataKey="despesas" name="Despesas" stroke="var(--red)" strokeWidth={2} fill="url(#expGrad)" dot={{ fill: "var(--red)", r: 3, strokeWidth: 0 }} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </motion.div>
+
+              {/* Pie chart */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.42 }}
+                className="rounded-2xl p-4 sm:p-5"
+                style={{ background: "var(--card)", border: "1px solid var(--border)" }}
+              >
+                <div className="flex items-start justify-between gap-2 mb-0.5">
+                  <div>
+                    <h3 className="text-white" style={{ fontWeight: 600 }}>Gastos por Categoria</h3>
+                    <p style={{ color: "var(--muted-foreground)", fontSize: "0.78rem" }}>{getMonthName(pieMonth)}</p>
+                  </div>
+                  <Select value={pieMonth} onValueChange={setPieMonth}>
+                    <SelectTrigger size="sm" className="w-[118px] shrink-0" style={{ background: "var(--secondary)", borderColor: "var(--border)", color: "var(--foreground)" }}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {pieMonths.map(m => (
+                        <SelectItem key={m} value={m}>{getShortMonthName(m)}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {pieData.length === 0 ? (
+                  <div className="flex items-center justify-center" style={{ height: 140 }}>
+                    <EmptyState icon="🧾" title={`Sem despesas em ${getMonthName(pieMonth)}`} compact />
+                  </div>
+                ) : (
+                  <div className="relative" style={{ height: 170 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          key={pieMonth}
+                          data={pieData} cx="50%" cy="50%" innerRadius={48} outerRadius={72}
+                          paddingAngle={3} dataKey="value" style={{ color: "white" }}
+                          activeIndex={activePieIndex} activeShape={renderActivePieShape}
+                          onMouseEnter={(_, i) => setActivePieIndex(i)}
+                          onMouseLeave={() => setActivePieIndex(-1)}
+                          isAnimationActive animationBegin={0} animationDuration={650} animationEasing="ease-out"
+                        >
+                          {pieData.map((entry, i) => (
+                            <Cell
+                              key={i} fill={entry.color}
+                              style={{ cursor: "pointer", filter: activePieIndex === i ? "brightness(1.15)" : undefined, transition: "filter 0.2s ease" }}
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip {...tooltipStyle} formatter={(val: number, name: string) => [`${formatCurrency(val)} (${((val / pieTotal) * 100).toFixed(0)}%)`, name]} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    {!activePieSlice && (
+                      <motion.div
+                        key="total"
+                        initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }}
+                        className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none"
+                      >
+                        <span style={{ color: "var(--muted-foreground)", fontSize: "0.68rem" }}>Total gasto</span>
+                        <span className="text-white" style={{ fontSize: "1rem", fontWeight: 700 }}>
+                          {formatCurrency(pieTotal)}
+                        </span>
+                      </motion.div>
+                    )}
+                  </div>
+                )}
+
+                <div className="space-y-1.5 mt-1">
+                  {pieData.map((d, i) => (
+                    <div
+                      key={d.name}
+                      className="flex items-center justify-between rounded-lg px-1.5 py-1 -mx-1.5 transition-colors cursor-pointer"
+                      style={{ background: activePieIndex === i ? "var(--secondary)" : "transparent" }}
+                      onMouseEnter={() => setActivePieIndex(i)}
+                      onMouseLeave={() => setActivePieIndex(-1)}
+                    >
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <div className="w-2 h-2 rounded-full shrink-0" style={{ background: d.color }} />
+                        <span className="truncate" style={{ color: "var(--muted-foreground)", fontSize: "0.72rem" }}>{d.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span style={{ color: "var(--muted-foreground)", fontSize: "0.68rem" }}>
+                          {pieTotal ? ((d.value / pieTotal) * 100).toFixed(0) : 0}%
+                        </span>
+                        <span className="text-white" style={{ fontSize: "0.72rem", fontWeight: 500 }}>
+                          {formatCurrency(d.value)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            </div>
+          ),
+          recent: (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
+              className="rounded-2xl p-4 sm:p-5"
+              style={{ background: "var(--card)", border: "1px solid var(--border)" }}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-white" style={{ fontWeight: 600 }}>Últimas Transações</h3>
+                <button
+                  type="button"
+                  onClick={() => navigate("/transacoes")}
+                  className="hover:underline"
+                  style={{ color: "var(--primary)", fontSize: "0.8rem", cursor: "pointer", background: "none", border: "none", padding: 0 }}
+                >
+                  Ver todas
+                </button>
+              </div>
+              <div className="space-y-1">
+                {recentTxs.map((tx, i) => {
+                  const cat = categories.find(c => c.id === tx.category);
+                  return (
+                    <motion.div key={tx.id}
+                      initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.55 + Math.min(i * 0.05, 0.3), duration: 0.3 }}
+                      className="flex items-center justify-between py-2.5 px-3 rounded-xl transition-colors hover:bg-[var(--secondary)]">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                          style={{ background: cat ? `${cat.color}20` : "var(--secondary)" }}>
+                          <span style={{ fontSize: "13px" }}>{cat?.icon || "💳"}</span>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-white truncate" style={{ fontSize: "0.875rem", fontWeight: 500 }}>
+                            {tx.description}
+                          </p>
+                          <p className="truncate" style={{ color: "var(--muted-foreground)", fontSize: "0.72rem" }}>
+                            {cat?.name} · {toLocalDate(tx.date).toLocaleDateString("pt-BR")}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="shrink-0 ml-3"
+                        style={{ color: tx.type === "income" ? "var(--success)" : "var(--red)", fontWeight: 600, fontSize: "0.875rem", fontFamily: "var(--font-mono)" }}>
+                        {tx.type === "income" ? "+" : "-"}{hideValues ? "••••" : formatCurrency(tx.amount)}
+                      </span>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          ),
+        };
+
+        return layout.order
+          .filter((id) => !layout.hidden.includes(id))
+          .map((id) => <Fragment key={id}>{sections[id]}</Fragment>);
+      })()}
     </div>
   );
 }
