@@ -1,8 +1,11 @@
 {
-  "name": "@figma/my-make-file",
+  "name": "controle-financeiro-completo",
   "private": true,
   "version": "0.0.1",
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "build": "vite build",
     "dev": "vite",
@@ -85,11 +88,6 @@
     },
     "react-dom": {
       "optional": true
-    }
-  },
-  "pnpm": {
-    "overrides": {
-      "vite": "6.4.3"
     }
   }
 }
