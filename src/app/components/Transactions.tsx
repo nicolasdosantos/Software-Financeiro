@@ -32,9 +32,16 @@ function TransactionForm({ initial, onAdd, onUpdate, onClose }: TransactionFormP
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (submitting) return;
+
+    const amount = parseFloat(form.amount);
+    if (Number.isNaN(amount) || amount <= 0) {
+      toast.error("Informe um valor válido maior que zero.");
+      return;
+    }
+
     setSubmitting(true);
     try {
-      const data = { ...form, amount: parseFloat(form.amount) };
+      const data = { ...form, amount };
       if (initial) await onUpdate({ ...data, id: initial.id });
       else await onAdd(data);
       toast.success(initial ? "Transação atualizada com sucesso!" : "Transação adicionada com sucesso!");

@@ -121,6 +121,16 @@ using (auth.uid() = user_id)
 with check (auth.uid() = user_id);
 
 create index if not exists categories_user_name_idx on public.categories(user_id, name);
+
+-- Impede duas categorias com o mesmo nome para o mesmo usuário. Também é a
+-- trava que resolve a race condition de criação das categorias padrão: se
+-- duas abas tentarem criar as 11 categorias padrão ao mesmo tempo para um
+-- usuário novo, a segunda leva erro de violação de unicidade em vez de
+-- duplicar tudo (ver ensureDefaultCategories em FinanceContext.tsx).
+-- ATENÇÃO: se você já tiver categorias duplicadas (mesmo nome) para o mesmo
+-- usuário, este comando falha — nesse caso seria preciso limpar as
+-- duplicatas antes de rodar esta linha.
+create unique index if not exists categories_user_name_unique_idx on public.categories(user_id, name);
 create index if not exists goals_user_deadline_idx on public.goals(user_id, deadline);
 create index if not exists investments_user_start_date_idx on public.investments(user_id, start_date desc);
 create index if not exists budgets_user_category_idx on public.budgets(user_id, category_id);

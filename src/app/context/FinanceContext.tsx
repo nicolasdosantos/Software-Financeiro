@@ -256,7 +256,24 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       .order("name", { ascending: true });
 
     if (error) {
+      // "23505" = violação de unicidade (constraint categories_user_name_unique_idx).
+      // Significa que outra aba/requisição já criou as categorias padrão
+      // enquanto esta também tentava — não é uma falha real, só busca o que
+      // já existe em vez de duplicar ou deixar o usuário sem categoria nenhuma.
+      if (error.code === "23505") {
+        const { data: refetched, error: refetchError } = await supabase
+          .from("categories")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("name", { ascending: true });
+
+        if (!refetchError && refetched && refetched.length > 0) {
+          return refetched as Category[];
+        }
+      }
+
       console.error("Erro ao criar categorias padrão:", error);
+      toast.error("Não foi possível criar suas categorias padrão. Tente recarregar a página.");
       return [];
     }
 
