@@ -16,14 +16,14 @@ const PANEL_BORDER_STYLE = `1px solid ${PANEL_BORDER}`;
 const MUTED_TEXT = "#8892b0";
 
 export function Charts() {
-  const { transactions, categories, currentMonth, setCurrentMonth } = useFinance();
+  const { transactions, categories, currentMonth, setCurrentMonth, loading } = useFinance();
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [hoveredCategoryId, setHoveredCategoryId] = useState<string | null>(null);
 
   const safeTransactions = transactions ?? [];
   const selectedMonth = currentMonth;
 
-  if (!safeTransactions.length) {
+  if (loading) {
     return (
       <div style={{ color: "#fff", padding: 20 }}>
         Carregando dados...
