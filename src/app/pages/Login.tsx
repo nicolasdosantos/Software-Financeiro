@@ -4,12 +4,14 @@ import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Mail, Lock } from "lucide-react";
 import { supabase } from "../../lib/supabase";
+import { useAuth } from "../context/AuthContext";
 import { AuthCard } from "../components/auth/AuthCard";
 import { AuthField } from "../components/auth/AuthField";
 import { PasswordVisibilityToggle } from "../components/auth/PasswordVisibilityToggle";
 
 export function Login() {
   const navigate = useNavigate();
+  const { session, loading: authLoading } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -17,12 +19,10 @@ export function Login() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) {
-        navigate("/home");
-      }
-    });
-  }, [navigate]);
+    if (!authLoading && session) {
+      navigate("/home");
+    }
+  }, [session, authLoading, navigate]);
 
   async function handleLogin(e: FormEvent) {
     e.preventDefault();

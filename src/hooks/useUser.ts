@@ -1,30 +1,11 @@
-import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabase";
 import type { User } from "@supabase/supabase-js";
+import { useAuth } from "../app/context/AuthContext";
 
-export function useUser() {
-  const [user, setUser] = useState<User | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-
-    // pega usuário atual
-    supabase.auth.getUser().then(({ data }) => {
-      if (mounted) setUser(data.user);
-    });
-
-    // escuta mudanças de login/logout
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setUser(session?.user ?? null);
-      }
-    );
-
-    return () => {
-      mounted = false;
-      authListener.subscription.unsubscribe();
-    };
-  }, []);
-
-  return user;
+/**
+ * Atalho para o usuário autenticado atual. Fonte de verdade é o
+ * AuthProvider (src/app/context/AuthContext.tsx) — mantido como hook
+ * separado só para não obrigar quem já usa `useUser()` a mudar de API.
+ */
+export function useUser(): User | null {
+  return useAuth().user;
 }
