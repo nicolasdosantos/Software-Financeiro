@@ -7,6 +7,36 @@ import { useFinance, formatCurrency, toLocalDate } from "../context/FinanceConte
 import type { Goal } from "../context/FinanceContext";
 import { Modal } from "./shared/Modal";
 import { ConfirmDeleteDialog } from "./shared/ConfirmDeleteDialog";
+import { Skeleton } from "./ui/skeleton";
+
+function GoalsSkeleton() {
+  return (
+    <div className="space-y-4 sm:space-y-5">
+      <div className="flex items-center justify-between">
+        <div className="space-y-2">
+          <Skeleton className="h-6 w-40" />
+          <Skeleton className="h-3.5 w-56" />
+        </div>
+        <Skeleton className="h-10 w-32 rounded-xl" />
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+        {Array.from({ length: 4 }, (_, i) => (
+          <div key={i} className="rounded-2xl p-4 sm:p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+            <div className="flex items-center gap-3 mb-4">
+              <Skeleton className="w-11 h-11 rounded-2xl shrink-0" />
+              <div className="space-y-1.5 flex-1">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-3 w-40" />
+              </div>
+            </div>
+            <Skeleton className="h-3 w-full rounded-full mb-3" />
+            <Skeleton className="h-3 w-48" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 const ICONS = ["🎯", "🏠", "✈️", "💻", "🚗", "🛡️", "📚", "💍", "🎓", "🏖️", "💰", "🏋️"];
 const COLORS = ["#204bca", "#10d9a4", "#8b5cf6", "#f59e0b", "#ef4444", "#ec4899", "#3b82f6", "#22c55e"];
@@ -189,11 +219,13 @@ function GoalContributionForm({ goal, onSave, onClose }: GoalContributionFormPro
 }
 
 export function Goals() {
-  const { goals, addGoal, updateGoal, deleteGoal } = useFinance();
+  const { goals, addGoal, updateGoal, deleteGoal, loading } = useFinance();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Goal | null>(null);
   const [contributing, setContributing] = useState<Goal | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+
+  if (loading) return <GoalsSkeleton />;
 
   async function addContribution(goal: Goal, amount: number) {
     await updateGoal({

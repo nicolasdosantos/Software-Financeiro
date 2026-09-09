@@ -4,6 +4,40 @@ import { Download, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import XLSX from "xlsx-js-style";
 import { useFinance, formatCurrency, getMonthName, getMonthTotals, toLocalDate, getDistinctMonths, sumExpensesByCategory } from "../context/FinanceContext";
+import { Skeleton } from "./ui/skeleton";
+
+function ReportsSkeleton() {
+  return (
+    <div className="space-y-4 sm:space-y-5">
+      <div className="flex items-center justify-between">
+        <div className="space-y-2">
+          <Skeleton className="h-6 w-32" />
+          <Skeleton className="h-3.5 w-52" />
+        </div>
+        <Skeleton className="h-10 w-32 rounded-xl" />
+      </div>
+      <div className="rounded-2xl p-4 sm:p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+        <Skeleton className="h-4 w-36 mb-4" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {Array.from({ length: 6 }, (_, i) => (
+            <div key={i} className="p-3 sm:p-4 rounded-xl flex items-center gap-3" style={{ background: "var(--secondary)", border: "1px solid var(--border)" }}>
+              <Skeleton className="w-10 h-10 rounded-xl shrink-0" />
+              <div className="flex-1 space-y-1.5">
+                <Skeleton className="h-3.5 w-32" />
+                <Skeleton className="h-3 w-40" />
+              </div>
+              <Skeleton className="w-9 h-9 rounded-xl shrink-0" />
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="rounded-2xl p-4 sm:p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+        <Skeleton className="h-4 w-40 mb-4" />
+        {Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-4 w-full mb-2" />)}
+      </div>
+    </div>
+  );
+}
 
 const HTML_ESCAPE_MAP: Record<string, string> = {
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
@@ -71,9 +105,11 @@ function buildHtmlReport(title: string, subtitle: string, sections: string) {
 }
 
 export function Reports() {
-  const { transactions, categories, goals, investments, currentMonth } = useFinance();
+  const { transactions, categories, goals, investments, currentMonth, loading } = useFinance();
   const [generating, setGenerating] = useState<string | null>(null);
   const [done, setDone] = useState<string[]>([]);
+
+  if (loading) return <ReportsSkeleton />;
 
   const months = getDistinctMonths(transactions).reverse();
   const selectedMonth = months.includes(currentMonth) ? currentMonth : months[0] || currentMonth;

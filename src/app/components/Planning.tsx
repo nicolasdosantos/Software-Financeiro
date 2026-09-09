@@ -3,12 +3,47 @@ import { motion } from "motion/react";
 import { AlertTriangle, CheckCircle, Edit2, X } from "lucide-react";
 import { toast } from "sonner";
 import { useFinance, formatCurrency, getMonthName, getCategorySpend } from "../context/FinanceContext";
+import { Skeleton } from "./ui/skeleton";
+
+function PlanningSkeleton() {
+  return (
+    <div className="space-y-4 sm:space-y-5">
+      <div className="space-y-2">
+        <Skeleton className="h-6 w-56" />
+        <Skeleton className="h-3.5 w-64" />
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
+        {Array.from({ length: 4 }, (_, i) => (
+          <div key={i} className="rounded-2xl p-3 sm:p-4" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+            <Skeleton className="h-3 w-16 mb-2" />
+            <Skeleton className="h-5 w-20" />
+          </div>
+        ))}
+      </div>
+      <div className="rounded-2xl p-4 sm:p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+        <Skeleton className="h-4 w-32 mb-3" />
+        <Skeleton className="h-3 w-full rounded-full" />
+      </div>
+      <div className="rounded-2xl p-4 sm:p-5 space-y-3" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+        <Skeleton className="h-4 w-40 mb-1" />
+        {Array.from({ length: 4 }, (_, i) => (
+          <div key={i} className="p-3 rounded-xl" style={{ background: "var(--secondary)" }}>
+            <Skeleton className="h-3.5 w-28 mb-2" />
+            <Skeleton className="h-2 w-full rounded-full" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function Planning() {
-  const { transactions, categories, budgets, updateBudget, currentMonth } = useFinance();
+  const { transactions, categories, budgets, updateBudget, currentMonth, loading } = useFinance();
   const [editingCat, setEditingCat] = useState<string | null>(null);
   const [newLimit, setNewLimit] = useState("");
   const [savingLimit, setSavingLimit] = useState(false);
+
+  if (loading) return <PlanningSkeleton />;
 
   function getSpend(catId: string) {
     return getCategorySpend(transactions, catId, currentMonth);

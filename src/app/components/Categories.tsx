@@ -7,6 +7,35 @@ import { useFinance, getCategorySpend } from "../context/FinanceContext";
 import type { Category } from "../context/FinanceContext";
 import { Modal } from "./shared/Modal";
 import { ConfirmDeleteDialog } from "./shared/ConfirmDeleteDialog";
+import { Skeleton } from "./ui/skeleton";
+
+function CategoriesSkeleton() {
+  return (
+    <div className="space-y-4 sm:space-y-5">
+      <div className="flex items-center justify-between">
+        <div className="space-y-2">
+          <Skeleton className="h-6 w-36" />
+          <Skeleton className="h-3.5 w-44" />
+        </div>
+        <Skeleton className="h-10 w-40 rounded-xl" />
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+        {Array.from({ length: 6 }, (_, i) => (
+          <div key={i} className="rounded-2xl p-4" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+            <div className="flex items-center gap-3 mb-3">
+              <Skeleton className="w-10 h-10 rounded-xl shrink-0" />
+              <div className="space-y-1.5 flex-1">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-3 w-16" />
+              </div>
+            </div>
+            <Skeleton className="h-4 w-20" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 const ICONS = ["🍽️", "🚗", "🏠", "❤️", "📚", "🎮", "📈", "💼", "💻", "📦", "🛒", "☕", "✈️", "🎵", "🎨", "🐶", "💊", "🎁", "⚽", "📱"];
 const COLORS = ["#f59e0b", "#3b82f6", "#8b5cf6", "#ef4444", "#10b981", "#ec4899", "#10d9a4", "#22c55e", "#6366f1", "#94a3b8", "#f97316", "#06b6d4"];
@@ -96,10 +125,12 @@ function CategoryForm({ initial, onAdd, onUpdate, onClose }: CategoryFormProps) 
 }
 
 export function Categories() {
-  const { categories, transactions, addCategory, updateCategory, deleteCategory } = useFinance();
+  const { categories, transactions, addCategory, updateCategory, deleteCategory, loading } = useFinance();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Category | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+
+  if (loading) return <CategoriesSkeleton />;
 
   function getSpend(catId: string) {
     return getCategorySpend(transactions, catId);
