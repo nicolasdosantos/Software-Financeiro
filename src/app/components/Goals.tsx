@@ -9,6 +9,9 @@ import { Modal } from "./shared/Modal";
 import { ConfirmDeleteDialog } from "./shared/ConfirmDeleteDialog";
 import { EmptyState } from "./shared/EmptyState";
 import { Skeleton } from "./ui/skeleton";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
 
 function GoalsSkeleton() {
   return (
@@ -90,34 +93,32 @@ function GoalForm({ initial, onAdd, onUpdate, onClose }: GoalFormProps) {
     }
   }
 
-  const inp = { background: "var(--input-background)", border: "1px solid var(--border)", borderRadius: "10px", color: "var(--foreground)", padding: "10px 14px", width: "100%", fontSize: "0.875rem", outline: "none" };
-
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className="block text-sm mb-1.5" style={{ color: "var(--muted-foreground)" }}>Título</label>
-        <input style={inp} required value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Ex: Reserva de Emergência" />
+      <div className="space-y-1.5">
+        <Label htmlFor="goal-title">Título</Label>
+        <Input id="goal-title" required value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Ex: Reserva de Emergência" />
       </div>
-      <div>
-        <label className="block text-sm mb-1.5" style={{ color: "var(--muted-foreground)" }}>Descrição</label>
-        <input style={inp} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Descrição da meta..." />
+      <div className="space-y-1.5">
+        <Label htmlFor="goal-description">Descrição</Label>
+        <Input id="goal-description" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Descrição da meta..." />
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-sm mb-1.5" style={{ color: "var(--muted-foreground)" }}>Valor alvo (R$)</label>
-          <input style={inp} type="number" min="1" step="0.01" required value={form.target} onChange={e => setForm(f => ({ ...f, target: e.target.value }))} />
+        <div className="space-y-1.5">
+          <Label htmlFor="goal-target">Valor alvo (R$)</Label>
+          <Input id="goal-target" type="number" min="1" step="0.01" required value={form.target} onChange={e => setForm(f => ({ ...f, target: e.target.value }))} />
         </div>
-        <div>
-          <label className="block text-sm mb-1.5" style={{ color: "var(--muted-foreground)" }}>Valor atual (R$)</label>
-          <input style={inp} type="number" min="0" step="0.01" value={form.current} onChange={e => setForm(f => ({ ...f, current: e.target.value }))} />
+        <div className="space-y-1.5">
+          <Label htmlFor="goal-current">Valor atual (R$)</Label>
+          <Input id="goal-current" type="number" min="0" step="0.01" value={form.current} onChange={e => setForm(f => ({ ...f, current: e.target.value }))} />
         </div>
       </div>
-      <div>
-        <label className="block text-sm mb-1.5" style={{ color: "var(--muted-foreground)" }}>Prazo</label>
-        <input style={inp} type="date" required value={form.deadline} onChange={e => setForm(f => ({ ...f, deadline: e.target.value }))} />
+      <div className="space-y-1.5">
+        <Label htmlFor="goal-deadline">Prazo</Label>
+        <Input id="goal-deadline" type="date" required value={form.deadline} onChange={e => setForm(f => ({ ...f, deadline: e.target.value }))} />
       </div>
       <div>
-        <label className="block text-sm mb-2" style={{ color: "var(--muted-foreground)" }}>Ícone</label>
+        <Label className="mb-2">Ícone</Label>
         <div className="flex flex-wrap gap-2">
           {ICONS.map(ic => (
             <button key={ic} type="button" onClick={() => setForm(f => ({ ...f, icon: ic }))}
@@ -130,7 +131,7 @@ function GoalForm({ initial, onAdd, onUpdate, onClose }: GoalFormProps) {
         </div>
       </div>
       <div>
-        <label className="block text-sm mb-2" style={{ color: "var(--muted-foreground)" }}>Cor</label>
+        <Label className="mb-2">Cor</Label>
         <div className="flex flex-wrap gap-2">
           {COLORS.map(c => (
             <button key={c} type="button" onClick={() => setForm(f => ({ ...f, color: c }))}
@@ -141,10 +142,8 @@ function GoalForm({ initial, onAdd, onUpdate, onClose }: GoalFormProps) {
         </div>
       </div>
       <div className="flex gap-3 pt-2">
-        <button type="button" onClick={onClose} disabled={submitting} className="flex-1 py-2.5 rounded-xl text-sm font-medium"
-          style={{ background: "var(--secondary)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>Cancelar</button>
-        <button type="submit" disabled={submitting} className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white hover:opacity-90"
-          style={{ background: "var(--primary)", opacity: submitting ? 0.7 : 1 }}>{submitting ? "Salvando..." : initial ? "Salvar" : "Criar Meta"}</button>
+        <Button type="button" variant="secondary" onClick={onClose} disabled={submitting} className="flex-1">Cancelar</Button>
+        <Button type="submit" disabled={submitting} className="flex-1">{submitting ? "Salvando..." : initial ? "Salvar" : "Criar Meta"}</Button>
       </div>
     </form>
   );
@@ -182,8 +181,6 @@ function GoalContributionForm({ goal, onSave, onClose }: GoalContributionFormPro
     }
   }
 
-  const inp = { background: "var(--input-background)", border: "1px solid var(--border)", borderRadius: "10px", color: "var(--foreground)", padding: "10px 14px", width: "100%", fontSize: "0.875rem", outline: "none" };
-
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="p-3 rounded-xl" style={{ background: "var(--secondary)", border: "1px solid var(--border)" }}>
@@ -193,11 +190,11 @@ function GoalContributionForm({ goal, onSave, onClose }: GoalContributionFormPro
         </p>
       </div>
 
-      <div>
-        <label className="block text-sm mb-1.5" style={{ color: "var(--muted-foreground)" }}>Valor guardado (R$)</label>
-        <input
+      <div className="space-y-1.5">
+        <Label htmlFor="goal-contribution-amount">Valor guardado (R$)</Label>
+        <Input
+          id="goal-contribution-amount"
           autoFocus
-          style={inp}
           type="number"
           min="0.01"
           max={remaining || undefined}
@@ -210,10 +207,8 @@ function GoalContributionForm({ goal, onSave, onClose }: GoalContributionFormPro
       </div>
 
       <div className="flex gap-3 pt-2">
-        <button type="button" onClick={onClose} disabled={submitting} className="flex-1 py-2.5 rounded-xl text-sm font-medium"
-          style={{ background: "var(--secondary)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>Cancelar</button>
-        <button type="submit" disabled={submitting} className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white hover:opacity-90"
-          style={{ background: "var(--primary)", opacity: submitting ? 0.7 : 1 }}>{submitting ? "Salvando..." : "Adicionar"}</button>
+        <Button type="button" variant="secondary" onClick={onClose} disabled={submitting} className="flex-1">Cancelar</Button>
+        <Button type="submit" disabled={submitting} className="flex-1">{submitting ? "Salvando..." : "Adicionar"}</Button>
       </div>
     </form>
   );
@@ -242,11 +237,9 @@ export function Goals() {
           <h1 className="text-white" style={{ fontSize: "clamp(1.2rem,4vw,1.5rem)", fontWeight: 700 }}>Metas Financeiras</h1>
           <p style={{ color: "var(--muted-foreground)", fontSize: "0.875rem" }}>Acompanhe seu progresso rumo aos objetivos</p>
         </div>
-        <button onClick={() => setShowForm(true)}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white hover:opacity-90 w-full sm:w-auto"
-          style={{ background: "var(--primary)" }}>
+        <Button onClick={() => setShowForm(true)} className="w-full sm:w-auto">
           <Plus size={16} /> Nova Meta
-        </button>
+        </Button>
       </div>
 
       {goals.length === 0 ? (
