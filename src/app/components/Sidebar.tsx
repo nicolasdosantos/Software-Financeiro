@@ -77,7 +77,7 @@ export function Sidebar({
           animate={{ scale: 1, opacity: 1, rotate: 0 }}
           transition={{ type: "spring", stiffness: 260, damping: 16 }}
           className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-          style={{ background: "linear-gradient(135deg, #3b6de8, #193faf 55%, #0f0f11)", boxShadow: "0 4px 14px rgba(32,75,202,0.35)" }}
+          style={{ background: "linear-gradient(135deg, rgba(var(--primary-rgb),0.85), var(--primary) 55%, #0f0f11)", boxShadow: "0 4px 14px rgba(var(--primary-rgb),0.35)" }}
         >
           <Wallet size={18} className="text-white" />
         </motion.div>
@@ -121,7 +121,7 @@ export function Sidebar({
                     <motion.div
                       layoutId="sidebar-active-pill"
                       className="absolute inset-0 rounded-xl"
-                      style={{ background: "var(--primary)", boxShadow: "0 4px 14px rgba(32,75,202,0.35)" }}
+                      style={{ background: "var(--primary)", boxShadow: "0 4px 14px rgba(var(--primary-rgb), 0.35)" }}
                       transition={{ type: "spring", stiffness: 420, damping: 34 }}
                     />
                   )}
@@ -192,7 +192,7 @@ export function Sidebar({
           <div className="relative shrink-0">
             <div
               className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold"
-              style={{ background: "linear-gradient(135deg, #3b6de8, #193faf 55%, #000000)" }}
+              style={{ background: "linear-gradient(135deg, rgba(var(--primary-rgb),0.85), var(--primary) 55%, #000000)" }}
             >
               {userInitial}
             </div>

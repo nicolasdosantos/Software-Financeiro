@@ -146,7 +146,7 @@ export function Categories() {
       >
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: "rgba(32,75,202,0.14)" }}>
+            style={{ background: "rgba(var(--primary-rgb),0.14)" }}>
             <Tag size={18} style={{ color: "var(--primary)" }} />
           </div>
           <div>

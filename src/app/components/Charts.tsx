@@ -148,7 +148,7 @@ export function Charts() {
         {[
           { label: "Receitas", value: curr.income, color: "var(--success)", prev: prevData.income },
           { label: "Despesas", value: curr.expense, color: "var(--red)", prev: prevData.expense },
-          { label: "Saldo", value: curr.balance, color: "#204bca", prev: prevData.balance }
+          { label: "Saldo", value: curr.balance, color: "var(--primary)", prev: prevData.balance }
         ].map((c, i) => {
           const change =
             c.prev ? ((c.value - c.prev) / c.prev * 100).toFixed(1) : "0";
@@ -338,7 +338,7 @@ export function Charts() {
             <XAxis dataKey="name" stroke={MUTED_TEXT} />
             <YAxis stroke={MUTED_TEXT} />
             <Tooltip {...tooltipStyle} />
-            <Line type="monotone" dataKey="saldo" stroke="#204bca" />
+            <Line type="monotone" dataKey="saldo" stroke="var(--primary)" />
             <Line type="monotone" dataKey="acumulado" stroke="var(--success)" />
           </LineChart>
         </ResponsiveContainer>

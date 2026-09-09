@@ -125,7 +125,7 @@ export function Dashboard() {
   const balanceChange = ((curr.balance - prev.balance) / Math.max(Math.abs(prev.balance), 1)) * 100;
 
   const statCards = [
-    { title: "Saldo Total", value: savings, icon: Wallet, color: "#204bca", bg: "rgba(32,75,202,0.12)", change: `${savingsChange >= 0 ? "+" : ""}${savingsChange.toFixed(1)}%`, up: savingsCurrMonth >= savingsPrevMonth },
+    { title: "Saldo Total", value: savings, icon: Wallet, color: "var(--primary)", bg: "rgba(var(--primary-rgb),0.12)", change: `${savingsChange >= 0 ? "+" : ""}${savingsChange.toFixed(1)}%`, up: savingsCurrMonth >= savingsPrevMonth },
     { title: `Receitas (${getShortMonthName(currentMonth)})`, value: curr.income, icon: TrendingUp, color: "var(--success)", bg: "rgba(16,217,164,0.12)", change: `${((curr.income - prev.income) / Math.max(prev.income, 1) * 100).toFixed(1)}%`, up: curr.income >= prev.income },
     { title: `Despesas (${getShortMonthName(currentMonth)})`, value: curr.expense, icon: TrendingDown, color: "var(--red)", bg: "rgba(239,68,68,0.12)", change: `${((curr.expense - prev.expense) / Math.max(prev.expense, 1) * 100).toFixed(1)}%`, up: curr.expense < prev.expense },
     { title: `Economia (${getShortMonthName(currentMonth)})`, value: curr.balance, icon: PiggyBank, color: "#8b5cf6", bg: "rgba(139,92,246,0.12)", change: `${balanceChange >= 0 ? "+" : ""}${balanceChange.toFixed(1)}%`, up: curr.balance >= prev.balance },
@@ -187,7 +187,7 @@ export function Dashboard() {
             animate={{ scale: 1, opacity: 1, rotate: 0 }}
             transition={{ type: "spring", stiffness: 260, damping: 18 }}
             className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: "linear-gradient(135deg, rgba(32,75,202,0.25), rgba(139,92,246,0.2))" }}
+            style={{ background: "linear-gradient(135deg, rgba(var(--primary-rgb),0.25), rgba(139,92,246,0.2))" }}
           >
             <Sparkles size={18} style={{ color: "#8b9cff" }} />
           </motion.div>

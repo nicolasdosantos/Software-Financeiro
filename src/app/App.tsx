@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Toaster } from "./components/ui/sonner";
 import { AuthProvider } from "./context/AuthContext";
 import { FinanceProvider } from "./context/FinanceContext";
+import { AccentColorEffect } from "./components/AccentColorEffect";
 
 import MainLayout from "./layouts/MainLayout";
 
@@ -25,6 +26,7 @@ import { ProtectedRoute } from "../routes/ProtectedRoute";
 export default function App() {
   return (
     <AuthProvider>
+      <AccentColorEffect />
       <FinanceProvider>
         <Toaster theme="dark" richColors position="top-right" />
         <BrowserRouter>

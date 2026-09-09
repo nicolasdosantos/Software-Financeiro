@@ -4,12 +4,13 @@ import { motion, AnimatePresence } from "motion/react";
 import type { Variants } from "motion/react";
 import {
   User, Shield, Bell, Save, CheckCircle,
-  Mail, Phone, MapPin, Briefcase, KeyRound, LogOut, Sparkles,
+  Mail, Phone, MapPin, Briefcase, KeyRound, LogOut, Sparkles, Palette,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { ACCENT_COLORS, DEFAULT_ACCENT_COLOR_ID, applyAccentColor } from "../../lib/accentColors";
 
 export function Profile() {
   const { user: authUser } = useAuth();
@@ -29,7 +30,25 @@ export function Profile() {
   const [notifications, setNotifications] = useState({
     budgetAlert: true, weeklyReport: true, goalUpdate: false, monthlyBalance: true,
   });
+  const [accentColorId, setAccentColorId] = useState(DEFAULT_ACCENT_COLOR_ID);
   const [saved, setSaved] = useState(false);
+
+  async function selectAccentColor(id: string) {
+    if (id === accentColorId) return;
+    const previous = accentColorId;
+    setAccentColorId(id);
+    applyAccentColor(id); // aplica na hora, sem esperar o Supabase responder
+
+    try {
+      const { error } = await supabase.auth.updateUser({ data: { accentColor: id } });
+      if (error) throw error;
+    } catch (err) {
+      console.error("Erro ao salvar cor de destaque:", err);
+      toast.error("Não foi possível salvar a cor de destaque. Tente novamente.");
+      setAccentColorId(previous);
+      applyAccentColor(previous);
+    }
+  }
 
   async function handleSave() {
     if (loading) return;
@@ -126,7 +145,7 @@ export function Profile() {
       fontSize: "0.875rem",
       outline: "none",
       transition: "border-color 0.2s ease, box-shadow 0.2s ease",
-      boxShadow: focusedField === name ? "0 0 0 3px rgba(32,75,202,0.15)" : "none",
+      boxShadow: focusedField === name ? "0 0 0 3px rgba(var(--primary-rgb),0.15)" : "none",
     } as CSSProperties;
   }
 
@@ -164,6 +183,7 @@ export function Profile() {
     if (authUser.user_metadata?.notifications) {
       setNotifications((prev) => ({ ...prev, ...authUser.user_metadata.notifications }));
     }
+    setAccentColorId(authUser.user_metadata?.accentColor || DEFAULT_ACCENT_COLOR_ID);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authUser?.id]);
 
@@ -188,7 +208,7 @@ export function Profile() {
           style={{ background: "var(--card)", border: "1px solid var(--border)" }}
         >
           {/* Cover with animated gradient mesh */}
-          <div className="relative h-20 sm:h-24 overflow-hidden" style={{ background: "linear-gradient(120deg, #193faf, #204bca 45%, #6d28d9 100%)" }}>
+          <div className="relative h-20 sm:h-24 overflow-hidden" style={{ background: "linear-gradient(120deg, rgba(var(--primary-rgb),0.7), var(--primary) 45%, #6d28d9 100%)" }}>
             <motion.div
               className="absolute rounded-full"
               style={{ width: 140, height: 140, top: -50, left: "12%", background: "#ec4899", opacity: 0.25, filter: "blur(20px)" }}
@@ -213,10 +233,10 @@ export function Profile() {
               <div
                 className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl flex items-center justify-center text-white font-bold"
                 style={{
-                  background: "linear-gradient(135deg, #204bca, #0f0f11)",
+                  background: "linear-gradient(135deg, var(--primary), #0f0f11)",
                   fontSize: "clamp(1.6rem,5vw,2.1rem)",
                   border: "3px solid var(--card)",
-                  boxShadow: "0 8px 24px rgba(32,75,202,0.35)",
+                  boxShadow: "0 8px 24px rgba(var(--primary-rgb),0.35)",
                 }}
               >
                 {(profile.name || profile.email || "?").charAt(0).toUpperCase()}
@@ -247,7 +267,7 @@ export function Profile() {
             {memberSince && (
               <span
                 className="inline-flex items-center gap-1.5 mt-2.5 px-3 py-1 rounded-full"
-                style={{ background: "rgba(32,75,202,0.12)", color: "var(--primary)", fontSize: "0.72rem", fontWeight: 500 }}
+                style={{ background: "rgba(var(--primary-rgb),0.12)", color: "var(--primary)", fontSize: "0.72rem", fontWeight: 500 }}
               >
                 <Sparkles size={12} /> Membro desde {memberSince}
               </span>
@@ -260,7 +280,7 @@ export function Profile() {
           className="rounded-2xl p-4 sm:p-5 text-left transition-shadow"
           style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
           <div className="flex items-center gap-2.5 mb-4">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: "rgba(32,75,202,0.14)" }}>
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: "rgba(var(--primary-rgb),0.14)" }}>
               <User size={15} style={{ color: "var(--primary)" }} />
             </div>
             <h3 className="text-white" style={{ fontWeight: 600 }}>Dados Pessoais</h3>
@@ -311,6 +331,36 @@ export function Profile() {
                   onChange={e => setProfile(p => ({ ...p, city: e.target.value }))} />
               </div>
             </div>
+          </div>
+        </motion.div>
+
+        {/* Aparência */}
+        <motion.div variants={itemVariants} whileHover={{ y: -2 }}
+          className="rounded-2xl p-4 sm:p-5 text-left transition-shadow"
+          style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+          <div className="flex items-center gap-2.5 mb-4">
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: `rgba(${accentColorId ? ACCENT_COLORS.find(c => c.id === accentColorId)?.rgb : "32, 75, 202"}, 0.14)` }}>
+              <Palette size={15} style={{ color: "var(--primary)" }} />
+            </div>
+            <h3 className="text-white" style={{ fontWeight: 600 }}>Aparência</h3>
+          </div>
+          <p className="mb-3" style={{ color: "var(--muted-foreground)", fontSize: "0.8rem" }}>
+            Escolha a cor de destaque usada em botões, links e itens ativos do menu.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            {ACCENT_COLORS.map(color => (
+              <button
+                key={color.id}
+                type="button"
+                onClick={() => selectAccentColor(color.id)}
+                aria-label={`Cor de destaque ${color.label}`}
+                aria-pressed={accentColorId === color.id}
+                className="w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-110"
+                style={{ background: color.hex, border: `2px solid ${accentColorId === color.id ? "#fff" : "transparent"}`, boxShadow: accentColorId === color.id ? `0 0 0 2px ${color.hex}` : "none" }}
+              >
+                {accentColorId === color.id && <CheckCircle size={16} className="text-white" />}
+              </button>
+            ))}
           </div>
         </motion.div>
 
@@ -384,7 +434,7 @@ export function Profile() {
                 onClick={handleChangePassword}
                 disabled={changingPassword}
                 className="shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium"
-                style={{ background: "rgba(32,75,202,0.15)", color: "var(--primary)", border: "1px solid rgba(32,75,202,0.3)", whiteSpace: "nowrap", opacity: changingPassword ? 0.6 : 1, transition: "opacity 0.2s ease" }}>
+                style={{ background: "rgba(var(--primary-rgb),0.15)", color: "var(--primary)", border: "1px solid rgba(var(--primary-rgb),0.3)", whiteSpace: "nowrap", opacity: changingPassword ? 0.6 : 1, transition: "opacity 0.2s ease" }}>
                 {changingPassword ? "Enviando..." : "Alterar"}
               </motion.button>
             </div>
