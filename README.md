@@ -42,16 +42,17 @@ O projeto organiza toda a vida financeira do usuário em um único painel: lanç
 - [React Router 7](https://reactrouter.com/) — roteamento com layouts aninhados e rotas protegidas
 - [Tailwind CSS 4](https://tailwindcss.com/) + tema custom (`theme.css`)
 - [Radix UI](https://www.radix-ui.com/) + componentes próprios em `src/app/components/ui` (padrão shadcn/ui)
-- [MUI](https://mui.com/) para componentes complementares
 - [Recharts](https://recharts.org/) para gráficos
 - [Motion](https://motion.dev/) para animações e transições de layout
-- [React Hook Form](https://react-hook-form.com/) para formulários
-- [date-fns](https://date-fns.org/) para manipulação de datas
+- [React Hook Form](https://react-hook-form.com/) — dependência disponível para os componentes `ui/form.tsx`, ainda não adotado nos formulários de domínio (que usam estado local)
 - [xlsx-js-style](https://www.npmjs.com/package/xlsx-js-style) para exportação de relatórios
+
+**Testes**
+- [Vitest](https://vitest.dev/) — cobertura das funções financeiras puras do `FinanceContext` (`npm test`)
 
 **Back-end / dados**
 - [Supabase](https://supabase.com/) — PostgreSQL, Auth e client JS (`@supabase/supabase-js`)
-- Row Level Security (RLS) em todas as tabelas de domínio (`categories`, `goals`, `investments`, `budgets`), garantindo isolamento por `user_id`
+- Row Level Security (RLS) em todas as tabelas (`transactions`, `categories`, `goals`, `investments`, `budgets`), garantindo isolamento por `user_id`
 - Triggers de `updated_at` automáticos via função `set_updated_at`
 
 **Infra**
@@ -64,10 +65,10 @@ src/
 ├── app/
 │   ├── components/       # Telas e componentes de domínio (Dashboard, Transactions, Goals, ...)
 │   │   └── ui/            # Design system (baseado em Radix + shadcn/ui)
-│   ├── context/            # FinanceContext — estado global de finanças
-│   ├── layouts/            # MainLayout (com Sidebar) e DashboardLayout
+│   ├── context/            # AuthContext (sessão) e FinanceContext (estado financeiro)
+│   ├── layouts/            # MainLayout (com Sidebar)
 │   └── pages/              # Login e Cadastro (rotas públicas)
-├── hooks/                # Hooks customizados (ex: useUser)
+├── hooks/                # Hooks customizados (ex: useUser, atalho para AuthContext)
 ├── lib/                  # Cliente Supabase
 ├── routes/               # ProtectedRoute — guarda de autenticação
 └── styles/               # Tailwind, fontes e tema
@@ -76,12 +77,12 @@ supabase/
 └── schema.sql            # DDL das tabelas de domínio, RLS e policies
 ```
 
-O estado financeiro (transações, categorias, metas, investimentos, orçamentos) é centralizado no `FinanceContext`, que abstrai as chamadas ao Supabase e expõe os dados já normalizados para os componentes de tela. O acesso é protegido por `ProtectedRoute`, que verifica a sessão do Supabase Auth antes de liberar as rotas privadas dentro de `MainLayout`.
+A autenticação é centralizada no `AuthProvider` (`src/app/context/AuthContext.tsx`): uma única assinatura de `onAuthStateChange` para o app inteiro, exposta via `useAuth()`. O estado financeiro (transações, categorias, metas, investimentos, orçamentos) é centralizado no `FinanceContext`, que consome esse usuário autenticado e abstrai as chamadas ao Supabase, expondo os dados já normalizados para os componentes de tela. O acesso é protegido por `ProtectedRoute`, que verifica a sessão via `useAuth()` antes de liberar as rotas privadas dentro de `MainLayout`.
 
 ## Como rodar localmente
 
 ### Pré-requisitos
-- Node.js 18+
+- Node.js 20+
 - Um projeto no [Supabase](https://supabase.com/) com as tabelas de `transactions` e `profiles` já criadas
 
 ### Passos
@@ -114,6 +115,15 @@ VITE_SUPABASE_ANON_KEY=sua-chave-anon
 npm run build
 ```
 
+### Outros comandos
+
+```bash
+npm run typecheck   # checagem de tipos (tsc --noEmit)
+npm run lint        # ESLint
+npm test            # roda a suíte de testes (Vitest) uma vez
+npm run test:watch  # Vitest em modo watch
+```
+
 ## Banco de dados
 
 O schema (`supabase/schema.sql`) provisiona as tabelas `categories`, `goals`, `investments` e `budgets`, todas com:
@@ -126,8 +136,9 @@ As tabelas `transactions` e `profiles` são pré-existentes e assumidas pelo sch
 
 ## Roadmap
 
-- [ ] Testes automatizados (unitários e E2E)
-- [ ] CI/CD com validação de lint/build em PRs
+- [x] Testes automatizados unitários (Vitest, funções financeiras puras do `FinanceContext`)
+- [ ] Testes E2E
+- [ ] CI/CD com validação de lint/build/testes em PRs
 - [ ] Internacionalização (i18n)
 - [ ] Modo escuro persistente por usuário
 
