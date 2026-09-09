@@ -16,6 +16,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "./ui/select";
 import { Skeleton } from "./ui/skeleton";
+import { EmptyState } from "./shared/EmptyState";
 
 function DashboardSkeleton() {
   return (
@@ -306,8 +307,8 @@ export function Dashboard() {
           </div>
 
           {pieData.length === 0 ? (
-            <div className="flex items-center justify-center" style={{ height: 140, color: "var(--muted-foreground)", fontSize: "0.8rem" }}>
-              Sem despesas em {getMonthName(pieMonth)}
+            <div className="flex items-center justify-center" style={{ height: 140 }}>
+              <EmptyState icon="🧾" title={`Sem despesas em ${getMonthName(pieMonth)}`} compact />
             </div>
           ) : (
             <div className="relative" style={{ height: 170 }}>

@@ -12,6 +12,7 @@ import { TrendingUp, TrendingDown, Lightbulb } from "lucide-react";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "./ui/select";
+import { EmptyState } from "./shared/EmptyState";
 
 const PANEL_BACKGROUND = "#141828";
 const PANEL_BORDER = "#2a2f45";
@@ -210,8 +211,8 @@ export function Charts() {
             <h3 style={{ color: "#fff" }}>Gastos por categoria</h3>
 
             {pieData.length === 0 ? (
-              <div className="flex items-center justify-center rounded-xl mt-3" style={{ height: 220, color: MUTED_TEXT, background: "rgba(255,255,255,0.03)" }}>
-                Sem despesas neste mês
+              <div className="flex items-center justify-center rounded-xl mt-3" style={{ height: 220, background: "rgba(255,255,255,0.03)" }}>
+                <EmptyState icon="🧾" title="Sem despesas neste mês" compact />
               </div>
             ) : (
               <ResponsiveContainer width="100%" height={240}>

@@ -7,6 +7,7 @@ import { useFinance, formatCurrency, getTodayDateInput } from "../context/Financ
 import type { Investment } from "../context/FinanceContext";
 import { Modal } from "./shared/Modal";
 import { ConfirmDeleteDialog } from "./shared/ConfirmDeleteDialog";
+import { EmptyState } from "./shared/EmptyState";
 import { Skeleton } from "./ui/skeleton";
 
 function InvestmentsSkeleton() {
@@ -230,10 +231,7 @@ export function Investments() {
         </div>
 
         {investments.length === 0 ? (
-          <div className="py-20 text-center" style={{ color: "var(--muted-foreground)" }}>
-            <p style={{ fontSize: "2.5rem", marginBottom: "8px" }}>📈</p>
-            <p>Nenhum investimento registrado</p>
-          </div>
+          <EmptyState icon="📈" title="Nenhum investimento registrado" subtitle="Cadastre seu primeiro investimento pra acompanhar a rentabilidade" />
         ) : (
           <>
             {/* Mobile cards */}

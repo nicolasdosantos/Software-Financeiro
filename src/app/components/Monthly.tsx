@@ -8,6 +8,7 @@ import {
 } from "../context/FinanceContext";
 import type { Category } from "../context/FinanceContext";
 import { Skeleton } from "./ui/skeleton";
+import { EmptyState } from "./shared/EmptyState";
 
 function MonthlySkeleton() {
   return (
@@ -203,9 +204,7 @@ export function Monthly() {
               </div>
 
               {selectedTxs.length === 0 ? (
-                <p style={{ color: "var(--muted-foreground)", fontSize: "0.875rem", padding: "8px 0" }}>
-                  Nenhuma movimentação nesse dia.
-                </p>
+                <EmptyState icon="📅" title="Nenhuma movimentação nesse dia" compact />
               ) : (
                 <div className="space-y-1.5">
                   {selectedTxs.sort((a, b) => b.type.localeCompare(a.type)).map(tx => {
@@ -240,7 +239,7 @@ export function Monthly() {
           className="rounded-2xl p-4 sm:p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
           <h3 className="text-white mb-4" style={{ fontWeight: 600 }}>Por Categoria</h3>
           {catSpend.length === 0 ? (
-            <p style={{ color: "var(--muted-foreground)", fontSize: "0.875rem" }}>Sem despesas neste mês</p>
+            <EmptyState icon="🧾" title="Sem despesas neste mês" compact />
           ) : (
             <div className="space-y-3 overflow-y-auto" style={{ maxHeight: "280px" }}>
               {catSpend.map(({ cat, total }) => (
@@ -287,7 +286,7 @@ export function Monthly() {
         className="rounded-2xl p-4 sm:p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
         <h3 className="text-white mb-4" style={{ fontWeight: 600 }}>Transações do Mês</h3>
         {txs.length === 0 ? (
-          <p style={{ color: "var(--muted-foreground)", textAlign: "center", padding: "24px 0" }}>Nenhuma transação neste mês</p>
+          <EmptyState icon="🗓️" title="Nenhuma transação neste mês" compact />
         ) : (
           <div className="space-y-1">
             {txs.sort((a, b) => b.date.localeCompare(a.date)).map(tx => {

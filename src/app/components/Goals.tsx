@@ -7,6 +7,7 @@ import { useFinance, formatCurrency, toLocalDate } from "../context/FinanceConte
 import type { Goal } from "../context/FinanceContext";
 import { Modal } from "./shared/Modal";
 import { ConfirmDeleteDialog } from "./shared/ConfirmDeleteDialog";
+import { EmptyState } from "./shared/EmptyState";
 import { Skeleton } from "./ui/skeleton";
 
 function GoalsSkeleton() {
@@ -249,10 +250,8 @@ export function Goals() {
       </div>
 
       {goals.length === 0 ? (
-        <div className="rounded-2xl py-20 text-center" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
-          <p style={{ fontSize: "3rem", marginBottom: "12px" }}>🎯</p>
-          <p className="text-white mb-2" style={{ fontWeight: 600 }}>Nenhuma meta criada</p>
-          <p style={{ color: "var(--muted-foreground)", fontSize: "0.875rem" }}>Comece criando sua primeira meta financeira</p>
+        <div className="rounded-2xl" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+          <EmptyState icon="🎯" title="Nenhuma meta criada" subtitle="Comece criando sua primeira meta financeira" />
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
