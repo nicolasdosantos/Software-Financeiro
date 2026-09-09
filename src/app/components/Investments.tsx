@@ -7,6 +7,44 @@ import { useFinance, formatCurrency, getTodayDateInput } from "../context/Financ
 import type { Investment } from "../context/FinanceContext";
 import { Modal } from "./shared/Modal";
 import { ConfirmDeleteDialog } from "./shared/ConfirmDeleteDialog";
+import { Skeleton } from "./ui/skeleton";
+
+function InvestmentsSkeleton() {
+  return (
+    <div className="space-y-4 sm:space-y-5">
+      <div className="flex items-center justify-between">
+        <div className="space-y-2">
+          <Skeleton className="h-6 w-40" />
+          <Skeleton className="h-3.5 w-56" />
+        </div>
+        <Skeleton className="h-10 w-44 rounded-xl" />
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
+        {Array.from({ length: 4 }, (_, i) => (
+          <div key={i} className="rounded-2xl p-3 sm:p-4" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+            <Skeleton className="h-3 w-16 mb-2" />
+            <Skeleton className="h-5 w-20" />
+          </div>
+        ))}
+      </div>
+      <div className="rounded-2xl p-4 sm:p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+        <Skeleton className="h-4 w-32 mb-4" />
+        {Array.from({ length: 3 }, (_, i) => (
+          <div key={i} className="flex items-center justify-between py-3">
+            <div className="flex items-center gap-3">
+              <Skeleton className="w-9 h-9 rounded-xl shrink-0" />
+              <div className="space-y-1.5">
+                <Skeleton className="h-3.5 w-32" />
+                <Skeleton className="h-3 w-20" />
+              </div>
+            </div>
+            <Skeleton className="h-4 w-16" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 const TYPES = ["Renda Fixa", "Renda Variável", "FII", "Criptomoeda", "Previdência", "Outro"];
 const TYPE_COLORS: Record<string, string> = {
@@ -103,10 +141,12 @@ function InvestForm({ initial, onAdd, onUpdate, onClose }: InvestFormProps) {
 }
 
 export function Investments() {
-  const { investments, addInvestment, updateInvestment, deleteInvestment } = useFinance();
+  const { investments, addInvestment, updateInvestment, deleteInvestment, loading } = useFinance();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Investment | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+
+  if (loading) return <InvestmentsSkeleton />;
 
   const totalInvested = investments.reduce((s, i) => s + i.invested, 0);
   const totalCurrent = investments.reduce((s, i) => s + i.currentValue, 0);
