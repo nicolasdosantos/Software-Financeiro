@@ -281,7 +281,7 @@ export function Goals() {
                   </div>
                   <div>
                     <p style={{ color: "var(--muted-foreground)", fontSize: "0.7rem" }}>Dias restantes</p>
-                    <p style={{ color: daysLeft < 30 ? "#ef4444" : "var(--foreground)", fontSize: "0.78rem", fontWeight: 500 }}>
+                    <p style={{ color: daysLeft < 30 ? "var(--red)" : "var(--foreground)", fontSize: "0.78rem", fontWeight: 500 }}>
                       {daysLeft > 0 ? `${daysLeft} dias` : "Vencido"}
                     </p>
                   </div>

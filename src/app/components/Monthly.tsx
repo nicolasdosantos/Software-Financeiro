@@ -91,9 +91,9 @@ export function Monthly() {
       {/* Summary */}
       <div className="grid grid-cols-3 gap-2 sm:gap-4">
         {[
-          { label: "Receitas", value: income, color: "#10d9a4" },
-          { label: "Despesas", value: expense, color: "#ef4444" },
-          { label: "Saldo", value: balance, color: balance >= 0 ? "#204bca" : "#ef4444" },
+          { label: "Receitas", value: income, color: "var(--success)" },
+          { label: "Despesas", value: expense, color: "var(--red)" },
+          { label: "Saldo", value: balance, color: balance >= 0 ? "#204bca" : "var(--red)" },
         ].map((item, i) => (
           <motion.div key={item.label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}
             className="rounded-2xl p-3 sm:p-4" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
@@ -130,7 +130,7 @@ export function Monthly() {
                   className="aspect-square flex flex-col items-center justify-center rounded-lg sm:rounded-xl transition-all"
                   style={{
                     background: selectedDay === day ? "var(--secondary)" : isToday ? "var(--primary)" : hasActivity ? `${net >= 0 ? "#10d9a4" : "#ef4444"}15` : "transparent",
-                    color: isToday && selectedDay !== day ? "#fff" : hasActivity ? (net >= 0 ? "#10d9a4" : "#ef4444") : "var(--muted-foreground)",
+                    color: isToday && selectedDay !== day ? "#fff" : hasActivity ? (net >= 0 ? "var(--success)" : "var(--red)") : "var(--muted-foreground)",
                     border: selectedDay === day ? "1px solid var(--primary)" : isToday ? "1px solid transparent" : hasActivity ? `1px solid ${net >= 0 ? "#10d9a450" : "#ef444450"}` : "1px solid transparent",
                     cursor: "pointer",
                   }}>
@@ -156,9 +156,9 @@ export function Monthly() {
                 </div>
                 <div className="grid grid-cols-3 gap-2 min-w-0 sm:min-w-[280px]">
                   {[
-                    { label: "Receitas", value: selectedIncome, color: "#10d9a4" },
-                    { label: "Despesas", value: selectedExpense, color: "#ef4444" },
-                    { label: "Saldo", value: selectedBalance, color: selectedBalance >= 0 ? "#204bca" : "#ef4444" },
+                    { label: "Receitas", value: selectedIncome, color: "var(--success)" },
+                    { label: "Despesas", value: selectedExpense, color: "var(--red)" },
+                    { label: "Saldo", value: selectedBalance, color: selectedBalance >= 0 ? "#204bca" : "var(--red)" },
                   ].map(item => (
                     <div key={item.label} className="rounded-lg px-2 py-1.5" style={{ background: "var(--card)" }}>
                       <p style={{ color: "var(--muted-foreground)", fontSize: "0.62rem" }}>{item.label}</p>
@@ -191,7 +191,7 @@ export function Monthly() {
                             <p style={{ color: "var(--muted-foreground)", fontSize: "0.68rem" }}>{cat?.name || "Sem categoria"}</p>
                           </div>
                         </div>
-                        <span style={{ color: tx.type === "income" ? "#10d9a4" : "#ef4444", fontWeight: 700, fontSize: "0.8rem", fontFamily: "var(--font-mono)" }}>
+                        <span style={{ color: tx.type === "income" ? "var(--success)" : "var(--red)", fontWeight: 700, fontSize: "0.8rem", fontFamily: "var(--font-mono)" }}>
                           {tx.type === "income" ? "+" : "-"}{formatCurrency(tx.amount)}
                         </span>
                       </div>
@@ -273,7 +273,7 @@ export function Monthly() {
                       </p>
                     </div>
                   </div>
-                  <span className="shrink-0 ml-2" style={{ color: tx.type === "income" ? "#10d9a4" : "#ef4444", fontWeight: 600, fontSize: "0.875rem", fontFamily: "var(--font-mono)" }}>
+                  <span className="shrink-0 ml-2" style={{ color: tx.type === "income" ? "var(--success)" : "var(--red)", fontWeight: 600, fontSize: "0.875rem", fontFamily: "var(--font-mono)" }}>
                     {tx.type === "income" ? "+" : "-"}{formatCurrency(tx.amount)}
                   </span>
                 </div>

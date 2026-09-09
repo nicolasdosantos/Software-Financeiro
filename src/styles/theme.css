@@ -27,6 +27,11 @@
   --ring: #204bca;
   --success: #10d9a4;
   --warning: #f59e0b;
+  /* mesmo tom de --destructive, mas com nome direto pra uso semântico
+     geral (despesa, saldo negativo, alerta) — "destructive" é o termo
+     do shadcn especificamente para ações destrutivas (excluir), não
+     serve como nome óbvio pra "isso é vermelho" */
+  --red: #ef4444;
   --chart-1: #204bca;
   --chart-2: #10d9a4;
   --chart-3: #f59e0b;

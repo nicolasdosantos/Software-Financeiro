@@ -56,9 +56,9 @@ export function Planning() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
         {[
           { label: "Orçamento Total", value: formatCurrency(totalLimit), icon: "💰", color: "#204bca" },
-          { label: "Total Gasto", value: formatCurrency(totalSpent), icon: "📊", color: totalSpent > totalLimit ? "#ef4444" : "#10d9a4" },
-          { label: "Disponível", value: formatCurrency(Math.max(0, totalLimit - totalSpent)), icon: "✅", color: "#10d9a4" },
-          { label: "Alertas", value: `${overBudget} acima · ${nearLimit} perto`, icon: "⚠️", color: "#f59e0b" },
+          { label: "Total Gasto", value: formatCurrency(totalSpent), icon: "📊", color: totalSpent > totalLimit ? "var(--red)" : "var(--success)" },
+          { label: "Disponível", value: formatCurrency(Math.max(0, totalLimit - totalSpent)), icon: "✅", color: "var(--success)" },
+          { label: "Alertas", value: `${overBudget} acima · ${nearLimit} perto`, icon: "⚠️", color: "var(--warning)" },
         ].map((card, i) => (
           <motion.div key={card.label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
             className="rounded-2xl p-3 sm:p-4" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
@@ -85,7 +85,7 @@ export function Planning() {
         <div className="w-full h-3 rounded-full overflow-hidden" style={{ background: "var(--secondary)" }}>
           <motion.div initial={{ width: 0 }} animate={{ width: `${totalLimit > 0 ? Math.min(100, (totalSpent / totalLimit) * 100) : 0}%` }}
             transition={{ duration: 1, ease: "easeOut" }} className="h-full rounded-full"
-            style={{ background: totalSpent > totalLimit ? "#ef4444" : totalSpent > totalLimit * 0.8 ? "#f59e0b" : "linear-gradient(90deg, #204bca, #7b9cff)" }} />
+            style={{ background: totalSpent > totalLimit ? "var(--red)" : totalSpent > totalLimit * 0.8 ? "var(--warning)" : "linear-gradient(90deg, #204bca, #7b9cff)" }} />
         </div>
         <div className="flex justify-between mt-2">
           <span style={{ color: "var(--muted-foreground)", fontSize: "0.75rem" }}>
@@ -114,9 +114,9 @@ export function Planning() {
                   <div className="flex items-center gap-2">
                     <span style={{ fontSize: "15px" }}>{cat.icon}</span>
                     <span className="text-white" style={{ fontSize: "0.875rem", fontWeight: 500 }}>{cat.name}</span>
-                    {over && <AlertTriangle size={13} style={{ color: "#ef4444" }} />}
-                    {near && !over && <AlertTriangle size={13} style={{ color: "#f59e0b" }} />}
-                    {limit > 0 && !over && !near && <CheckCircle size={13} style={{ color: "#10d9a4" }} />}
+                    {over && <AlertTriangle size={13} style={{ color: "var(--red)" }} />}
+                    {near && !over && <AlertTriangle size={13} style={{ color: "var(--warning)" }} />}
+                    {limit > 0 && !over && !near && <CheckCircle size={13} style={{ color: "var(--success)" }} />}
                   </div>
                   {isEditing ? (
                     <div className="flex items-center gap-2">
@@ -124,7 +124,7 @@ export function Planning() {
                         placeholder="Limite R$"
                         style={{ background: "var(--input-background)", border: "1px solid var(--border)", borderRadius: "8px", color: "var(--foreground)", padding: "4px 10px", fontSize: "0.8rem", outline: "none", width: "110px" }}
                         onKeyDown={e => { if (e.key === "Enter") saveLimit(cat.id); if (e.key === "Escape") setEditingCat(null); }} />
-                      <button onClick={() => saveLimit(cat.id)} disabled={savingLimit} aria-label={`Salvar limite de "${cat.name}"`} style={{ color: "#10d9a4", opacity: savingLimit ? 0.6 : 1 }}><CheckCircle size={16} /></button>
+                      <button onClick={() => saveLimit(cat.id)} disabled={savingLimit} aria-label={`Salvar limite de "${cat.name}"`} style={{ color: "var(--success)", opacity: savingLimit ? 0.6 : 1 }}><CheckCircle size={16} /></button>
                       <button onClick={() => setEditingCat(null)} disabled={savingLimit} aria-label="Cancelar edição do limite" style={{ color: "var(--muted-foreground)" }}><X size={16} /></button>
                     </div>
                   ) : (
@@ -138,13 +138,13 @@ export function Planning() {
                 <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
                   {limit > 0 && (
                     <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.8 }}
-                      className="h-full rounded-full" style={{ background: over ? "#ef4444" : near ? "#f59e0b" : cat.color }} />
+                      className="h-full rounded-full" style={{ background: over ? "var(--red)" : near ? "var(--warning)" : cat.color }} />
                   )}
                 </div>
                 <div className="flex justify-between mt-1.5">
                   <span style={{ color: "var(--muted-foreground)", fontSize: "0.72rem" }}>Gasto: {formatCurrency(spend)}</span>
                   {limit > 0 && (
-                    <span style={{ fontSize: "0.72rem", fontWeight: 500, color: over ? "#ef4444" : near ? "#f59e0b" : "#10d9a4" }}>
+                    <span style={{ fontSize: "0.72rem", fontWeight: 500, color: over ? "var(--red)" : near ? "var(--warning)" : "var(--success)" }}>
                       {over ? `Excedeu em ${formatCurrency(spend - limit)}` : `Restam ${formatCurrency(limit - spend)}`}
                     </span>
                   )}

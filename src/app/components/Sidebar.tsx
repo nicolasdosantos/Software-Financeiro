@@ -197,7 +197,7 @@ export function Sidebar({
               {userInitial}
             </div>
             <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full"
-              style={{ background: "#10d9a4", border: "2px solid var(--sidebar)" }} />
+              style={{ background: "var(--success)", border: "2px solid var(--sidebar)" }} />
           </div>
           {showLabels && (
             <div className="flex-1 overflow-hidden min-w-0">

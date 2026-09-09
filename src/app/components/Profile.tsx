@@ -197,7 +197,7 @@ export function Profile() {
             />
             <motion.div
               className="absolute rounded-full"
-              style={{ width: 160, height: 160, top: -60, right: "8%", background: "#10d9a4", opacity: 0.2, filter: "blur(24px)" }}
+              style={{ width: 160, height: 160, top: -60, right: "8%", background: "var(--success)", opacity: 0.2, filter: "blur(24px)" }}
               animate={{ x: [0, -25, 0], y: [0, 14, 0] }}
               transition={{ duration: 11, repeat: Infinity, ease: "easeInOut", delay: 1 }}
             />
@@ -223,7 +223,7 @@ export function Profile() {
               </div>
               <motion.div
                 className="absolute -bottom-1 -right-1 w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center"
-                style={{ background: "#10d9a4", border: "2px solid var(--card)" }}
+                style={{ background: "var(--success)", border: "2px solid var(--card)" }}
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: "spring", stiffness: 300, damping: 14, delay: 0.4 }}
@@ -320,7 +320,7 @@ export function Profile() {
           style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
           <div className="flex items-center gap-2.5 mb-4">
             <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: "rgba(245,158,11,0.14)" }}>
-              <Bell size={15} style={{ color: "#f59e0b" }} />
+              <Bell size={15} style={{ color: "var(--warning)" }} />
             </div>
             <h3 className="text-white" style={{ fontWeight: 600 }}>Notificações</h3>
           </div>
@@ -365,7 +365,7 @@ export function Profile() {
           style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
           <div className="flex items-center gap-2.5 mb-4">
             <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: "rgba(239,68,68,0.14)" }}>
-              <Shield size={15} style={{ color: "#ef4444" }} />
+              <Shield size={15} style={{ color: "var(--red)" }} />
             </div>
             <h3 className="text-white" style={{ fontWeight: 600 }}>Segurança</h3>
           </div>
@@ -400,7 +400,7 @@ export function Profile() {
             whileHover={{ scale: loading ? 1 : 1.01 }}
             className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-white font-medium w-full"
             style={{
-              background: saved ? "#10d9a4" : "var(--primary)",
+              background: saved ? "var(--success)" : "var(--primary)",
               opacity: loading ? 0.7 : 1,
               transition: "background 0.3s ease",
             }}

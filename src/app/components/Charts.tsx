@@ -145,8 +145,8 @@ export function Charts() {
       {/* CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[
-          { label: "Receitas", value: curr.income, color: "#10d9a4", prev: prevData.income },
-          { label: "Despesas", value: curr.expense, color: "#ef4444", prev: prevData.expense },
+          { label: "Receitas", value: curr.income, color: "var(--success)", prev: prevData.income },
+          { label: "Despesas", value: curr.expense, color: "var(--red)", prev: prevData.expense },
           { label: "Saldo", value: curr.balance, color: "#204bca", prev: prevData.balance }
         ].map((c, i) => {
           const change =
@@ -174,11 +174,11 @@ export function Charts() {
 
               <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                 {up ? (
-                  <TrendingUp size={14} color="#10d9a4" />
+                  <TrendingUp size={14} color="var(--success)" />
                 ) : (
-                  <TrendingDown size={14} color="#ef4444" />
+                  <TrendingDown size={14} color="var(--red)" />
                 )}
-                <span style={{ fontSize: 12, color: up ? "#10d9a4" : "#ef4444" }}>
+                <span style={{ fontSize: 12, color: up ? "var(--success)" : "var(--red)" }}>
                   {change}% vs mês anterior
                 </span>
               </div>
@@ -198,7 +198,7 @@ export function Charts() {
             <YAxis stroke={MUTED_TEXT} />
             <Tooltip {...tooltipStyle} />
             <Bar dataKey="receitas" fill="#7bc779" />
-            <Bar dataKey="despesas" fill="#ef4444" />
+            <Bar dataKey="despesas" fill="var(--red)" />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -307,7 +307,7 @@ export function Charts() {
                     <div key={tx.id} className="rounded-lg px-3 py-2" style={{ background: PANEL_BACKGROUND, border: "1px solid rgba(255,255,255,0.06)" }}>
                       <div className="flex items-center justify-between gap-3">
                         <p className="text-white truncate" style={{ fontSize: "0.82rem", fontWeight: 600 }}>{tx.description}</p>
-                        <span className="shrink-0" style={{ color: "#ef4444", fontWeight: 700, fontSize: "0.8rem", fontFamily: "var(--font-mono)" }}>
+                        <span className="shrink-0" style={{ color: "var(--red)", fontWeight: 700, fontSize: "0.8rem", fontFamily: "var(--font-mono)" }}>
                           -{formatCurrency(tx.amount)}
                         </span>
                       </div>
@@ -338,7 +338,7 @@ export function Charts() {
             <YAxis stroke={MUTED_TEXT} />
             <Tooltip {...tooltipStyle} />
             <Line type="monotone" dataKey="saldo" stroke="#204bca" />
-            <Line type="monotone" dataKey="acumulado" stroke="#10d9a4" />
+            <Line type="monotone" dataKey="acumulado" stroke="var(--success)" />
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -346,7 +346,7 @@ export function Charts() {
       {/* INSIGHTS */}
       <div style={{ background: PANEL_BACKGROUND, padding: 16, borderRadius: 12 }}>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <Lightbulb color="#f59e0b" />
+          <Lightbulb color="var(--warning)" />
           <h3 style={{ color: "#fff" }}>Insights</h3>
         </div>
 
