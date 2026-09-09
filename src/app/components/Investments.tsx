@@ -139,8 +139,8 @@ export function Investments() {
         {[
           { label: "Total Investido", value: formatCurrency(totalInvested), color: "#204bca", icon: "💼" },
           { label: "Valor Atual", value: formatCurrency(totalCurrent), color: "#e8eeff", icon: "📊" },
-          { label: "Rentabilidade", value: `${returnPct >= 0 ? "+" : ""}${returnPct.toFixed(2)}%`, color: returnPct >= 0 ? "#10d9a4" : "#ef4444", icon: returnPct >= 0 ? "📈" : "📉" },
-          { label: "Lucro/Prejuízo", value: formatCurrency(totalReturn), color: totalReturn >= 0 ? "#10d9a4" : "#ef4444", icon: totalReturn >= 0 ? "✅" : "⚠️" },
+          { label: "Rentabilidade", value: `${returnPct >= 0 ? "+" : ""}${returnPct.toFixed(2)}%`, color: returnPct >= 0 ? "var(--success)" : "var(--red)", icon: returnPct >= 0 ? "📈" : "📉" },
+          { label: "Lucro/Prejuízo", value: formatCurrency(totalReturn), color: totalReturn >= 0 ? "var(--success)" : "var(--red)", icon: totalReturn >= 0 ? "✅" : "⚠️" },
         ].map((card, i) => (
           <motion.div key={card.label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
             className="rounded-2xl p-3 sm:p-4" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
@@ -172,8 +172,8 @@ export function Investments() {
                     {formatCurrency(data.current)}
                   </p>
                   <div className="flex items-center gap-1 mt-1">
-                    {up ? <TrendingUp size={11} style={{ color: "#10d9a4" }} /> : <TrendingDown size={11} style={{ color: "#ef4444" }} />}
-                    <span style={{ fontSize: "0.7rem", color: up ? "#10d9a4" : "#ef4444", fontWeight: 600 }}>{ret}%</span>
+                    {up ? <TrendingUp size={11} style={{ color: "var(--success)" }} /> : <TrendingDown size={11} style={{ color: "var(--red)" }} />}
+                    <span style={{ fontSize: "0.7rem", color: up ? "var(--success)" : "var(--red)", fontWeight: 600 }}>{ret}%</span>
                   </div>
                 </div>
               );
@@ -214,7 +214,7 @@ export function Investments() {
                       </div>
                       <div className="flex gap-1">
                         <button onClick={() => setEditing(inv)} aria-label={`Editar investimento "${inv.name}"`} className="p-1.5 rounded-lg" style={{ color: "var(--muted-foreground)", background: "var(--secondary)" }}><Edit2 size={13} /></button>
-                        <button onClick={() => setDeleting(inv.id)} aria-label={`Excluir investimento "${inv.name}"`} className="p-1.5 rounded-lg" style={{ color: "#ef4444", background: "rgba(239,68,68,0.1)" }}><Trash2 size={13} /></button>
+                        <button onClick={() => setDeleting(inv.id)} aria-label={`Excluir investimento "${inv.name}"`} className="p-1.5 rounded-lg" style={{ color: "var(--destructive)", background: "rgba(239,68,68,0.1)" }}><Trash2 size={13} /></button>
                       </div>
                     </div>
                     <div className="grid grid-cols-3 gap-2">
@@ -229,8 +229,8 @@ export function Investments() {
                       <div>
                         <p style={{ color: "var(--muted-foreground)", fontSize: "0.68rem" }}>Rentab.</p>
                         <div className="flex items-center gap-1">
-                          {ret >= 0 ? <TrendingUp size={11} style={{ color: "#10d9a4" }} /> : <TrendingDown size={11} style={{ color: "#ef4444" }} />}
-                          <span style={{ color: ret >= 0 ? "#10d9a4" : "#ef4444", fontWeight: 600, fontSize: "0.8rem" }}>
+                          {ret >= 0 ? <TrendingUp size={11} style={{ color: "var(--success)" }} /> : <TrendingDown size={11} style={{ color: "var(--red)" }} />}
+                          <span style={{ color: ret >= 0 ? "var(--success)" : "var(--red)", fontWeight: 600, fontSize: "0.8rem" }}>
                             {retPct >= 0 ? "+" : ""}{retPct.toFixed(2)}%
                           </span>
                         </div>
@@ -272,8 +272,8 @@ export function Investments() {
                         <td style={{ padding: "12px 16px", fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: "0.85rem" }} className="text-white">{formatCurrency(inv.currentValue)}</td>
                         <td style={{ padding: "12px 16px" }}>
                           <div className="flex items-center gap-1">
-                            {ret >= 0 ? <TrendingUp size={12} style={{ color: "#10d9a4" }} /> : <TrendingDown size={12} style={{ color: "#ef4444" }} />}
-                            <span style={{ color: ret >= 0 ? "#10d9a4" : "#ef4444", fontWeight: 600, fontSize: "0.85rem" }}>{retPct >= 0 ? "+" : ""}{retPct.toFixed(2)}%</span>
+                            {ret >= 0 ? <TrendingUp size={12} style={{ color: "var(--success)" }} /> : <TrendingDown size={12} style={{ color: "var(--red)" }} />}
+                            <span style={{ color: ret >= 0 ? "var(--success)" : "var(--red)", fontWeight: 600, fontSize: "0.85rem" }}>{retPct >= 0 ? "+" : ""}{retPct.toFixed(2)}%</span>
                           </div>
                         </td>
                         <td style={{ padding: "12px 16px" }}>

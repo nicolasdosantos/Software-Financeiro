@@ -66,7 +66,7 @@ function TransactionForm({ initial, onAdd, onUpdate, onClose }: TransactionFormP
             className="flex-1 py-2.5 text-sm font-medium transition-colors"
             style={{
               background: form.type === t ? (t === "income" ? "rgba(16,217,164,0.15)" : "rgba(239,68,68,0.15)") : "transparent",
-              color: form.type === t ? (t === "income" ? "#10d9a4" : "#ef4444") : "var(--muted-foreground)",
+              color: form.type === t ? (t === "income" ? "var(--success)" : "var(--red)") : "var(--muted-foreground)",
             }}>
             {t === "income" ? "Receita" : "Despesa"}
           </button>
@@ -224,14 +224,14 @@ export function Transactions() {
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-2 shrink-0">
-                      <span style={{ color: tx.type === "income" ? "#10d9a4" : "#ef4444", fontWeight: 600, fontSize: "0.875rem", fontFamily: "var(--font-mono)" }}>
+                      <span style={{ color: tx.type === "income" ? "var(--success)" : "var(--red)", fontWeight: 600, fontSize: "0.875rem", fontFamily: "var(--font-mono)" }}>
                         {tx.type === "income" ? "+" : "-"}{formatCurrency(tx.amount)}
                       </span>
                       <div className="flex gap-1">
                         <button onClick={() => setEditingTx(tx)} aria-label={`Editar transação "${tx.description}"`} className="p-1.5 rounded-lg" style={{ color: "var(--muted-foreground)", background: "var(--secondary)" }}>
                           <Edit2 size={13} />
                         </button>
-                        <button onClick={() => setDeletingId(tx.id)} aria-label={`Excluir transação "${tx.description}"`} className="p-1.5 rounded-lg" style={{ color: "#ef4444", background: "rgba(239,68,68,0.1)" }}>
+                        <button onClick={() => setDeletingId(tx.id)} aria-label={`Excluir transação "${tx.description}"`} className="p-1.5 rounded-lg" style={{ color: "var(--destructive)", background: "rgba(239,68,68,0.1)" }}>
                           <Trash2 size={13} />
                         </button>
                       </div>
@@ -282,12 +282,12 @@ export function Transactions() {
                       <td style={{ padding: "12px 16px" }}>
                         <span className="px-2 py-1 rounded-full text-xs font-medium" style={{
                           background: tx.type === "income" ? "rgba(16,217,164,0.12)" : "rgba(239,68,68,0.12)",
-                          color: tx.type === "income" ? "#10d9a4" : "#ef4444"
+                          color: tx.type === "income" ? "var(--success)" : "var(--red)"
                         }}>
                           {tx.type === "income" ? "Receita" : "Despesa"}
                         </span>
                       </td>
-                      <td style={{ padding: "12px 16px", fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: "0.875rem", color: tx.type === "income" ? "#10d9a4" : "#ef4444", whiteSpace: "nowrap" }}>
+                      <td style={{ padding: "12px 16px", fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: "0.875rem", color: tx.type === "income" ? "var(--success)" : "var(--red)", whiteSpace: "nowrap" }}>
                         {tx.type === "income" ? "+" : "-"}{formatCurrency(tx.amount)}
                       </td>
                       <td style={{ padding: "12px 16px" }}>

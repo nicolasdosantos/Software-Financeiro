@@ -136,7 +136,7 @@ export default function MainLayout() {
               <div
                 className="w-2 h-2 rounded-full"
                 style={{
-                  background: "#10d9a4",
+                  background: "var(--success)",
                 }}
               />
 

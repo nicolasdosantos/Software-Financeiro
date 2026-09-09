@@ -442,7 +442,7 @@ export function Reports() {
                 <button onClick={() => generate(report.id)} disabled={isGenerating || transactions.length === 0}
                   aria-label={isGenerating ? `Gerando ${report.label}...` : isDone ? `${report.label} baixado` : `Baixar ${report.label}`}
                   className="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-all disabled:opacity-40"
-                  style={{ background: isDone ? "#10d9a4" : `${report.color}20`, color: isDone ? "#fff" : report.color, border: `1px solid ${isDone ? "#10d9a4" : report.color + "40"}` }}>
+                  style={{ background: isDone ? "var(--success)" : `${report.color}20`, color: isDone ? "#fff" : report.color, border: `1px solid ${isDone ? "var(--success)" : report.color + "40"}` }}>
                   {isGenerating
                     ? <div className="w-4 h-4 rounded-full border-2 border-current border-t-transparent" style={{ animation: "spin 0.8s linear infinite" }} />
                     : isDone ? <CheckCircle size={16} /> : <Download size={16} />}
@@ -468,14 +468,14 @@ export function Reports() {
                 <div className="min-w-0">
                   <p className="text-white" style={{ fontWeight: 500, fontSize: "0.875rem" }}>{getMonthName(m)}</p>
                   <p style={{ color: "var(--muted-foreground)", fontSize: "0.72rem" }}>{stats.count} transações</p>
-                  <p style={{ color: stats.balance >= 0 ? "#10d9a4" : "#ef4444", fontFamily: "var(--font-mono)", fontSize: "0.85rem", fontWeight: 600, marginTop: "2px" }}>
+                  <p style={{ color: stats.balance >= 0 ? "var(--success)" : "var(--red)", fontFamily: "var(--font-mono)", fontSize: "0.85rem", fontWeight: 600, marginTop: "2px" }}>
                     {stats.balance >= 0 ? "+" : ""}{formatCurrency(stats.balance)}
                   </p>
                 </div>
                 <button onClick={() => generate(monthId)}
                   aria-label={`${done.includes(monthId) ? "Baixado" : "Exportar"} ${getMonthName(m)}`}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm shrink-0"
-                  style={{ background: done.includes(monthId) ? "rgba(16,217,164,0.15)" : "rgba(32,75,202,0.15)", color: done.includes(monthId) ? "#10d9a4" : "var(--primary)" }}>
+                  style={{ background: done.includes(monthId) ? "rgba(16,217,164,0.15)" : "rgba(32,75,202,0.15)", color: done.includes(monthId) ? "var(--success)" : "var(--primary)" }}>
                   {generating === monthId
                     ? <div className="w-3 h-3 rounded-full border-2 border-current border-t-transparent" style={{ animation: "spin 0.8s linear infinite" }} />
                     : done.includes(monthId) ? <CheckCircle size={13} /> : <Download size={13} />}
@@ -505,15 +505,15 @@ export function Reports() {
                       <span className="text-white" style={{ fontWeight: 500, fontSize: "0.875rem" }}>{getMonthName(m)}</span>
                     </td>
                     <td style={{ padding: "12px 16px", color: "var(--muted-foreground)", fontSize: "0.8rem" }}>{stats.count}</td>
-                    <td style={{ padding: "12px 16px", color: "#10d9a4", fontFamily: "var(--font-mono)", fontSize: "0.85rem", fontWeight: 500 }}>+{formatCurrency(stats.income)}</td>
-                    <td style={{ padding: "12px 16px", color: "#ef4444", fontFamily: "var(--font-mono)", fontSize: "0.85rem", fontWeight: 500 }}>-{formatCurrency(stats.expense)}</td>
-                    <td style={{ padding: "12px 16px", fontFamily: "var(--font-mono)", fontSize: "0.85rem", fontWeight: 600, color: stats.balance >= 0 ? "#10d9a4" : "#ef4444" }}>
+                    <td style={{ padding: "12px 16px", color: "var(--success)", fontFamily: "var(--font-mono)", fontSize: "0.85rem", fontWeight: 500 }}>+{formatCurrency(stats.income)}</td>
+                    <td style={{ padding: "12px 16px", color: "var(--red)", fontFamily: "var(--font-mono)", fontSize: "0.85rem", fontWeight: 500 }}>-{formatCurrency(stats.expense)}</td>
+                    <td style={{ padding: "12px 16px", fontFamily: "var(--font-mono)", fontSize: "0.85rem", fontWeight: 600, color: stats.balance >= 0 ? "var(--success)" : "var(--red)" }}>
                       {stats.balance >= 0 ? "+" : ""}{formatCurrency(stats.balance)}
                     </td>
                     <td style={{ padding: "12px 16px" }}>
                       <button onClick={() => generate(monthId)}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm"
-                        style={{ background: done.includes(monthId) ? "rgba(16,217,164,0.15)" : "rgba(32,75,202,0.15)", color: done.includes(monthId) ? "#10d9a4" : "var(--primary)" }}>
+                        style={{ background: done.includes(monthId) ? "rgba(16,217,164,0.15)" : "rgba(32,75,202,0.15)", color: done.includes(monthId) ? "var(--success)" : "var(--primary)" }}>
                         {generating === monthId
                           ? <div className="w-3 h-3 rounded-full border-2 border-current border-t-transparent" style={{ animation: "spin 0.8s linear infinite" }} />
                           : done.includes(monthId) ? <CheckCircle size={13} /> : <Download size={13} />}

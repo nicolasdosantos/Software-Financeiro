@@ -74,8 +74,8 @@ export function Dashboard() {
 
   const statCards = [
     { title: "Saldo Total", value: savings, icon: Wallet, color: "#204bca", bg: "rgba(32,75,202,0.12)", change: `${savingsChange >= 0 ? "+" : ""}${savingsChange.toFixed(1)}%`, up: savingsCurrMonth >= savingsPrevMonth },
-    { title: `Receitas (${getShortMonthName(currentMonth)})`, value: curr.income, icon: TrendingUp, color: "#10d9a4", bg: "rgba(16,217,164,0.12)", change: `${((curr.income - prev.income) / Math.max(prev.income, 1) * 100).toFixed(1)}%`, up: curr.income >= prev.income },
-    { title: `Despesas (${getShortMonthName(currentMonth)})`, value: curr.expense, icon: TrendingDown, color: "#ef4444", bg: "rgba(239,68,68,0.12)", change: `${((curr.expense - prev.expense) / Math.max(prev.expense, 1) * 100).toFixed(1)}%`, up: curr.expense < prev.expense },
+    { title: `Receitas (${getShortMonthName(currentMonth)})`, value: curr.income, icon: TrendingUp, color: "var(--success)", bg: "rgba(16,217,164,0.12)", change: `${((curr.income - prev.income) / Math.max(prev.income, 1) * 100).toFixed(1)}%`, up: curr.income >= prev.income },
+    { title: `Despesas (${getShortMonthName(currentMonth)})`, value: curr.expense, icon: TrendingDown, color: "var(--red)", bg: "rgba(239,68,68,0.12)", change: `${((curr.expense - prev.expense) / Math.max(prev.expense, 1) * 100).toFixed(1)}%`, up: curr.expense < prev.expense },
     { title: `Economia (${getShortMonthName(currentMonth)})`, value: curr.balance, icon: PiggyBank, color: "#8b5cf6", bg: "rgba(139,92,246,0.12)", change: `${balanceChange >= 0 ? "+" : ""}${balanceChange.toFixed(1)}%`, up: curr.balance >= prev.balance },
   ];
 
@@ -180,7 +180,7 @@ export function Dashboard() {
                   <Icon size={18} style={{ color: card.color }} />
                 </motion.div>
                 <span className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full"
-                  style={{ background: card.up ? "rgba(16,217,164,0.1)" : "rgba(239,68,68,0.1)", color: card.up ? "#10d9a4" : "#ef4444" }}>
+                  style={{ background: card.up ? "rgba(16,217,164,0.1)" : "rgba(239,68,68,0.1)", color: card.up ? "var(--success)" : "var(--red)" }}>
                   {card.up ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
                   {card.change}
                 </span>
@@ -214,8 +214,8 @@ export function Dashboard() {
                   <stop offset="100%" stopColor="#7bc779" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="expGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#ef4444" stopOpacity={0.2} />
-                  <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                  <stop offset="5%" stopColor="var(--red)" stopOpacity={0.2} />
+                  <stop offset="95%" stopColor="var(--red)" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
@@ -224,7 +224,7 @@ export function Dashboard() {
                 tickFormatter={v => `R$${(v / 1000).toFixed(0)}k`} />
               <Tooltip {...tooltipStyle} formatter={(val: number) => [formatCurrency(val), ""]} />
               <Area type="monotone" dataKey="receitas" name="Receitas" stroke="#45a342" strokeWidth={2} fill="url(#incGrad)" dot={{ fill: "#6ac067", r: 3, strokeWidth: 0 }} />
-              <Area type="monotone" dataKey="despesas" name="Despesas" stroke="#ef4444" strokeWidth={2} fill="url(#expGrad)" dot={{ fill: "#ef4444", r: 3, strokeWidth: 0 }} />
+              <Area type="monotone" dataKey="despesas" name="Despesas" stroke="var(--red)" strokeWidth={2} fill="url(#expGrad)" dot={{ fill: "var(--red)", r: 3, strokeWidth: 0 }} />
             </AreaChart>
           </ResponsiveContainer>
         </motion.div>
@@ -361,7 +361,7 @@ export function Dashboard() {
                   </div>
                 </div>
                 <span className="shrink-0 ml-3"
-                  style={{ color: tx.type === "income" ? "#10d9a4" : "#ef4444", fontWeight: 600, fontSize: "0.875rem", fontFamily: "var(--font-mono)" }}>
+                  style={{ color: tx.type === "income" ? "var(--success)" : "var(--red)", fontWeight: 600, fontSize: "0.875rem", fontFamily: "var(--font-mono)" }}>
                   {tx.type === "income" ? "+" : "-"}{hideValues ? "••••" : formatCurrency(tx.amount)}
                 </span>
               </motion.div>
