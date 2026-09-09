@@ -7,11 +7,11 @@ import {
 import type { PieSectorDataItem } from "recharts/types/polar/Pie";
 import {
   TrendingUp, TrendingDown, Wallet, PiggyBank, ArrowUpRight, ArrowDownRight, Eye, EyeOff, Sparkles,
-  Settings2, GripVertical, ChevronUp, ChevronDown,
+  Settings2, GripVertical, ChevronUp, ChevronDown, Target, CircleDollarSign,
 } from "lucide-react";
 import {
   useFinance, formatCurrency, getMonthName, getMonthTotals, getShortMonthName, toLocalDate,
-  getDistinctMonths, getAccumulatedBalance, sumExpensesByCategory,
+  getDistinctMonths, getAccumulatedBalance, sumExpensesByCategory, getCategorySpend,
 } from "../context/FinanceContext";
 import { useUser } from "../../hooks/useUser";
 import { supabase } from "../../lib/supabase";
@@ -23,7 +23,9 @@ import {
 import { Skeleton } from "./ui/skeleton";
 import { EmptyState } from "./shared/EmptyState";
 import { Modal } from "./shared/Modal";
-import { DASHBOARD_WIDGETS, DEFAULT_DASHBOARD_LAYOUT, normalizeDashboardLayout } from "../../lib/dashboardWidgets";
+import {
+  DASHBOARD_WIDGETS, DEFAULT_DASHBOARD_LAYOUT, RECENT_COUNT_OPTIONS, normalizeDashboardLayout,
+} from "../../lib/dashboardWidgets";
 import type { DashboardLayout } from "../../lib/dashboardWidgets";
 
 function DashboardSkeleton() {
@@ -112,7 +114,7 @@ export function Dashboard() {
   const [layout, setLayout] = useState<DashboardLayout>(DEFAULT_DASHBOARD_LAYOUT);
   const [showCustomize, setShowCustomize] = useState(false);
 
-  const { transactions, categories, currentMonth, loading } = useFinance();
+  const { transactions, categories, goals, budgets, currentMonth, loading } = useFinance();
 
   const user = useUser();
 
@@ -147,6 +149,10 @@ export function Dashboard() {
     const isHidden = layout.hidden.includes(id);
     const nextHidden = isHidden ? layout.hidden.filter((h) => h !== id) : [...layout.hidden, id];
     saveLayout({ ...layout, hidden: nextHidden });
+  }
+
+  function setRecentCount(recentCount: number) {
+    saveLayout({ ...layout, settings: { ...layout.settings, recentCount } });
   }
 
   const months = getDistinctMonths(transactions);
@@ -205,7 +211,21 @@ export function Dashboard() {
   const pieTotal = pieData.reduce((s, d) => s + d.value, 0);
   const activePieSlice = activePieIndex >= 0 ? pieData[activePieIndex] : null;
 
-  const recentTxs = [...transactions].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6);
+  const recentTxs = [...transactions].sort((a, b) => b.date.localeCompare(a.date)).slice(0, layout.settings.recentCount);
+
+  // Metas mais próximas do prazo primeiro — é o que mais faz sentido "chamar
+  // atenção" num resumo rápido do dashboard.
+  const topGoals = [...goals]
+    .sort((a, b) => a.deadline.localeCompare(b.deadline))
+    .slice(0, 3);
+
+  // Só considera categorias que de fato têm um limite definido em
+  // Planejamento — orçamento "total" aqui não é a soma de todas as
+  // despesas, é a soma dos limites que o usuário configurou.
+  const totalBudgetLimit = budgets.reduce((s, b) => s + b.limit, 0);
+  const totalBudgetSpent = budgets.reduce((s, b) => s + getCategorySpend(transactions, b.categoryId, currentMonth), 0);
+  const budgetPct = totalBudgetLimit > 0 ? Math.min(100, (totalBudgetSpent / totalBudgetLimit) * 100) : 0;
+  const isOverBudget = totalBudgetLimit > 0 && totalBudgetSpent > totalBudgetLimit;
 
   const tooltipStyle = {
     contentStyle: { background: "#141828", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "12px", color: "#ffffff" },
@@ -278,28 +298,47 @@ export function Dashboard() {
             if (!widget) return null;
             const isHidden = layout.hidden.includes(id);
             return (
-              <div key={id} className="flex items-center gap-2 p-2.5 rounded-xl"
-                style={{ background: "var(--secondary)", opacity: isHidden ? 0.55 : 1 }}>
-                <GripVertical size={15} style={{ color: "var(--muted-foreground)" }} className="shrink-0" />
-                <span className="flex-1 min-w-0 truncate text-sm" style={{ color: "var(--foreground)" }}>{widget.label}</span>
-                <div className="flex items-center gap-1 shrink-0">
-                  <button type="button" onClick={() => moveWidget(id, -1)} disabled={i === 0}
-                    aria-label={`Mover "${widget.label}" para cima`}
-                    className="p-1.5 rounded-lg disabled:opacity-30" style={{ color: "var(--muted-foreground)" }}>
-                    <ChevronUp size={15} />
-                  </button>
-                  <button type="button" onClick={() => moveWidget(id, 1)} disabled={i === layout.order.length - 1}
-                    aria-label={`Mover "${widget.label}" para baixo`}
-                    className="p-1.5 rounded-lg disabled:opacity-30" style={{ color: "var(--muted-foreground)" }}>
-                    <ChevronDown size={15} />
-                  </button>
-                  <button type="button" onClick={() => toggleWidgetHidden(id)}
-                    role="switch" aria-checked={!isHidden}
-                    aria-label={isHidden ? `Mostrar "${widget.label}"` : `Ocultar "${widget.label}"`}
-                    className="p-1.5 rounded-lg" style={{ color: isHidden ? "var(--muted-foreground)" : "var(--primary)" }}>
-                    {isHidden ? <EyeOff size={15} /> : <Eye size={15} />}
-                  </button>
+              <div key={id} className="rounded-xl" style={{ background: "var(--secondary)", opacity: isHidden ? 0.55 : 1 }}>
+                <div className="flex items-center gap-2 p-2.5">
+                  <GripVertical size={15} style={{ color: "var(--muted-foreground)" }} className="shrink-0" />
+                  <span className="flex-1 min-w-0 truncate text-sm" style={{ color: "var(--foreground)" }}>{widget.label}</span>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button type="button" onClick={() => moveWidget(id, -1)} disabled={i === 0}
+                      aria-label={`Mover "${widget.label}" para cima`}
+                      className="p-1.5 rounded-lg disabled:opacity-30" style={{ color: "var(--muted-foreground)" }}>
+                      <ChevronUp size={15} />
+                    </button>
+                    <button type="button" onClick={() => moveWidget(id, 1)} disabled={i === layout.order.length - 1}
+                      aria-label={`Mover "${widget.label}" para baixo`}
+                      className="p-1.5 rounded-lg disabled:opacity-30" style={{ color: "var(--muted-foreground)" }}>
+                      <ChevronDown size={15} />
+                    </button>
+                    <button type="button" onClick={() => toggleWidgetHidden(id)}
+                      role="switch" aria-checked={!isHidden}
+                      aria-label={isHidden ? `Mostrar "${widget.label}"` : `Ocultar "${widget.label}"`}
+                      className="p-1.5 rounded-lg" style={{ color: isHidden ? "var(--muted-foreground)" : "var(--primary)" }}>
+                      {isHidden ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                  </div>
                 </div>
+                {id === "recent" && !isHidden && (
+                  <div className="flex items-center justify-between gap-2 px-2.5 pb-2.5 pl-9">
+                    <span style={{ color: "var(--muted-foreground)", fontSize: "0.75rem" }}>Quantas exibir</span>
+                    <div className="flex gap-1">
+                      {RECENT_COUNT_OPTIONS.map((count) => (
+                        <button key={count} type="button" onClick={() => setRecentCount(count)}
+                          aria-pressed={layout.settings.recentCount === count}
+                          className="px-2.5 py-1 rounded-lg text-xs font-medium"
+                          style={{
+                            background: layout.settings.recentCount === count ? "var(--primary)" : "var(--card)",
+                            color: layout.settings.recentCount === count ? "#fff" : "var(--muted-foreground)",
+                          }}>
+                          {count}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -475,6 +514,95 @@ export function Dashboard() {
                 </div>
               </motion.div>
             </div>
+          ),
+          goals: (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.44 }}
+              className="rounded-2xl p-4 sm:p-5"
+              style={{ background: "var(--card)", border: "1px solid var(--border)" }}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-white flex items-center gap-2" style={{ fontWeight: 600 }}>
+                  <Target size={16} style={{ color: "var(--primary)" }} /> Progresso de Metas
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => navigate("/metas")}
+                  className="hover:underline"
+                  style={{ color: "var(--primary)", fontSize: "0.8rem", cursor: "pointer", background: "none", border: "none", padding: 0 }}
+                >
+                  Ver todas
+                </button>
+              </div>
+              {topGoals.length === 0 ? (
+                <EmptyState icon="🎯" title="Nenhuma meta criada" subtitle="Crie metas em Metas pra acompanhar o progresso aqui" compact />
+              ) : (
+                <div className="space-y-3.5">
+                  {topGoals.map((goal) => {
+                    const pct = Math.min(100, (goal.current / goal.target) * 100);
+                    return (
+                      <div key={goal.id}>
+                        <div className="flex items-center justify-between mb-1.5 gap-2">
+                          <span className="flex items-center gap-1.5 min-w-0 text-sm text-white">
+                            <span className="shrink-0">{goal.icon}</span>
+                            <span className="truncate">{goal.title}</span>
+                          </span>
+                          <span style={{ color: "var(--muted-foreground)", fontSize: "0.72rem" }} className="shrink-0">
+                            {hideValues ? "••••" : formatCurrency(goal.current)} / {hideValues ? "••••" : formatCurrency(goal.target)}
+                          </span>
+                        </div>
+                        <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: "var(--secondary)" }}>
+                          <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.8, ease: "easeOut" }}
+                            className="h-full rounded-full" style={{ background: goal.color }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </motion.div>
+          ),
+          budget: (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.47 }}
+              className="rounded-2xl p-4 sm:p-5"
+              style={{ background: "var(--card)", border: "1px solid var(--border)" }}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-white flex items-center gap-2" style={{ fontWeight: 600 }}>
+                  <CircleDollarSign size={16} style={{ color: "var(--primary)" }} /> Orçamento do Mês
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => navigate("/planejamento")}
+                  className="hover:underline"
+                  style={{ color: "var(--primary)", fontSize: "0.8rem", cursor: "pointer", background: "none", border: "none", padding: 0 }}
+                >
+                  Ver planejamento
+                </button>
+              </div>
+              {totalBudgetLimit === 0 ? (
+                <EmptyState icon="💰" title="Nenhum orçamento definido" subtitle="Defina limites por categoria em Planejamento" compact />
+              ) : (
+                <>
+                  <div className="flex justify-between mb-1.5">
+                    <span style={{ color: "var(--muted-foreground)", fontSize: "0.8rem" }}>
+                      {hideValues ? "••••" : formatCurrency(totalBudgetSpent)} de {hideValues ? "••••" : formatCurrency(totalBudgetLimit)}
+                    </span>
+                    <span style={{ color: isOverBudget ? "var(--red)" : "var(--muted-foreground)", fontSize: "0.8rem", fontWeight: 600 }}>
+                      {budgetPct.toFixed(0)}%
+                    </span>
+                  </div>
+                  <div className="w-full h-3 rounded-full overflow-hidden" style={{ background: "var(--secondary)" }}>
+                    <motion.div initial={{ width: 0 }} animate={{ width: `${budgetPct}%` }} transition={{ duration: 0.8, ease: "easeOut" }}
+                      className="h-full rounded-full" style={{ background: isOverBudget ? "var(--red)" : "var(--primary)" }} />
+                  </div>
+                  {isOverBudget && (
+                    <p className="mt-2" style={{ color: "var(--red)", fontSize: "0.75rem" }}>Você já passou do orçamento definido este mês.</p>
+                  )}
+                </>
+              )}
+            </motion.div>
           ),
           recent: (
             <motion.div
