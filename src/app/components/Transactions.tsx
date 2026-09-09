@@ -9,6 +9,11 @@ import { Modal } from "./shared/Modal";
 import { ConfirmDeleteDialog } from "./shared/ConfirmDeleteDialog";
 import { EmptyState } from "./shared/EmptyState";
 import { Skeleton } from "./ui/skeleton";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
+import { Textarea } from "./ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
 function TransactionsSkeleton() {
   return (
@@ -84,14 +89,9 @@ function TransactionForm({ initial, onAdd, onUpdate, onClose }: TransactionFormP
     }
   }
 
-  const inp = {
-    background: "var(--input-background)", border: "1px solid var(--border)", borderRadius: "10px",
-    color: "var(--foreground)", padding: "10px 14px", width: "100%", fontSize: "0.875rem", outline: "none",
-  };
-
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="flex rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+      <div className="flex rounded-xl overflow-hidden border border-border">
         {(["income", "expense"] as const).map(t => (
           <button key={t} type="button" onClick={() => setForm(f => ({ ...f, type: t }))}
             className="flex-1 py-2.5 text-sm font-medium transition-colors"
@@ -104,41 +104,45 @@ function TransactionForm({ initial, onAdd, onUpdate, onClose }: TransactionFormP
         ))}
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-sm mb-1.5" style={{ color: "var(--muted-foreground)" }}>Valor (R$)</label>
-          <input style={inp} type="number" step="0.01" min="0" required value={form.amount}
+        <div className="space-y-1.5">
+          <Label htmlFor="tx-amount">Valor (R$)</Label>
+          <Input id="tx-amount" type="number" step="0.01" min="0" required value={form.amount}
             onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} placeholder="0,00" />
         </div>
-        <div>
-          <label className="block text-sm mb-1.5" style={{ color: "var(--muted-foreground)" }}>Data</label>
-          <input style={inp} type="date" required value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
+        <div className="space-y-1.5">
+          <Label htmlFor="tx-date">Data</Label>
+          <Input id="tx-date" type="date" required value={form.date}
+            onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
         </div>
       </div>
-      <div>
-        <label className="block text-sm mb-1.5" style={{ color: "var(--muted-foreground)" }}>Descrição</label>
-        <input style={inp} required value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Ex: Supermercado" />
+      <div className="space-y-1.5">
+        <Label htmlFor="tx-description">Descrição</Label>
+        <Input id="tx-description" required value={form.description}
+          onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Ex: Supermercado" />
       </div>
-      <div>
-        <label className="block text-sm mb-1.5" style={{ color: "var(--muted-foreground)" }}>Categoria</label>
-        <select style={{ ...inp, cursor: "pointer" }} required value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
-          {categories.length === 0 && <option value="" style={{ background: "#141828" }}>Carregando categorias...</option>}
-          {categories.map(c => <option key={c.id} value={c.id} style={{ background: "#141828" }}>{c.icon} {c.name}</option>)}
-        </select>
+      <div className="space-y-1.5">
+        <Label htmlFor="tx-category">Categoria</Label>
+        <Select value={form.category} onValueChange={(value) => setForm(f => ({ ...f, category: value }))}>
+          <SelectTrigger id="tx-category" className="w-full">
+            <SelectValue placeholder="Selecione uma categoria" />
+          </SelectTrigger>
+          <SelectContent>
+            {categories.map(c => <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
       </div>
-      <div>
-        <label className="block text-sm mb-1.5" style={{ color: "var(--muted-foreground)" }}>Observações</label>
-        <textarea style={{ ...inp, resize: "none", height: "72px" }} value={form.notes}
+      <div className="space-y-1.5">
+        <Label htmlFor="tx-notes">Observações</Label>
+        <Textarea id="tx-notes" className="min-h-[72px]" value={form.notes}
           onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Notas..." />
       </div>
       <div className="flex gap-3 pt-1">
-        <button type="button" onClick={onClose} disabled={submitting} className="flex-1 py-2.5 rounded-xl text-sm font-medium"
-          style={{ background: "var(--secondary)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>
+        <Button type="button" variant="secondary" onClick={onClose} disabled={submitting} className="flex-1">
           Cancelar
-        </button>
-        <button type="submit" disabled={submitting} className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white hover:opacity-90"
-          style={{ background: "var(--primary)", opacity: submitting ? 0.7 : 1 }}>
+        </Button>
+        <Button type="submit" disabled={submitting} className="flex-1">
           {submitting ? "Salvando..." : initial ? "Salvar" : "Adicionar"}
-        </button>
+        </Button>
       </div>
     </form>
   );
@@ -169,8 +173,6 @@ export function Transactions() {
   const paged = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
   const months = getDistinctMonths(transactions).reverse();
 
-  const sel = { background: "var(--secondary)", border: "1px solid var(--border)", borderRadius: "10px", color: "var(--foreground)", padding: "9px 12px", fontSize: "0.82rem", outline: "none", cursor: "pointer" };
-
   return (
     <div className="space-y-4 sm:space-y-5">
       {/* Header */}
@@ -179,11 +181,9 @@ export function Transactions() {
           <h1 className="text-white" style={{ fontSize: "clamp(1.2rem,4vw,1.5rem)", fontWeight: 700 }}>Transações</h1>
           <p style={{ color: "var(--muted-foreground)", fontSize: "0.875rem" }}>{filtered.length} registros encontrados</p>
         </div>
-        <button onClick={() => setShowAdd(true)}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white hover:opacity-90 w-full sm:w-auto"
-          style={{ background: "var(--primary)" }}>
+        <Button onClick={() => setShowAdd(true)} className="w-full sm:w-auto">
           <Plus size={16} /> Nova Transação
-        </button>
+        </Button>
       </div>
 
       {/* Filters */}
@@ -201,23 +201,30 @@ export function Transactions() {
         </div>
         {/* Filter selects */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-          <select style={sel} value={filterType} onChange={e => { setFilterType(e.target.value as "all" | "income" | "expense"); setPage(1); }}>
-            <option value="all" style={{ background: "#141828" }}>Todos os tipos</option>
-            <option value="income" style={{ background: "#141828" }}>Receitas</option>
-            <option value="expense" style={{ background: "#141828" }}>Despesas</option>
-          </select>
-          <select style={sel} value={filterCategory} onChange={e => { setFilterCategory(e.target.value); setPage(1); }}>
-            <option value="all" style={{ background: "#141828" }}>Todas as categorias</option>
-            {categories.map(c => <option key={c.id} value={c.id} style={{ background: "#141828" }}>{c.icon} {c.name}</option>)}
-          </select>
-          <select style={sel} value={filterMonth} onChange={e => { setFilterMonth(e.target.value); setPage(1); }}>
-            <option value="all" style={{ background: "#141828" }}>Todos os meses</option>
-            {months.map(m => (
-              <option key={m} value={m} style={{ background: "#141828" }}>
-                {getMonthName(m)}
-              </option>
-            ))}
-          </select>
+          <Select value={filterType} onValueChange={(value) => { setFilterType(value as "all" | "income" | "expense"); setPage(1); }}>
+            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os tipos</SelectItem>
+              <SelectItem value="income">Receitas</SelectItem>
+              <SelectItem value="expense">Despesas</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={filterCategory} onValueChange={(value) => { setFilterCategory(value); setPage(1); }}>
+            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as categorias</SelectItem>
+              {categories.map(c => <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={filterMonth} onValueChange={(value) => { setFilterMonth(value); setPage(1); }}>
+            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os meses</SelectItem>
+              {months.map(m => (
+                <SelectItem key={m} value={m}>{getMonthName(m)}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
