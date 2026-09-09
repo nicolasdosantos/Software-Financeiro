@@ -511,7 +511,7 @@ export function Reports() {
                 <button onClick={() => generate(monthId)}
                   aria-label={`${done.includes(monthId) ? "Baixado" : "Exportar"} ${getMonthName(m)}`}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm shrink-0"
-                  style={{ background: done.includes(monthId) ? "rgba(16,217,164,0.15)" : "rgba(32,75,202,0.15)", color: done.includes(monthId) ? "var(--success)" : "var(--primary)" }}>
+                  style={{ background: done.includes(monthId) ? "rgba(16,217,164,0.15)" : "rgba(var(--primary-rgb),0.15)", color: done.includes(monthId) ? "var(--success)" : "var(--primary)" }}>
                   {generating === monthId
                     ? <div className="w-3 h-3 rounded-full border-2 border-current border-t-transparent" style={{ animation: "spin 0.8s linear infinite" }} />
                     : done.includes(monthId) ? <CheckCircle size={13} /> : <Download size={13} />}
@@ -549,7 +549,7 @@ export function Reports() {
                     <td style={{ padding: "12px 16px" }}>
                       <button onClick={() => generate(monthId)}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm"
-                        style={{ background: done.includes(monthId) ? "rgba(16,217,164,0.15)" : "rgba(32,75,202,0.15)", color: done.includes(monthId) ? "var(--success)" : "var(--primary)" }}>
+                        style={{ background: done.includes(monthId) ? "rgba(16,217,164,0.15)" : "rgba(var(--primary-rgb),0.15)", color: done.includes(monthId) ? "var(--success)" : "var(--primary)" }}>
                         {generating === monthId
                           ? <div className="w-3 h-3 rounded-full border-2 border-current border-t-transparent" style={{ animation: "spin 0.8s linear infinite" }} />
                           : done.includes(monthId) ? <CheckCircle size={13} /> : <Download size={13} />}

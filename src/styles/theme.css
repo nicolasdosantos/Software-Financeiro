@@ -9,6 +9,11 @@
   --popover: #141828;
   --popover-foreground: #e8eeff;
   --primary: #204bca;
+  /* mesma cor de --primary, em "r, g, b" (sem função) — permite montar
+     rgba(var(--primary-rgb), alpha) em sombras/gradientes que hoje usam
+     rgba(32,75,202,...) fixo, pra eles acompanharem a cor de destaque
+     quando o usuário troca em Perfil > Aparência. */
+  --primary-rgb: 32, 75, 202;
   --primary-foreground: #ffffff;
   --secondary: #141828;
   --secondary-foreground: #8892b0;

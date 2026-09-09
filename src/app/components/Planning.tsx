@@ -90,7 +90,7 @@ export function Planning() {
       {/* Overview */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
         {[
-          { label: "Orçamento Total", value: formatCurrency(totalLimit), icon: "💰", color: "#204bca" },
+          { label: "Orçamento Total", value: formatCurrency(totalLimit), icon: "💰", color: "var(--primary)" },
           { label: "Total Gasto", value: formatCurrency(totalSpent), icon: "📊", color: totalSpent > totalLimit ? "var(--red)" : "var(--success)" },
           { label: "Disponível", value: formatCurrency(Math.max(0, totalLimit - totalSpent)), icon: "✅", color: "var(--success)" },
           { label: "Alertas", value: `${overBudget} acima · ${nearLimit} perto`, icon: "⚠️", color: "var(--warning)" },
@@ -120,7 +120,7 @@ export function Planning() {
         <div className="w-full h-3 rounded-full overflow-hidden" style={{ background: "var(--secondary)" }}>
           <motion.div initial={{ width: 0 }} animate={{ width: `${totalLimit > 0 ? Math.min(100, (totalSpent / totalLimit) * 100) : 0}%` }}
             transition={{ duration: 1, ease: "easeOut" }} className="h-full rounded-full"
-            style={{ background: totalSpent > totalLimit ? "var(--red)" : totalSpent > totalLimit * 0.8 ? "var(--warning)" : "linear-gradient(90deg, #204bca, #7b9cff)" }} />
+            style={{ background: totalSpent > totalLimit ? "var(--red)" : totalSpent > totalLimit * 0.8 ? "var(--warning)" : "linear-gradient(90deg, var(--primary), rgba(var(--primary-rgb),0.55))" }} />
         </div>
         <div className="flex justify-between mt-2">
           <span style={{ color: "var(--muted-foreground)", fontSize: "0.75rem" }}>

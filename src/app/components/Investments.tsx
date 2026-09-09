@@ -178,7 +178,7 @@ export function Investments() {
       {/* Summary */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
         {[
-          { label: "Total Investido", value: formatCurrency(totalInvested), color: "#204bca", icon: "💼" },
+          { label: "Total Investido", value: formatCurrency(totalInvested), color: "var(--primary)", icon: "💼" },
           { label: "Valor Atual", value: formatCurrency(totalCurrent), color: "#e8eeff", icon: "📊" },
           { label: "Rentabilidade", value: `${returnPct >= 0 ? "+" : ""}${returnPct.toFixed(2)}%`, color: returnPct >= 0 ? "var(--success)" : "var(--red)", icon: returnPct >= 0 ? "📈" : "📉" },
           { label: "Lucro/Prejuízo", value: formatCurrency(totalReturn), color: totalReturn >= 0 ? "var(--success)" : "var(--red)", icon: totalReturn >= 0 ? "✅" : "⚠️" },

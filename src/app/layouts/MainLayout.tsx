@@ -164,7 +164,7 @@ export default function MainLayout() {
         }
 
         ::selection {
-          background: rgba(32,75,202,0.35);
+          background: rgba(var(--primary-rgb), 0.35);
         }
       `}</style>
     </div>

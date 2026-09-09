@@ -126,7 +126,7 @@ export function Monthly() {
         {[
           { label: "Receitas", value: income, color: "var(--success)" },
           { label: "Despesas", value: expense, color: "var(--red)" },
-          { label: "Saldo", value: balance, color: balance >= 0 ? "#204bca" : "var(--red)" },
+          { label: "Saldo", value: balance, color: balance >= 0 ? "var(--primary)" : "var(--red)" },
         ].map((item, i) => (
           <motion.div key={item.label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}
             className="rounded-2xl p-3 sm:p-4" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
@@ -191,7 +191,7 @@ export function Monthly() {
                   {[
                     { label: "Receitas", value: selectedIncome, color: "var(--success)" },
                     { label: "Despesas", value: selectedExpense, color: "var(--red)" },
-                    { label: "Saldo", value: selectedBalance, color: selectedBalance >= 0 ? "#204bca" : "var(--red)" },
+                    { label: "Saldo", value: selectedBalance, color: selectedBalance >= 0 ? "var(--primary)" : "var(--red)" },
                   ].map(item => (
                     <div key={item.label} className="rounded-lg px-2 py-1.5" style={{ background: "var(--card)" }}>
                       <p style={{ color: "var(--muted-foreground)", fontSize: "0.62rem" }}>{item.label}</p>
@@ -276,7 +276,7 @@ export function Monthly() {
             <YAxis tick={{ fill: "#8892b0", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `R$${(v / 1000).toFixed(0)}k`} />
             <Tooltip contentStyle={{ background: "#141828", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "12px", color: "#e8eeff" }}
               formatter={(v: number) => [formatCurrency(v), "Saldo"]} />
-            <Bar dataKey="saldo" name="Saldo" radius={[6, 6, 0, 0]} fill="#204bca" />
+            <Bar dataKey="saldo" name="Saldo" radius={[6, 6, 0, 0]} fill="var(--primary)" />
           </BarChart>
         </ResponsiveContainer>
       </motion.div>
