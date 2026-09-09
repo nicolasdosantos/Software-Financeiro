@@ -153,6 +153,42 @@ export function getMonthTotals(transactions: Transaction[], month: string): Mont
   return { income, expense, balance: income - expense };
 }
 
+/**
+ * Lista de meses ("YYYY-MM") com pelo menos uma transação, em ordem crescente.
+ * `extraMonths` é útil para garantir que um mês sem transações (ex: o mês
+ * corrente selecionado) apareça mesmo assim, ex: getDistinctMonths(txs, [currentMonth]).
+ */
+export function getDistinctMonths(transactions: Transaction[], extraMonths: string[] = []): string[] {
+  return [...new Set([
+    ...extraMonths,
+    ...transactions.map((t) => t.date?.slice(0, 7)).filter((m): m is string => Boolean(m)),
+  ])].sort();
+}
+
+/** Soma de despesas por categoria. Sem `month`, soma o histórico inteiro. */
+export function sumExpensesByCategory(transactions: Transaction[], month?: string): Record<string, number> {
+  const totals: Record<string, number> = {};
+  for (const t of transactions) {
+    if (t.type !== "expense") continue;
+    if (month && !t.date.startsWith(month)) continue;
+    totals[t.category] = (totals[t.category] || 0) + t.amount;
+  }
+  return totals;
+}
+
+/** Total gasto em uma categoria específica. Sem `month`, soma o histórico inteiro. */
+export function getCategorySpend(transactions: Transaction[], categoryId: string, month?: string): number {
+  return sumExpensesByCategory(transactions, month)[categoryId] || 0;
+}
+
+/** Saldo acumulado (receitas - despesas) de todas as transações até e incluindo `uptoMonth`. */
+export function getAccumulatedBalance(transactions: Transaction[], uptoMonth: string): number {
+  const relevant = transactions.filter((t) => (t.date?.slice(0, 7) ?? "") <= uptoMonth);
+  const income = relevant.filter((t) => t.type === "income").reduce((sum, t) => sum + t.amount, 0);
+  const expense = relevant.filter((t) => t.type === "expense").reduce((sum, t) => sum + t.amount, 0);
+  return income - expense;
+}
+
 function mapGoal(row: GoalRow): Goal {
   return {
     id: row.id,

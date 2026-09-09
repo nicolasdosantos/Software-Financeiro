@@ -6,7 +6,10 @@ import {
 } from "recharts";
 import type { PieSectorDataItem } from "recharts/types/polar/Pie";
 import { TrendingUp, TrendingDown, Wallet, PiggyBank, ArrowUpRight, ArrowDownRight, Eye, EyeOff, Sparkles } from "lucide-react";
-import { useFinance, formatCurrency, getMonthName, getMonthTotals, getShortMonthName, toLocalDate } from "../context/FinanceContext";
+import {
+  useFinance, formatCurrency, getMonthName, getMonthTotals, getShortMonthName, toLocalDate,
+  getDistinctMonths, getAccumulatedBalance, sumExpensesByCategory,
+} from "../context/FinanceContext";
 import { useUser } from "../../hooks/useUser";
 import { useNavigate } from "react-router-dom";
 import {
@@ -51,15 +54,9 @@ export function Dashboard() {
 
   const user = useUser();
 
-  const months = [
-    ...new Set(
-      transactions
-        .map(t => t.date?.slice(0, 7))
-        .filter(Boolean)
-    )
-  ].sort();
+  const months = getDistinctMonths(transactions);
 
-  const pieMonths = [...new Set([...months, currentMonth])].sort();
+  const pieMonths = getDistinctMonths(transactions, [currentMonth]);
   const [pieMonth, setPieMonth] = useState(currentMonth);
 
   const prevMonthIndex = months.indexOf(currentMonth) - 1;
@@ -70,14 +67,8 @@ export function Dashboard() {
   const savings = transactions.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0)
     - transactions.filter(t => t.type === "expense").reduce((s, t) => s + t.amount, 0);
 
-  const savingsUntil = (month: string) => {
-    const txs = transactions.filter(t => t.date?.slice(0, 7) <= month);
-    const income = txs.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0);
-    const expense = txs.filter(t => t.type === "expense").reduce((s, t) => s + t.amount, 0);
-    return income - expense;
-  };
-  const savingsCurrMonth = savingsUntil(currentMonth);
-  const savingsPrevMonth = savingsUntil(prevMonth);
+  const savingsCurrMonth = getAccumulatedBalance(transactions, currentMonth);
+  const savingsPrevMonth = getAccumulatedBalance(transactions, prevMonth);
   const savingsChange = ((savingsCurrMonth - savingsPrevMonth) / Math.max(Math.abs(savingsPrevMonth), 1)) * 100;
   const balanceChange = ((curr.balance - prev.balance) / Math.max(Math.abs(prev.balance), 1)) * 100;
 
@@ -111,10 +102,7 @@ export function Dashboard() {
     };
   });
 
-  const catSpend: Record<string, number> = {};
-  transactions.filter(t => t.date.startsWith(pieMonth) && t.type === "expense").forEach(t => {
-    catSpend[t.category] = (catSpend[t.category] || 0) + t.amount;
-  });
+  const catSpend = sumExpensesByCategory(transactions, pieMonth);
   const pieData = Object.entries(catSpend).map(([id, value]) => {
     const cat = categories.find(c => c.id === id);
     return { name: cat?.name || id, value, color: cat?.color || "#8892b0" };

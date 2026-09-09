@@ -3,7 +3,7 @@ import type { FormEvent } from "react";
 import { motion } from "motion/react";
 import { Plus, Edit2, Trash2, Tag } from "lucide-react";
 import { toast } from "sonner";
-import { useFinance } from "../context/FinanceContext";
+import { useFinance, getCategorySpend } from "../context/FinanceContext";
 import type { Category } from "../context/FinanceContext";
 import { Modal } from "./shared/Modal";
 import { ConfirmDeleteDialog } from "./shared/ConfirmDeleteDialog";
@@ -100,7 +100,7 @@ export function Categories() {
   const [deleting, setDeleting] = useState<string | null>(null);
 
   function getSpend(catId: string) {
-    return transactions.filter(t => t.category === catId && t.type === "expense").reduce((s, t) => s + t.amount, 0);
+    return getCategorySpend(transactions, catId);
   }
 
   const maxSpend = Math.max(0, ...categories.map(cat => getSpend(cat.id)));

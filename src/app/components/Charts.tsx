@@ -4,7 +4,10 @@ import {
   PieChart, Pie, Cell, BarChart, Bar, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from "recharts";
-import { useFinance, formatCurrency, getMonthName, getMonthTotals, getShortMonthName, toLocalDate } from "../context/FinanceContext";
+import {
+  useFinance, formatCurrency, getMonthName, getMonthTotals, getShortMonthName, toLocalDate,
+  getDistinctMonths, getAccumulatedBalance, sumExpensesByCategory,
+} from "../context/FinanceContext";
 import { TrendingUp, TrendingDown, Lightbulb } from "lucide-react";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -32,13 +35,7 @@ export function Charts() {
   }
 
   // 📌 lista de meses
-  const months = [
-    ...new Set(
-      safeTransactions
-        .map(t => t.date?.slice(0, 7))
-        .filter(Boolean)
-    )
-  ].sort();
+  const months = getDistinctMonths(safeTransactions);
 
   const monthNames = months.map(getShortMonthName);
 
@@ -57,27 +54,18 @@ export function Charts() {
     };
   });
 
-  let acumulado = 0;
-
   const lineData = months.map((m, i) => {
     const d = getMonthTotals(safeTransactions, m);
-    acumulado += d.balance;
 
     return {
       name: monthNames[i],
       saldo: d.balance,
-      acumulado
+      acumulado: getAccumulatedBalance(safeTransactions, m)
     };
   });
 
   // 🟡 pizza categorias
-  const catSpend: Record<string, number> = {};
-
-  safeTransactions
-    .filter(t => t.date.startsWith(selectedMonth) && t.type === "expense")
-    .forEach(t => {
-      catSpend[t.category] = (catSpend[t.category] || 0) + t.amount;
-    });
+  const catSpend = sumExpensesByCategory(safeTransactions, selectedMonth);
 
   const pieData = Object.entries(catSpend).map(([id, value]) => {
     const cat = categories.find(c => c.id === id);
