@@ -8,9 +8,11 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "../../lib/supabase";
+import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 
 export function Profile() {
+  const { user: authUser } = useAuth();
 
   const [loading, setLoading] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
@@ -138,39 +140,32 @@ export function Profile() {
   };
 
   useEffect(() => {
-    async function loadUser() {
-      try {
-        const { data, error } = await supabase.auth.getUser();
-        if (error) throw error;
+    // authUser já vem do AuthProvider compartilhado — sem chamada extra ao
+    // Supabase aqui. Depende só de authUser?.id (não do objeto authUser
+    // inteiro) de propósito: a sessão é recriada a cada refresh de token
+    // (mesmo usuário, novo objeto), e não queremos sobrescrever o que a
+    // pessoa está digitando no formulário só por causa disso — só quando
+    // troca de usuário (login/logout) é que faz sentido repopular os campos.
+    if (!authUser) return;
 
-        const user = data.user;
-
-        if (!user) return;
-
-        setProfile({
-          name: user.user_metadata?.name || "",
-          email: user.email || "",
-          phone: user.user_metadata?.phone || "",
-          city: user.user_metadata?.city || "",
-          occupation: user.user_metadata?.occupation || "",
-        });
-        setInitialEmail(user.email || "");
-        if (user.created_at) {
-          const created = new Date(user.created_at);
-          setMemberSince(created.toLocaleString("pt-BR", { month: "long", year: "numeric" }));
-        }
-
-        if (user.user_metadata?.notifications) {
-          setNotifications((prev) => ({ ...prev, ...user.user_metadata.notifications }));
-        }
-      } catch (err) {
-        console.error("Erro ao carregar perfil:", err);
-        toast.error("Não foi possível carregar seus dados de perfil.");
-      }
+    setProfile({
+      name: authUser.user_metadata?.name || "",
+      email: authUser.email || "",
+      phone: authUser.user_metadata?.phone || "",
+      city: authUser.user_metadata?.city || "",
+      occupation: authUser.user_metadata?.occupation || "",
+    });
+    setInitialEmail(authUser.email || "");
+    if (authUser.created_at) {
+      const created = new Date(authUser.created_at);
+      setMemberSince(created.toLocaleString("pt-BR", { month: "long", year: "numeric" }));
     }
 
-    loadUser();
-  }, []);
+    if (authUser.user_metadata?.notifications) {
+      setNotifications((prev) => ({ ...prev, ...authUser.user_metadata.notifications }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authUser?.id]);
 
   return (
     <motion.div

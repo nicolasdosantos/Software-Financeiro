@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import type { User } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { supabase } from "../../lib/supabase";
+import { useAuth } from "./AuthContext";
 
 export type TransactionType = "income" | "expense";
 
@@ -224,6 +225,7 @@ function mapBudget(row: BudgetRow): Budget {
 const FinanceContext = createContext<FinanceContextType | null>(null);
 
 export function FinanceProvider({ children }: { children: React.ReactNode }) {
+  const { user, loading: authLoading } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
@@ -232,26 +234,23 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [currentMonth, setCurrentMonth] = useState(todayMonth);
 
-  const getCurrentUser = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    return user;
-  }, []);
-
-  const requireUser = useCallback(async () => {
-    const user = await getCurrentUser();
+  // O usuário já vem resolvido pelo AuthProvider (uma única assinatura de
+  // auth para o app inteiro) — não precisa de um supabase.auth.getUser()
+  // extra a cada mutação, só validar que existe uma sessão em memória.
+  const requireUser = useCallback(() => {
     if (!user) {
       toast.error("Sua sessão expirou. Faça login novamente para continuar.");
       throw new Error("Usuário não autenticado");
     }
     return user;
-  }, [getCurrentUser]);
+  }, [user]);
 
-  const ensureDefaultCategories = useCallback(async (user: User, existing: Category[]) => {
+  const ensureDefaultCategories = useCallback(async (authUser: User, existing: Category[]) => {
     if (existing.length > 0) return existing;
 
     const { data, error } = await supabase
       .from("categories")
-      .insert(DEFAULT_CATEGORIES.map((category) => ({ ...category, user_id: user.id })))
+      .insert(DEFAULT_CATEGORIES.map((category) => ({ ...category, user_id: authUser.id })))
       .select("*")
       .order("name", { ascending: true });
 
@@ -264,7 +263,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         const { data: refetched, error: refetchError } = await supabase
           .from("categories")
           .select("*")
-          .eq("user_id", user.id)
+          .eq("user_id", authUser.id)
           .order("name", { ascending: true });
 
         if (!refetchError && refetched && refetched.length > 0) {
@@ -280,12 +279,11 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     return (data ?? []) as Category[];
   }, []);
 
-  const loadFinanceData = useCallback(async () => {
+  const loadFinanceData = useCallback(async (authUser: User | null) => {
     setLoading(true);
 
     try {
-      const user = await getCurrentUser();
-      if (!user) {
+      if (!authUser) {
         setTransactions([]);
         setCategories([]);
         setGoals([]);
@@ -301,11 +299,11 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         investmentsResult,
         budgetsResult,
       ] = await Promise.all([
-        supabase.from("transactions").select("*").eq("user_id", user.id).order("date", { ascending: false }),
-        supabase.from("categories").select("*").eq("user_id", user.id).order("name", { ascending: true }),
-        supabase.from("goals").select("*").eq("user_id", user.id).order("deadline", { ascending: true }),
-        supabase.from("investments").select("*").eq("user_id", user.id).order("start_date", { ascending: false }),
-        supabase.from("budgets").select("category_id, limit_amount").eq("user_id", user.id),
+        supabase.from("transactions").select("*").eq("user_id", authUser.id).order("date", { ascending: false }),
+        supabase.from("categories").select("*").eq("user_id", authUser.id).order("name", { ascending: true }),
+        supabase.from("goals").select("*").eq("user_id", authUser.id).order("deadline", { ascending: true }),
+        supabase.from("investments").select("*").eq("user_id", authUser.id).order("start_date", { ascending: false }),
+        supabase.from("budgets").select("category_id, limit_amount").eq("user_id", authUser.id),
       ]);
 
       const failures: string[] = [];
@@ -319,7 +317,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         toast.error(`Não foi possível carregar: ${failures.join(", ")}. Tente recarregar a página.`);
       }
 
-      const userCategories = await ensureDefaultCategories(user, (categoriesResult.data ?? []) as Category[]);
+      const userCategories = await ensureDefaultCategories(authUser, (categoriesResult.data ?? []) as Category[]);
 
       setTransactions((transactionsResult.data ?? []) as Transaction[]);
       setCategories(userCategories);
@@ -332,17 +330,20 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [ensureDefaultCategories, getCurrentUser]);
+  }, [ensureDefaultCategories]);
 
   useEffect(() => {
-    loadFinanceData();
-
-    const { data: listener } = supabase.auth.onAuthStateChange(() => {
-      loadFinanceData();
-    });
-
-    return () => listener.subscription.unsubscribe();
-  }, [loadFinanceData]);
+    // Espera o AuthProvider resolver a sessão inicial antes de decidir se
+    // carrega dados de um usuário ou limpa tudo (evita um fetch "sem
+    // usuário" só porque a sessão ainda não chegou do storage).
+    if (authLoading) return;
+    loadFinanceData(user);
+    // user?.id (não o objeto `user`) é o que realmente deve disparar um novo
+    // carregamento — o objeto de sessão é recriado a cada refresh de token
+    // (a cada ~1h) mesmo sendo o mesmo usuário, e isso não deveria refazer
+    // as 5 queries de novo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, authLoading, loadFinanceData]);
 
   const value = useMemo<FinanceContextType>(() => ({
     transactions,
