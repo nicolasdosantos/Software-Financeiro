@@ -7,6 +7,36 @@ import { useFinance, formatCurrency, getMonthName, getTodayDateInput, toLocalDat
 import type { Transaction } from "../context/FinanceContext";
 import { Modal } from "./shared/Modal";
 import { ConfirmDeleteDialog } from "./shared/ConfirmDeleteDialog";
+import { Skeleton } from "./ui/skeleton";
+
+function TransactionsSkeleton() {
+  return (
+    <div className="space-y-4 sm:space-y-5">
+      <div className="flex items-center justify-between">
+        <div className="space-y-2">
+          <Skeleton className="h-6 w-32" />
+          <Skeleton className="h-3.5 w-40" />
+        </div>
+        <Skeleton className="h-10 w-40 rounded-xl" />
+      </div>
+      <Skeleton className="h-12 w-full rounded-xl" />
+      <div className="rounded-2xl p-3 sm:p-4" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+        {Array.from({ length: 8 }, (_, i) => (
+          <div key={i} className="flex items-center justify-between py-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <Skeleton className="w-9 h-9 rounded-xl shrink-0" />
+              <div className="space-y-1.5">
+                <Skeleton className="h-3.5 w-36" />
+                <Skeleton className="h-3 w-24" />
+              </div>
+            </div>
+            <Skeleton className="h-4 w-16 shrink-0" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 const ITEMS_PER_PAGE = 8;
 
@@ -114,7 +144,7 @@ function TransactionForm({ initial, onAdd, onUpdate, onClose }: TransactionFormP
 }
 
 export function Transactions() {
-  const { transactions, categories, addTransaction, updateTransaction, deleteTransaction } = useFinance();
+  const { transactions, categories, addTransaction, updateTransaction, deleteTransaction, loading } = useFinance();
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<"all" | "income" | "expense">("all");
   const [filterCategory, setFilterCategory] = useState("all");
@@ -123,6 +153,8 @@ export function Transactions() {
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  if (loading) return <TransactionsSkeleton />;
 
   const filtered = transactions.filter(t => {
     if (filterType !== "all" && t.type !== filterType) return false;
