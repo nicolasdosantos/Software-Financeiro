@@ -205,4 +205,21 @@
   *::-webkit-scrollbar-thumb:hover {
     background: linear-gradient(180deg, rgba(32, 75, 202, 1), rgba(16, 217, 164, 0.9));
   }
+
+  /*
+   * O MotionConfig (src/main.tsx) já cobre as animações feitas com a lib
+   * "motion", mas boa parte das transições do projeto são CSS puro
+   * (transition-colors, transition-all do Tailwind, transitions inline em
+   * width/transform na Sidebar etc.) — essas não passam pelo Motion.
+   * Esta regra é o "kill switch" padrão pra cobrir o restante quando o
+   * usuário pede menos movimento no sistema operacional.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }
