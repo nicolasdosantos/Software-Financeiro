@@ -2,7 +2,10 @@ import { useState } from "react";
 import { motion } from "motion/react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useFinance, formatCurrency, getMonthName, getMonthTotals, getShortMonthName, getTodayDateInput, toLocalDate } from "../context/FinanceContext";
+import {
+  useFinance, formatCurrency, getMonthName, getMonthTotals, getShortMonthName, getTodayDateInput, toLocalDate,
+  getDistinctMonths, sumExpensesByCategory,
+} from "../context/FinanceContext";
 import type { Category } from "../context/FinanceContext";
 
 export function Monthly() {
@@ -10,9 +13,7 @@ export function Monthly() {
   const { transactions, categories, currentMonth, setCurrentMonth } = useFinance();
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
-  const months = Array.from(
-    new Set([currentMonth, ...transactions.map(t => t.date.slice(0, 7))])
-  ).sort();
+  const months = getDistinctMonths(transactions, [currentMonth]);
 
   const currIdx = months.indexOf(currentMonth);
 
@@ -35,12 +36,11 @@ export function Monthly() {
     return transactions.filter(t => t.date === d);
   }
 
-  const catSpend: { cat: Category; total: number }[] = [];
-  categories.forEach(cat => {
-    const total = txs.filter(t => t.category === cat.id && t.type === "expense").reduce((s, t) => s + t.amount, 0);
-    if (total > 0) catSpend.push({ cat, total });
-  });
-  catSpend.sort((a, b) => b.total - a.total);
+  const monthlyCategorySpend = sumExpensesByCategory(transactions, currentMonth);
+  const catSpend: { cat: Category; total: number }[] = categories
+    .map(cat => ({ cat, total: monthlyCategorySpend[cat.id] || 0 }))
+    .filter(item => item.total > 0)
+    .sort((a, b) => b.total - a.total);
 
   const compDataYears = [...new Set(months.map(m => m.slice(0, 4)))];
   const compDataYearLabel = compDataYears.length === 0

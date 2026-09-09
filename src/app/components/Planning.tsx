@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion } from "motion/react";
 import { AlertTriangle, CheckCircle, Edit2, X } from "lucide-react";
 import { toast } from "sonner";
-import { useFinance, formatCurrency, getMonthName } from "../context/FinanceContext";
+import { useFinance, formatCurrency, getMonthName, getCategorySpend } from "../context/FinanceContext";
 
 export function Planning() {
   const { transactions, categories, budgets, updateBudget, currentMonth } = useFinance();
@@ -11,8 +11,7 @@ export function Planning() {
   const [savingLimit, setSavingLimit] = useState(false);
 
   function getSpend(catId: string) {
-    return transactions.filter(t => t.date.startsWith(currentMonth) && t.category === catId && t.type === "expense")
-      .reduce((s, t) => s + t.amount, 0);
+    return getCategorySpend(transactions, catId, currentMonth);
   }
   function getBudget(catId: string) { return budgets.find(b => b.categoryId === catId)?.limit || 0; }
 

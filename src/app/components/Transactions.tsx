@@ -3,7 +3,7 @@ import type { FormEvent } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Plus, Search, Edit2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { useFinance, formatCurrency, getMonthName, getTodayDateInput, toLocalDate } from "../context/FinanceContext";
+import { useFinance, formatCurrency, getMonthName, getTodayDateInput, toLocalDate, getDistinctMonths } from "../context/FinanceContext";
 import type { Transaction } from "../context/FinanceContext";
 import { Modal } from "./shared/Modal";
 import { ConfirmDeleteDialog } from "./shared/ConfirmDeleteDialog";
@@ -127,7 +127,7 @@ export function Transactions() {
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
   const paged = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
-  const months = Array.from(new Set(transactions.map(t => t.date.slice(0, 7)))).sort().reverse();
+  const months = getDistinctMonths(transactions).reverse();
 
   const sel = { background: "var(--secondary)", border: "1px solid var(--border)", borderRadius: "10px", color: "var(--foreground)", padding: "9px 12px", fontSize: "0.82rem", outline: "none", cursor: "pointer" };
 

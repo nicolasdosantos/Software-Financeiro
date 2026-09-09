@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import { Download, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import XLSX from "xlsx-js-style";
-import { useFinance, formatCurrency, getMonthName, getMonthTotals, toLocalDate } from "../context/FinanceContext";
+import { useFinance, formatCurrency, getMonthName, getMonthTotals, toLocalDate, getDistinctMonths, sumExpensesByCategory } from "../context/FinanceContext";
 
 const HTML_ESCAPE_MAP: Record<string, string> = {
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
@@ -75,7 +75,7 @@ export function Reports() {
   const [generating, setGenerating] = useState<string | null>(null);
   const [done, setDone] = useState<string[]>([]);
 
-  const months = Array.from(new Set(transactions.map(t => t.date.slice(0, 7)))).sort().reverse();
+  const months = getDistinctMonths(transactions).reverse();
   const selectedMonth = months.includes(currentMonth) ? currentMonth : months[0] || currentMonth;
 
   function markDone(id: string) {
@@ -256,11 +256,9 @@ export function Reports() {
 
   function downloadCategoryReport(month: string) {
     const stats = getMonthStats(month);
+    const categorySpend = sumExpensesByCategory(transactions, month);
     const totals = categories
-      .map(cat => ({
-        name: cat.name,
-        total: stats.txs.filter(tx => tx.category === cat.id && tx.type === "expense").reduce((sum, tx) => sum + tx.amount, 0),
-      }))
+      .map(cat => ({ name: cat.name, total: categorySpend[cat.id] || 0 }))
       .filter(item => item.total > 0)
       .sort((a, b) => b.total - a.total);
 
