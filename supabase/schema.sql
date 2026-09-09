@@ -125,14 +125,38 @@ create index if not exists goals_user_deadline_idx on public.goals(user_id, dead
 create index if not exists investments_user_start_date_idx on public.investments(user_id, start_date desc);
 create index if not exists budgets_user_category_idx on public.budgets(user_id, category_id);
 
--- Opcional: rode somente se sua tabela transactions ainda nao tiver RLS/policy.
--- alter table public.transactions enable row level security;
---
--- drop policy if exists "Users can manage own transactions" on public.transactions;
--- create policy "Users can manage own transactions"
--- on public.transactions
--- for all
--- using (auth.uid() = user_id)
--- with check (auth.uid() = user_id);
---
--- create index if not exists transactions_user_date_idx on public.transactions(user_id, date desc);
+-- IMPORTANTE: transactions e a tabela mais sensivel do sistema (valores, descricoes,
+-- categorias e notas financeiras de cada usuario). Sem RLS habilitado aqui, o filtro
+-- por user_id feito no frontend (FinanceContext.tsx) e apenas cosmetico: qualquer
+-- cliente HTTP que fale direto com a API REST do Supabase pode ler/editar/apagar
+-- transacoes de QUALQUER usuario. Rode este bloco antes de usar dados reais.
+alter table public.transactions enable row level security;
+
+drop policy if exists "Users can manage own transactions" on public.transactions;
+drop policy if exists "select_own_transactions" on public.transactions;
+drop policy if exists "insert_own_transactions" on public.transactions;
+drop policy if exists "update_own_transactions" on public.transactions;
+drop policy if exists "delete_own_transactions" on public.transactions;
+
+create policy "select_own_transactions"
+on public.transactions
+for select
+using (auth.uid() = user_id);
+
+create policy "insert_own_transactions"
+on public.transactions
+for insert
+with check (auth.uid() = user_id);
+
+create policy "update_own_transactions"
+on public.transactions
+for update
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+create policy "delete_own_transactions"
+on public.transactions
+for delete
+using (auth.uid() = user_id);
+
+create index if not exists transactions_user_date_idx on public.transactions(user_id, date desc);
