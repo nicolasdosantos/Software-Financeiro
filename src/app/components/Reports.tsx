@@ -440,6 +440,7 @@ export function Reports() {
                     style={{ background: `${report.color}20`, color: report.color }}>{report.format}</span>
                 </div>
                 <button onClick={() => generate(report.id)} disabled={isGenerating || transactions.length === 0}
+                  aria-label={isGenerating ? `Gerando ${report.label}...` : isDone ? `${report.label} baixado` : `Baixar ${report.label}`}
                   className="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-all disabled:opacity-40"
                   style={{ background: isDone ? "#10d9a4" : `${report.color}20`, color: isDone ? "#fff" : report.color, border: `1px solid ${isDone ? "#10d9a4" : report.color + "40"}` }}>
                   {isGenerating
@@ -472,6 +473,7 @@ export function Reports() {
                   </p>
                 </div>
                 <button onClick={() => generate(monthId)}
+                  aria-label={`${done.includes(monthId) ? "Baixado" : "Exportar"} ${getMonthName(m)}`}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm shrink-0"
                   style={{ background: done.includes(monthId) ? "rgba(16,217,164,0.15)" : "rgba(32,75,202,0.15)", color: done.includes(monthId) ? "#10d9a4" : "var(--primary)" }}>
                   {generating === monthId

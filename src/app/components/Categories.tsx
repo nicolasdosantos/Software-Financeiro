@@ -56,6 +56,7 @@ function CategoryForm({ initial, onAdd, onUpdate, onClose }: CategoryFormProps) 
         <div className="flex flex-wrap gap-2">
           {ICONS.map(ic => (
             <motion.button key={ic} type="button" onClick={() => setForm(f => ({ ...f, icon: ic }))}
+              aria-label={`Ícone ${ic}`} aria-pressed={form.icon === ic}
               whileTap={{ scale: 0.88 }}
               animate={{ scale: form.icon === ic ? 1.08 : 1 }}
               transition={{ type: "spring", stiffness: 400, damping: 20 }}
@@ -71,6 +72,7 @@ function CategoryForm({ initial, onAdd, onUpdate, onClose }: CategoryFormProps) 
         <div className="flex flex-wrap gap-2">
           {COLORS.map(c => (
             <motion.button key={c} type="button" onClick={() => setForm(f => ({ ...f, color: c }))}
+              aria-label={`Cor ${c}`} aria-pressed={form.color === c}
               whileTap={{ scale: 0.85 }}
               animate={{ scale: form.color === c ? 1.15 : 1 }}
               transition={{ type: "spring", stiffness: 400, damping: 20 }}
@@ -164,11 +166,11 @@ export function Categories() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200 shrink-0">
-                  <button onClick={() => setEditing(cat)} className="p-1.5 rounded-lg hover:bg-white/5" style={{ color: "var(--muted-foreground)" }}>
+                  <button onClick={() => setEditing(cat)} aria-label={`Editar categoria "${cat.name}"`} className="p-1.5 rounded-lg hover:bg-white/5" style={{ color: "var(--muted-foreground)" }}>
                     <Edit2 size={14} />
                   </button>
                   {cat.type === "custom" && (
-                    <button onClick={() => setDeleting(cat.id)} className="p-1.5 rounded-lg hover:bg-red-500/10" style={{ color: "var(--muted-foreground)" }}>
+                    <button onClick={() => setDeleting(cat.id)} aria-label={`Excluir categoria "${cat.name}"`} className="p-1.5 rounded-lg hover:bg-red-500/10" style={{ color: "var(--muted-foreground)" }}>
                       <Trash2 size={14} />
                     </button>
                   )}

@@ -89,6 +89,7 @@ export default function MainLayout() {
             {isMobile && (
               <button
                 onClick={() => setMobileOpen(true)}
+                aria-label="Abrir menu"
                 className="p-2 rounded-xl"
                 style={{
                   background: "var(--secondary)",

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
 
@@ -23,6 +24,15 @@ interface ModalProps {
 }
 
 export function Modal({ open, onClose, title, maxWidth = 480, children }: ModalProps) {
+  useEffect(() => {
+    if (!open) return;
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open, onClose]);
+
   const dialogStyle = {
     background: "var(--popover)",
     border: "1px solid var(--border)",
@@ -44,10 +54,11 @@ export function Modal({ open, onClose, title, maxWidth = 480, children }: ModalP
           <motion.div
             initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
             style={dialogStyle} onClick={(e) => e.stopPropagation()}
+            role="dialog" aria-modal="true" aria-label={title}
           >
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-white" style={{ fontWeight: 600 }}>{title}</h2>
-              <button onClick={onClose} style={{ color: "var(--muted-foreground)" }}>
+              <button onClick={onClose} aria-label="Fechar" style={{ color: "var(--muted-foreground)" }}>
                 <X size={20} />
               </button>
             </div>

@@ -90,6 +90,7 @@ function GoalForm({ initial, onAdd, onUpdate, onClose }: GoalFormProps) {
         <div className="flex flex-wrap gap-2">
           {ICONS.map(ic => (
             <button key={ic} type="button" onClick={() => setForm(f => ({ ...f, icon: ic }))}
+              aria-label={`Ícone ${ic}`} aria-pressed={form.icon === ic}
               className="w-9 h-9 rounded-xl text-lg flex items-center justify-center transition-all"
               style={{ background: form.icon === ic ? "var(--primary)" : "var(--secondary)", border: `2px solid ${form.icon === ic ? "var(--primary)" : "transparent"}` }}>
               {ic}
@@ -102,6 +103,7 @@ function GoalForm({ initial, onAdd, onUpdate, onClose }: GoalFormProps) {
         <div className="flex flex-wrap gap-2">
           {COLORS.map(c => (
             <button key={c} type="button" onClick={() => setForm(f => ({ ...f, color: c }))}
+              aria-label={`Cor ${c}`} aria-pressed={form.color === c}
               className="w-8 h-8 rounded-full transition-transform hover:scale-110"
               style={{ background: c, border: `3px solid ${form.color === c ? "white" : "transparent"}` }} />
           ))}
@@ -249,8 +251,8 @@ export function Goals() {
                     </div>
                   </div>
                   <div className="flex gap-1 shrink-0">
-                    <button onClick={() => setEditing(goal)} className="p-1.5 rounded-lg hover:bg-white/5" style={{ color: "var(--muted-foreground)" }}><Edit2 size={13} /></button>
-                    <button onClick={() => setDeleting(goal.id)} className="p-1.5 rounded-lg hover:bg-red-500/10" style={{ color: "var(--muted-foreground)" }}><Trash2 size={13} /></button>
+                    <button onClick={() => setEditing(goal)} aria-label={`Editar meta "${goal.title}"`} className="p-1.5 rounded-lg hover:bg-white/5" style={{ color: "var(--muted-foreground)" }}><Edit2 size={13} /></button>
+                    <button onClick={() => setDeleting(goal.id)} aria-label={`Excluir meta "${goal.title}"`} className="p-1.5 rounded-lg hover:bg-red-500/10" style={{ color: "var(--muted-foreground)" }}><Trash2 size={13} /></button>
                   </div>
                 </div>
 

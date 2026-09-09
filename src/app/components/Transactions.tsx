@@ -228,10 +228,10 @@ export function Transactions() {
                         {tx.type === "income" ? "+" : "-"}{formatCurrency(tx.amount)}
                       </span>
                       <div className="flex gap-1">
-                        <button onClick={() => setEditingTx(tx)} className="p-1.5 rounded-lg" style={{ color: "var(--muted-foreground)", background: "var(--secondary)" }}>
+                        <button onClick={() => setEditingTx(tx)} aria-label={`Editar transação "${tx.description}"`} className="p-1.5 rounded-lg" style={{ color: "var(--muted-foreground)", background: "var(--secondary)" }}>
                           <Edit2 size={13} />
                         </button>
-                        <button onClick={() => setDeletingId(tx.id)} className="p-1.5 rounded-lg" style={{ color: "#ef4444", background: "rgba(239,68,68,0.1)" }}>
+                        <button onClick={() => setDeletingId(tx.id)} aria-label={`Excluir transação "${tx.description}"`} className="p-1.5 rounded-lg" style={{ color: "#ef4444", background: "rgba(239,68,68,0.1)" }}>
                           <Trash2 size={13} />
                         </button>
                       </div>
@@ -292,8 +292,8 @@ export function Transactions() {
                       </td>
                       <td style={{ padding: "12px 16px" }}>
                         <div className="flex items-center gap-1.5">
-                          <button onClick={() => setEditingTx(tx)} className="p-1.5 rounded-lg hover:bg-blue-500/10" style={{ color: "var(--muted-foreground)" }}><Edit2 size={14} /></button>
-                          <button onClick={() => setDeletingId(tx.id)} className="p-1.5 rounded-lg hover:bg-red-500/10" style={{ color: "var(--muted-foreground)" }}><Trash2 size={14} /></button>
+                          <button onClick={() => setEditingTx(tx)} aria-label={`Editar transação "${tx.description}"`} className="p-1.5 rounded-lg hover:bg-blue-500/10" style={{ color: "var(--muted-foreground)" }}><Edit2 size={14} /></button>
+                          <button onClick={() => setDeletingId(tx.id)} aria-label={`Excluir transação "${tx.description}"`} className="p-1.5 rounded-lg hover:bg-red-500/10" style={{ color: "var(--muted-foreground)" }}><Trash2 size={14} /></button>
                         </div>
                       </td>
                     </motion.tr>
@@ -319,6 +319,7 @@ export function Transactions() {
             <div className="flex gap-1 flex-wrap">
               {Array.from({ length: totalPages }, (_, i) => (
                 <button key={i} onClick={() => setPage(i + 1)}
+                  aria-label={`Ir para página ${i + 1}`} aria-current={page === i + 1 ? "page" : undefined}
                   className="w-8 h-8 rounded-lg text-sm font-medium transition-colors"
                   style={{ background: page === i + 1 ? "var(--primary)" : "var(--secondary)", color: page === i + 1 ? "#fff" : "var(--muted-foreground)" }}>
                   {i + 1}

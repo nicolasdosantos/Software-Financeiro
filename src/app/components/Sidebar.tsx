@@ -100,6 +100,7 @@ export function Sidebar({
         {isMobile && (
           <button
             onClick={onToggle}
+            aria-label="Fechar menu"
             className="ml-auto p-1 rounded-lg transition-colors hover:bg-[var(--sidebar-accent)]"
             style={{ color: "var(--muted-foreground)" }}
           >
@@ -113,7 +114,7 @@ export function Sidebar({
         {navItems.map((item) => {
           const Icon = item.icon;
           return (
-            <NavLink key={item.path} to={item.path}>
+            <NavLink key={item.path} to={item.path} aria-label={item.label}>
               {({ isActive }) => (
                 <div className="relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl group">
                   {isActive && (
@@ -159,6 +160,7 @@ export function Sidebar({
         <motion.button
           whileTap={{ scale: 0.97 }}
           onClick={() => navigate("/perfil")}
+          aria-label={notificationCount > 0 ? `Notificações, ${notificationCount} não lidas` : "Notificações"}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors hover:bg-[var(--sidebar-accent)]"
           style={{ color: "var(--muted-foreground)" }}
         >
@@ -181,10 +183,11 @@ export function Sidebar({
         </motion.button>
 
         {/* User avatar */}
-        <motion.div
+        <motion.button
           whileTap={{ scale: 0.98 }}
           onClick={() => navigate("/perfil")}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-colors hover:bg-[var(--sidebar-accent)]"
+          aria-label={`Ver perfil de ${user?.user_metadata?.name || user?.email || "usuário"}`}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors hover:bg-[var(--sidebar-accent)]"
         >
           <div className="relative shrink-0">
             <div
@@ -207,12 +210,13 @@ export function Sidebar({
               </p>
             </div>
           )}
-        </motion.div>
+        </motion.button>
 
         {/* Collapse toggle — desktop only */}
         {!isMobile && (
           <button
             onClick={onToggle}
+            aria-label={collapsed ? "Expandir menu" : "Recolher menu"}
             className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl transition-colors text-sm hover:bg-[var(--sidebar-accent)]"
             style={{ color: "var(--muted-foreground)" }}
           >
