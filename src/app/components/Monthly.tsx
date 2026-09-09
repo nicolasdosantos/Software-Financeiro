@@ -71,7 +71,7 @@ export function Monthly() {
           <p style={{ color: "var(--muted-foreground)", fontSize: "0.875rem" }}>Visualize suas finanças mês a mês</p>
         </div>
         <div className="flex items-center gap-2 self-start sm:self-auto">
-          <button onClick={() => navigate(-1)} disabled={currIdx === 0}
+          <button onClick={() => navigate(-1)} disabled={currIdx === 0} aria-label="Mês anterior"
             className="p-2 rounded-xl disabled:opacity-30 transition-colors"
             style={{ background: "var(--secondary)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>
             <ChevronLeft size={16} />
@@ -80,7 +80,7 @@ export function Monthly() {
             style={{ minWidth: "140px", textAlign: "center" }}>
             {getMonthName(currentMonth)}
           </span>
-          <button onClick={() => navigate(1)} disabled={currIdx === months.length - 1}
+          <button onClick={() => navigate(1)} disabled={currIdx === months.length - 1} aria-label="Próximo mês"
             className="p-2 rounded-xl disabled:opacity-30 transition-colors"
             style={{ background: "var(--secondary)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>
             <ChevronRight size={16} />
@@ -126,6 +126,7 @@ export function Monthly() {
               const isToday = `${currentMonth}-${String(day).padStart(2, "0")}` === today;
               return (
                 <button key={day} type="button" onClick={() => setSelectedDay(day)}
+                  aria-label={`Dia ${day}${hasActivity ? `, ${dayTxs.length} transaç${dayTxs.length !== 1 ? "ões" : "ão"}` : ", sem movimentação"}`}
                   className="aspect-square flex flex-col items-center justify-center rounded-lg sm:rounded-xl transition-all"
                   style={{
                     background: selectedDay === day ? "var(--secondary)" : isToday ? "var(--primary)" : hasActivity ? `${net >= 0 ? "#10d9a4" : "#ef4444"}15` : "transparent",

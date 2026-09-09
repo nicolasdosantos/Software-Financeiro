@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 
@@ -45,6 +45,15 @@ export function ConfirmDeleteDialog({
 }: ConfirmDeleteDialogProps) {
   const [isDeleting, setIsDeleting] = useState(false);
 
+  useEffect(() => {
+    if (!open) return;
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open, onClose]);
+
   async function handleConfirm() {
     if (isDeleting) return;
     setIsDeleting(true);
@@ -69,6 +78,7 @@ export function ConfirmDeleteDialog({
           <motion.div
             initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
             style={dialogStyle} onClick={(e) => e.stopPropagation()}
+            role="alertdialog" aria-modal="true" aria-label={title}
           >
             <p style={{ fontSize: "2.5rem", marginBottom: "12px" }}>🗑️</p>
             <h3 className="text-white mb-2" style={{ fontWeight: 600 }}>{title}</h3>

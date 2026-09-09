@@ -124,8 +124,8 @@ export function Planning() {
                         placeholder="Limite R$"
                         style={{ background: "var(--input-background)", border: "1px solid var(--border)", borderRadius: "8px", color: "var(--foreground)", padding: "4px 10px", fontSize: "0.8rem", outline: "none", width: "110px" }}
                         onKeyDown={e => { if (e.key === "Enter") saveLimit(cat.id); if (e.key === "Escape") setEditingCat(null); }} />
-                      <button onClick={() => saveLimit(cat.id)} disabled={savingLimit} style={{ color: "#10d9a4", opacity: savingLimit ? 0.6 : 1 }}><CheckCircle size={16} /></button>
-                      <button onClick={() => setEditingCat(null)} disabled={savingLimit} style={{ color: "var(--muted-foreground)" }}><X size={16} /></button>
+                      <button onClick={() => saveLimit(cat.id)} disabled={savingLimit} aria-label={`Salvar limite de "${cat.name}"`} style={{ color: "#10d9a4", opacity: savingLimit ? 0.6 : 1 }}><CheckCircle size={16} /></button>
+                      <button onClick={() => setEditingCat(null)} disabled={savingLimit} aria-label="Cancelar edição do limite" style={{ color: "var(--muted-foreground)" }}><X size={16} /></button>
                     </div>
                   ) : (
                     <button onClick={() => { setEditingCat(cat.id); setNewLimit(limit.toString()); }}

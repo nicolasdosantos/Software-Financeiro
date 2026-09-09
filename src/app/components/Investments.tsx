@@ -213,8 +213,8 @@ export function Investments() {
                         </div>
                       </div>
                       <div className="flex gap-1">
-                        <button onClick={() => setEditing(inv)} className="p-1.5 rounded-lg" style={{ color: "var(--muted-foreground)", background: "var(--secondary)" }}><Edit2 size={13} /></button>
-                        <button onClick={() => setDeleting(inv.id)} className="p-1.5 rounded-lg" style={{ color: "#ef4444", background: "rgba(239,68,68,0.1)" }}><Trash2 size={13} /></button>
+                        <button onClick={() => setEditing(inv)} aria-label={`Editar investimento "${inv.name}"`} className="p-1.5 rounded-lg" style={{ color: "var(--muted-foreground)", background: "var(--secondary)" }}><Edit2 size={13} /></button>
+                        <button onClick={() => setDeleting(inv.id)} aria-label={`Excluir investimento "${inv.name}"`} className="p-1.5 rounded-lg" style={{ color: "#ef4444", background: "rgba(239,68,68,0.1)" }}><Trash2 size={13} /></button>
                       </div>
                     </div>
                     <div className="grid grid-cols-3 gap-2">
@@ -278,8 +278,8 @@ export function Investments() {
                         </td>
                         <td style={{ padding: "12px 16px" }}>
                           <div className="flex gap-1.5">
-                            <button onClick={() => setEditing(inv)} className="p-1.5 rounded-lg hover:bg-white/5" style={{ color: "var(--muted-foreground)" }}><Edit2 size={14} /></button>
-                            <button onClick={() => setDeleting(inv.id)} className="p-1.5 rounded-lg hover:bg-red-500/10" style={{ color: "var(--muted-foreground)" }}><Trash2 size={14} /></button>
+                            <button onClick={() => setEditing(inv)} aria-label={`Editar investimento "${inv.name}"`} className="p-1.5 rounded-lg hover:bg-white/5" style={{ color: "var(--muted-foreground)" }}><Edit2 size={14} /></button>
+                            <button onClick={() => setDeleting(inv.id)} aria-label={`Excluir investimento "${inv.name}"`} className="p-1.5 rounded-lg hover:bg-red-500/10" style={{ color: "var(--muted-foreground)" }}><Trash2 size={14} /></button>
                           </div>
                         </td>
                       </tr>

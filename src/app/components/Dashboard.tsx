@@ -149,6 +149,7 @@ export function Dashboard() {
         <motion.button
           whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }}
           onClick={() => setHideValues(!hideValues)}
+          aria-label={hideValues ? "Mostrar valores" : "Ocultar valores"}
           className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm shrink-0"
           style={{ background: "var(--secondary)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}
         >
@@ -328,12 +329,14 @@ export function Dashboard() {
       >
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-white" style={{ fontWeight: 600 }}>Últimas Transações</h3>
-          <span
+          <button
+            type="button"
             onClick={() => navigate("/transacoes")}
-            style={{ color: "var(--primary)", fontSize: "0.8rem", cursor: "pointer" }}
+            className="hover:underline"
+            style={{ color: "var(--primary)", fontSize: "0.8rem", cursor: "pointer", background: "none", border: "none", padding: 0 }}
           >
             Ver todas
-          </span>
+          </button>
         </div>
         <div className="space-y-1">
           {recentTxs.map((tx, i) => {

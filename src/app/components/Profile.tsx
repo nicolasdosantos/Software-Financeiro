@@ -347,6 +347,9 @@ export function Profile() {
                 </div>
                 <button
                   onClick={() => setNotifications(n => ({ ...n, [item.key]: !n[item.key as keyof typeof n] }))}
+                  role="switch"
+                  aria-checked={notifications[item.key as keyof typeof notifications]}
+                  aria-label={item.label}
                   className="relative w-12 h-6 rounded-full shrink-0"
                   style={{ background: notifications[item.key as keyof typeof notifications] ? "var(--primary)" : "rgba(255,255,255,0.1)", transition: "background 0.25s ease" }}
                 >
