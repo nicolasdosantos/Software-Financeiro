@@ -32,9 +32,21 @@ function InvestForm({ initial, onAdd, onUpdate, onClose }: InvestFormProps) {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (submitting) return;
+
+    const invested = parseFloat(form.invested);
+    const currentValue = parseFloat(form.currentValue);
+    if (Number.isNaN(invested) || invested < 0) {
+      toast.error("Informe um valor investido válido.");
+      return;
+    }
+    if (Number.isNaN(currentValue) || currentValue < 0) {
+      toast.error("Informe um valor atual válido.");
+      return;
+    }
+
     setSubmitting(true);
     try {
-      const data = { ...form, invested: parseFloat(form.invested), currentValue: parseFloat(form.currentValue) };
+      const data = { ...form, invested, currentValue };
       if (initial) await onUpdate({ ...data, id: initial.id });
       else await onAdd(data);
       toast.success(initial ? "Investimento atualizado com sucesso!" : "Investimento adicionado com sucesso!");

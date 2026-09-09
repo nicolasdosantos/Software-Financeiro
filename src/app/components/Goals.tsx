@@ -29,9 +29,25 @@ function GoalForm({ initial, onAdd, onUpdate, onClose }: GoalFormProps) {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (submitting) return;
+
+    const target = parseFloat(form.target);
+    const current = parseFloat(form.current);
+    if (Number.isNaN(target) || target <= 0) {
+      toast.error("Informe um valor alvo válido maior que zero.");
+      return;
+    }
+    if (Number.isNaN(current) || current < 0) {
+      toast.error("Informe um valor atual válido.");
+      return;
+    }
+    if (current > target) {
+      toast.error("O valor atual não pode ser maior que o valor alvo.");
+      return;
+    }
+
     setSubmitting(true);
     try {
-      const data = { ...form, target: parseFloat(form.target), current: parseFloat(form.current) };
+      const data = { ...form, target, current };
       if (initial) await onUpdate({ ...data, id: initial.id });
       else await onAdd(data);
       toast.success(initial ? "Meta atualizada com sucesso!" : "Meta criada com sucesso!");
