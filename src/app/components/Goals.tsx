@@ -9,6 +9,7 @@ import { Modal } from "./shared/Modal";
 import { ConfirmDeleteDialog } from "./shared/ConfirmDeleteDialog";
 import { EmptyState } from "./shared/EmptyState";
 import { ColorPicker } from "./shared/ColorPicker";
+import { IconPicker } from "./shared/IconPicker";
 import { Skeleton } from "./ui/skeleton";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -121,16 +122,7 @@ function GoalForm({ initial, onAdd, onUpdate, onClose }: GoalFormProps) {
       </div>
       <div>
         <Label className="mb-2">Ícone</Label>
-        <div className="flex flex-wrap gap-2">
-          {ICONS.map(ic => (
-            <button key={ic} type="button" onClick={() => setForm(f => ({ ...f, icon: ic }))}
-              aria-label={`Ícone ${ic}`} aria-pressed={form.icon === ic}
-              className="w-9 h-9 rounded-xl text-lg flex items-center justify-center transition-all"
-              style={{ background: form.icon === ic ? "var(--primary)" : "var(--secondary)", border: `2px solid ${form.icon === ic ? "var(--primary)" : "transparent"}` }}>
-              {ic}
-            </button>
-          ))}
-        </div>
+        <IconPicker value={form.icon} presets={ICONS} onChange={(ic) => setForm(f => ({ ...f, icon: ic }))} />
       </div>
       <div>
         <Label className="mb-2">Cor</Label>
