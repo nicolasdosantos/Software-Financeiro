@@ -7,6 +7,7 @@ import { useFinance, getCategorySpend } from "../context/FinanceContext";
 import type { Category } from "../context/FinanceContext";
 import { Modal } from "./shared/Modal";
 import { ConfirmDeleteDialog } from "./shared/ConfirmDeleteDialog";
+import { ColorPicker } from "./shared/ColorPicker";
 import { Skeleton } from "./ui/skeleton";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -101,17 +102,7 @@ function CategoryForm({ initial, onAdd, onUpdate, onClose }: CategoryFormProps) 
       </div>
       <div>
         <label className="block text-sm mb-2" style={{ color: "var(--muted-foreground)" }}>Cor</label>
-        <div className="flex flex-wrap gap-2">
-          {COLORS.map(c => (
-            <motion.button key={c} type="button" onClick={() => setForm(f => ({ ...f, color: c }))}
-              aria-label={`Cor ${c}`} aria-pressed={form.color === c}
-              whileTap={{ scale: 0.85 }}
-              animate={{ scale: form.color === c ? 1.15 : 1 }}
-              transition={{ type: "spring", stiffness: 400, damping: 20 }}
-              className="w-8 h-8 rounded-full"
-              style={{ background: c, border: `3px solid ${form.color === c ? "white" : "transparent"}` }} />
-          ))}
-        </div>
+        <ColorPicker value={form.color} presets={COLORS} onChange={(c) => setForm(f => ({ ...f, color: c }))} />
       </div>
       <div className="flex gap-3 pt-2">
         <Button type="button" variant="secondary" onClick={onClose} disabled={submitting} className="flex-1">
