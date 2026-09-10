@@ -4,6 +4,7 @@ import { AlertTriangle, CheckCircle, Edit2, X } from "lucide-react";
 import { toast } from "sonner";
 import { useFinance, formatCurrency, getMonthName, getCategorySpend } from "../context/FinanceContext";
 import { Skeleton } from "./ui/skeleton";
+import { Input } from "./ui/input";
 
 function PlanningSkeleton() {
   return (
@@ -155,9 +156,8 @@ export function Planning() {
                   </div>
                   {isEditing ? (
                     <div className="flex items-center gap-2">
-                      <input autoFocus type="number" value={newLimit} onChange={e => setNewLimit(e.target.value)}
-                        placeholder="Limite R$"
-                        style={{ background: "var(--input-background)", border: "1px solid var(--border)", borderRadius: "8px", color: "var(--foreground)", padding: "4px 10px", fontSize: "0.8rem", outline: "none", width: "110px" }}
+                      <Input autoFocus type="number" value={newLimit} onChange={e => setNewLimit(e.target.value)}
+                        placeholder="Limite R$" className="w-[110px] h-8 text-sm"
                         onKeyDown={e => { if (e.key === "Enter") saveLimit(cat.id); if (e.key === "Escape") setEditingCat(null); }} />
                       <button onClick={() => saveLimit(cat.id)} disabled={savingLimit} aria-label={`Salvar limite de "${cat.name}"`} style={{ color: "var(--success)", opacity: savingLimit ? 0.6 : 1 }}><CheckCircle size={16} /></button>
                       <button onClick={() => setEditingCat(null)} disabled={savingLimit} aria-label="Cancelar edição do limite" style={{ color: "var(--muted-foreground)" }}><X size={16} /></button>
