@@ -1,10 +1,10 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Plus, Search, Edit2, Trash2, ChevronUp, ChevronDown, X, Copy } from "lucide-react";
+import { Plus, Search, Edit2, Trash2, ChevronUp, ChevronDown, X, Copy, Ban } from "lucide-react";
 import { toast } from "sonner";
 import { useFinance, formatCurrency, getMonthName, getTodayDateInput, toLocalDate, getDistinctMonths } from "../context/FinanceContext";
-import type { Transaction } from "../context/FinanceContext";
+import type { Transaction, RecurringTransaction, NewRecurringTransaction } from "../context/FinanceContext";
 import { Modal } from "./shared/Modal";
 import { ConfirmDeleteDialog } from "./shared/ConfirmDeleteDialog";
 import { EmptyState } from "./shared/EmptyState";
@@ -57,6 +57,24 @@ const TABLE_COLUMNS: { key: SortKey | null; label: string }[] = [
   { key: null, label: "Ações" },
 ];
 
+/** "🔁" pra recorrência indefinida, "2/3" pra parcelado. null = transação avulsa. */
+function getRecurringBadge(tx: Transaction, recurringTransactions: RecurringTransaction[]): string | null {
+  if (!tx.recurring_id) return null;
+  if (tx.installment_number) {
+    const series = recurringTransactions.find(r => r.id === tx.recurring_id);
+    return `${tx.installment_number}/${series?.installmentsTotal ?? "?"}`;
+  }
+  return "🔁";
+}
+
+/** Só recorrências indefinidas e ainda ativas podem ser canceladas — parcelado
+ * já nasce completo (nada a interromper) e uma já cancelada não precisa de novo. */
+function canCancelRecurring(tx: Transaction, recurringTransactions: RecurringTransaction[]): boolean {
+  if (!tx.recurring_id) return false;
+  const series = recurringTransactions.find(r => r.id === tx.recurring_id);
+  return Boolean(series?.active && series.installmentsTotal === null);
+}
+
 interface TransactionFormProps {
   initial?: Transaction;
   // Pré-preenche o formulário de uma NOVA transação com os valores de outra
@@ -65,10 +83,13 @@ interface TransactionFormProps {
   prefill?: Omit<Transaction, "id">;
   onAdd: (t: Omit<Transaction, "id">) => Promise<void>;
   onUpdate: (t: Transaction) => Promise<void>;
+  onAddRecurring: (r: NewRecurringTransaction) => Promise<void>;
   onClose: () => void;
 }
 
-function TransactionForm({ initial, prefill, onAdd, onUpdate, onClose }: TransactionFormProps) {
+type RepeatMode = "none" | "monthly" | "installments";
+
+function TransactionForm({ initial, prefill, onAdd, onUpdate, onAddRecurring, onClose }: TransactionFormProps) {
   const { categories } = useFinance();
   const source = initial ?? prefill;
   const [form, setForm] = useState({
@@ -80,6 +101,11 @@ function TransactionForm({ initial, prefill, onAdd, onUpdate, onClose }: Transac
     notes: source?.notes || "",
   });
   const [submitting, setSubmitting] = useState(false);
+  // Repetir só faz sentido criando uma transação do zero — editar uma
+  // ocorrência existente ou duplicar não mexe em recorrência nenhuma.
+  const canRepeat = !initial && !prefill;
+  const [repeatMode, setRepeatMode] = useState<RepeatMode>("none");
+  const [installmentsCount, setInstallmentsCount] = useState("3");
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -91,12 +117,38 @@ function TransactionForm({ initial, prefill, onAdd, onUpdate, onClose }: Transac
       return;
     }
 
+    const isRepeating = canRepeat && repeatMode !== "none";
+    let installmentsTotal: number | null = null;
+    if (isRepeating && repeatMode === "installments") {
+      const n = parseInt(installmentsCount, 10);
+      if (!Number.isInteger(n) || n < 2) {
+        toast.error("Informe em quantas parcelas (mínimo 2).");
+        return;
+      }
+      installmentsTotal = n;
+    }
+
     setSubmitting(true);
     try {
       const data = { ...form, amount };
-      if (initial) await onUpdate({ ...data, id: initial.id });
-      else await onAdd(data);
-      toast.success(initial ? "Transação atualizada com sucesso!" : "Transação adicionada com sucesso!");
+      if (initial) {
+        await onUpdate({ ...data, id: initial.id });
+      } else if (isRepeating) {
+        await onAddRecurring({
+          type: data.type,
+          amount: data.amount,
+          description: data.description,
+          categoryId: data.category,
+          notes: data.notes || undefined,
+          startDate: data.date,
+          installmentsTotal,
+        });
+      } else {
+        await onAdd(data);
+      }
+      toast.success(
+        initial ? "Transação atualizada com sucesso!" : isRepeating ? "Recorrência criada com sucesso!" : "Transação adicionada com sucesso!"
+      );
       onClose();
     } catch (err) {
       console.error("Erro ao salvar transação:", err);
@@ -147,6 +199,36 @@ function TransactionForm({ initial, prefill, onAdd, onUpdate, onClose }: Transac
           </SelectContent>
         </Select>
       </div>
+      {canRepeat && (
+        <div className="space-y-1.5">
+          <Label htmlFor="tx-repeat">Repetir</Label>
+          <Select value={repeatMode} onValueChange={(value) => setRepeatMode(value as RepeatMode)}>
+            <SelectTrigger id="tx-repeat" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Não repete</SelectItem>
+              <SelectItem value="monthly">Todo mês</SelectItem>
+              <SelectItem value="installments">Parcelado</SelectItem>
+            </SelectContent>
+          </Select>
+          {repeatMode === "monthly" && (
+            <p style={{ color: "var(--muted-foreground)", fontSize: "0.75rem" }}>
+              Lança este mês agora; os próximos meses são gerados sozinhos conforme o tempo passa — sem fim definido, até você cancelar.
+            </p>
+          )}
+          {repeatMode === "installments" && (
+            <div className="space-y-1.5 pt-1">
+              <Label htmlFor="tx-installments">Em quantas vezes?</Label>
+              <Input id="tx-installments" type="number" min="2" step="1" value={installmentsCount}
+                onChange={e => setInstallmentsCount(e.target.value)} placeholder="Ex: 3" />
+              <p style={{ color: "var(--muted-foreground)", fontSize: "0.75rem" }}>
+                Cria todas as parcelas de uma vez, uma por mês a partir da data acima.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
       <div className="space-y-1.5">
         <Label htmlFor="tx-notes">Observações</Label>
         <Textarea id="tx-notes" className="min-h-[72px]" value={form.notes}
@@ -165,7 +247,12 @@ function TransactionForm({ initial, prefill, onAdd, onUpdate, onClose }: Transac
 }
 
 export function Transactions() {
-  const { transactions, categories, addTransaction, updateTransaction, deleteTransaction, loading } = useFinance();
+  const {
+    transactions, categories, recurringTransactions,
+    addTransaction, updateTransaction, deleteTransaction,
+    addRecurringTransaction, cancelRecurringTransaction,
+    loading,
+  } = useFinance();
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<"all" | "income" | "expense">("all");
   const [filterCategory, setFilterCategory] = useState("all");
@@ -182,6 +269,7 @@ export function Transactions() {
   const [duplicatingTx, setDuplicatingTx] = useState<Transaction | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [cancelingRecurringId, setCancelingRecurringId] = useState<string | null>(null);
 
   if (loading) return <TransactionsSkeleton />;
 
@@ -322,6 +410,7 @@ export function Transactions() {
             <div className="divide-y" style={{ borderColor: "var(--border)" }}>
               {paged.map(tx => {
                 const cat = categories.find(c => c.id === tx.category);
+                const recurringBadge = getRecurringBadge(tx, recurringTransactions);
                 return (
                   <div key={tx.id} className="flex items-center justify-between p-4 gap-3">
                     <div className="flex items-center gap-3 min-w-0">
@@ -336,6 +425,11 @@ export function Transactions() {
                             style={{ background: cat ? `${cat.color}20` : "var(--secondary)", color: cat?.color || "var(--muted-foreground)" }}>
                             {cat?.name}
                           </span>
+                          {recurringBadge && (
+                            <span className="px-1.5 py-0.5 rounded-full text-xs" style={{ background: "rgba(var(--primary-rgb),0.14)", color: "var(--primary)" }}>
+                              {recurringBadge}
+                            </span>
+                          )}
                           <span style={{ color: "var(--muted-foreground)", fontSize: "0.7rem" }}>
                             {toLocalDate(tx.date).toLocaleDateString("pt-BR")}
                           </span>
@@ -347,6 +441,11 @@ export function Transactions() {
                         {tx.type === "income" ? "+" : "-"}{formatCurrency(tx.amount)}
                       </span>
                       <div className="flex gap-1">
+                        {canCancelRecurring(tx, recurringTransactions) && (
+                          <button onClick={() => setCancelingRecurringId(tx.recurring_id!)} aria-label={`Cancelar recorrência de "${tx.description}"`} className="p-1.5 rounded-lg" style={{ color: "var(--muted-foreground)", background: "var(--secondary)" }}>
+                            <Ban size={13} />
+                          </button>
+                        )}
                         <button onClick={() => setDuplicatingTx(tx)} aria-label={`Duplicar transação "${tx.description}"`} className="p-1.5 rounded-lg" style={{ color: "var(--muted-foreground)", background: "var(--secondary)" }}>
                           <Copy size={13} />
                         </button>
@@ -388,6 +487,7 @@ export function Transactions() {
               <AnimatePresence>
                 {paged.map((tx, i) => {
                   const cat = categories.find(c => c.id === tx.category);
+                  const recurringBadge = getRecurringBadge(tx, recurringTransactions);
                   return (
                     <motion.tr key={tx.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                       transition={{ delay: i * 0.04 }}
@@ -403,9 +503,16 @@ export function Transactions() {
                         </div>
                       </td>
                       <td style={{ padding: "12px 16px" }}>
-                        <span className="px-2 py-1 rounded-full text-xs" style={{ background: cat ? `${cat.color}20` : "var(--secondary)", color: cat?.color || "var(--muted-foreground)" }}>
-                          {cat?.name || "-"}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="px-2 py-1 rounded-full text-xs" style={{ background: cat ? `${cat.color}20` : "var(--secondary)", color: cat?.color || "var(--muted-foreground)" }}>
+                            {cat?.name || "-"}
+                          </span>
+                          {recurringBadge && (
+                            <span className="px-2 py-1 rounded-full text-xs" style={{ background: "rgba(var(--primary-rgb),0.14)", color: "var(--primary)" }}>
+                              {recurringBadge}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td style={{ padding: "12px 16px", color: "var(--muted-foreground)", fontSize: "0.8rem", whiteSpace: "nowrap" }}>
                         {toLocalDate(tx.date).toLocaleDateString("pt-BR")}
@@ -423,6 +530,9 @@ export function Transactions() {
                       </td>
                       <td style={{ padding: "12px 16px" }}>
                         <div className="flex items-center gap-1.5">
+                          {canCancelRecurring(tx, recurringTransactions) && (
+                            <button onClick={() => setCancelingRecurringId(tx.recurring_id!)} aria-label={`Cancelar recorrência de "${tx.description}"`} className="p-1.5 rounded-lg hover:bg-white/5" style={{ color: "var(--muted-foreground)" }}><Ban size={14} /></button>
+                          )}
                           <button onClick={() => setDuplicatingTx(tx)} aria-label={`Duplicar transação "${tx.description}"`} className="p-1.5 rounded-lg hover:bg-white/5" style={{ color: "var(--muted-foreground)" }}><Copy size={14} /></button>
                           <button onClick={() => setEditingTx(tx)} aria-label={`Editar transação "${tx.description}"`} className="p-1.5 rounded-lg hover:bg-blue-500/10" style={{ color: "var(--muted-foreground)" }}><Edit2 size={14} /></button>
                           <button onClick={() => setDeletingId(tx.id)} aria-label={`Excluir transação "${tx.description}"`} className="p-1.5 rounded-lg hover:bg-red-500/10" style={{ color: "var(--muted-foreground)" }}><Trash2 size={14} /></button>
@@ -464,12 +574,12 @@ export function Transactions() {
       </motion.div>
 
       <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Nova Transação">
-        <TransactionForm onAdd={addTransaction} onUpdate={updateTransaction} onClose={() => setShowAdd(false)} />
+        <TransactionForm onAdd={addTransaction} onUpdate={updateTransaction} onAddRecurring={addRecurringTransaction} onClose={() => setShowAdd(false)} />
       </Modal>
 
       <Modal open={editingTx !== null} onClose={() => setEditingTx(null)} title="Editar Transação">
         {editingTx && (
-          <TransactionForm initial={editingTx} onAdd={addTransaction} onUpdate={updateTransaction} onClose={() => setEditingTx(null)} />
+          <TransactionForm initial={editingTx} onAdd={addTransaction} onUpdate={updateTransaction} onAddRecurring={addRecurringTransaction} onClose={() => setEditingTx(null)} />
         )}
       </Modal>
 
@@ -479,10 +589,24 @@ export function Transactions() {
             prefill={{ ...duplicatingTx, date: getTodayDateInput() }}
             onAdd={addTransaction}
             onUpdate={updateTransaction}
+            onAddRecurring={addRecurringTransaction}
             onClose={() => setDuplicatingTx(null)}
           />
         )}
       </Modal>
+
+      <ConfirmDeleteDialog
+        open={cancelingRecurringId !== null}
+        onClose={() => setCancelingRecurringId(null)}
+        onConfirm={() => cancelRecurringTransaction(cancelingRecurringId!)}
+        title="Cancelar recorrência?"
+        description="As transações já lançadas continuam existindo — só paramos de gerar as próximas."
+        successMessage="Recorrência cancelada."
+        errorLog="Erro ao cancelar transação recorrente:"
+        icon="🔁"
+        confirmLabel="Cancelar recorrência"
+        confirmingLabel="Cancelando..."
+      />
 
       <ConfirmDeleteDialog
         open={deletingId !== null}

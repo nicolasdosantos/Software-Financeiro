@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  addMonths,
   formatCurrency,
   getAccumulatedBalance,
   getCategorySpend,
@@ -156,6 +157,30 @@ describe("formatCurrency", () => {
 
   it("formata valores negativos com o sinal", () => {
     expect(formatCurrency(-50)).toBe("-R$ 50,00");
+  });
+});
+
+describe("addMonths", () => {
+  it("soma meses dentro do mesmo ano", () => {
+    expect(addMonths("2026-03-10", 2)).toBe("2026-05-10");
+  });
+
+  it("vira o ano quando a soma passa de dezembro", () => {
+    expect(addMonths("2026-11-15", 3)).toBe("2027-02-15");
+  });
+
+  it("encurta pro último dia do mês de destino quando ele é mais curto (31/01 + 1 mês)", () => {
+    expect(addMonths("2026-01-31", 1)).toBe("2026-02-28"); // 2026 não é bissexto
+  });
+
+  it("respeita fevereiro bissexto", () => {
+    expect(addMonths("2028-01-31", 1)).toBe("2028-02-29"); // 2028 é bissexto
+  });
+
+  it("soma vários meses seguidos (uso em série parcelada) sem acumular erro de dia", () => {
+    expect(addMonths("2026-01-31", 0)).toBe("2026-01-31");
+    expect(addMonths("2026-01-31", 1)).toBe("2026-02-28");
+    expect(addMonths("2026-01-31", 2)).toBe("2026-03-31");
   });
 });
 

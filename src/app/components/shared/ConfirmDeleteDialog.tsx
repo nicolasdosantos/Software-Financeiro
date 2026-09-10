@@ -32,6 +32,12 @@ interface ConfirmDeleteDialogProps {
   description: string;
   successMessage: string;
   errorLog: string;
+  /** Emoji no topo do card. Padrão 🗑️ (exclusão) — outras confirmações
+   * destrutivas-mas-não-exclusão (ex: cancelar uma recorrência) podem trocar. */
+  icon?: string;
+  /** Texto do botão de confirmação. Padrão "Excluir"/"Excluindo...". */
+  confirmLabel?: string;
+  confirmingLabel?: string;
 }
 
 export function ConfirmDeleteDialog({
@@ -42,6 +48,9 @@ export function ConfirmDeleteDialog({
   description,
   successMessage,
   errorLog,
+  icon = "🗑️",
+  confirmLabel = "Excluir",
+  confirmingLabel = "Excluindo...",
 }: ConfirmDeleteDialogProps) {
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -80,7 +89,7 @@ export function ConfirmDeleteDialog({
             style={dialogStyle} onClick={(e) => e.stopPropagation()}
             role="alertdialog" aria-modal="true" aria-label={title}
           >
-            <p style={{ fontSize: "2.5rem", marginBottom: "12px" }}>🗑️</p>
+            <p style={{ fontSize: "2.5rem", marginBottom: "12px" }}>{icon}</p>
             <h3 className="text-white mb-2" style={{ fontWeight: 600 }}>{title}</h3>
             <p style={{ color: "var(--muted-foreground)", fontSize: "0.875rem", marginBottom: "24px" }}>
               {description}
@@ -100,7 +109,7 @@ export function ConfirmDeleteDialog({
                 className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white"
                 style={{ background: "var(--destructive)", opacity: isDeleting ? 0.7 : 1 }}
               >
-                {isDeleting ? "Excluindo..." : "Excluir"}
+                {isDeleting ? confirmingLabel : confirmLabel}
               </button>
             </div>
           </motion.div>

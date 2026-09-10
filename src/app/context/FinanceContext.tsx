@@ -14,6 +14,27 @@ export interface Transaction {
   category: string;
   date: string;
   notes?: string;
+  // Nomeados em snake_case (fora do padrão camelCase do resto do arquivo) de
+  // propósito: Transaction nunca teve um Row/mapXxx próprio — os campos vão
+  // direto pro Supabase sem tradução (ver addTransaction/updateTransaction),
+  // então o nome aqui precisa ser IGUAL ao nome da coluna no banco.
+  recurring_id?: string | null;
+  installment_number?: number | null;
+}
+
+/** null = recorrente indefinida (repete todo mês até ser cancelada);
+ * um número = parcelado em N vezes (gerado tudo de uma vez na criação). */
+export interface RecurringTransaction {
+  id: string;
+  type: TransactionType;
+  amount: number;
+  description: string;
+  categoryId: string;
+  notes?: string;
+  startDate: string;
+  installmentsTotal: number | null;
+  lastGeneratedDate: string;
+  active: boolean;
 }
 
 export interface Category {
@@ -56,16 +77,30 @@ export interface Budget {
 
 export const DEFAULT_BUDGET_MONTH = "";
 
+export interface NewRecurringTransaction {
+  type: TransactionType;
+  amount: number;
+  description: string;
+  categoryId: string;
+  notes?: string;
+  startDate: string;
+  /** null/undefined = recorrente indefinida; N (>1) = parcelado em N vezes. */
+  installmentsTotal?: number | null;
+}
+
 interface FinanceContextType {
   transactions: Transaction[];
   categories: Category[];
   goals: Goal[];
   investments: Investment[];
   budgets: Budget[];
+  recurringTransactions: RecurringTransaction[];
   loading: boolean;
   addTransaction: (t: Omit<Transaction, "id">) => Promise<void>;
   updateTransaction: (t: Transaction) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
+  addRecurringTransaction: (r: NewRecurringTransaction) => Promise<void>;
+  cancelRecurringTransaction: (id: string) => Promise<void>;
   addCategory: (c: Omit<Category, "id">) => Promise<void>;
   updateCategory: (c: Category) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
@@ -103,6 +138,18 @@ type BudgetRow = {
   category_id: string;
   limit_amount: number;
   month: string;
+};
+type RecurringTransactionRow = {
+  id: string;
+  type: TransactionType;
+  amount: number;
+  description: string;
+  category_id: string;
+  notes: string | null;
+  start_date: string;
+  installments_total: number | null;
+  last_generated_date: string;
+  active: boolean;
 };
 
 const DEFAULT_CATEGORIES: Category[] = [
@@ -214,6 +261,44 @@ export function getBudgetCategoryIds(budgets: Budget[]): string[] {
   return [...new Set(budgets.map((b) => b.categoryId))];
 }
 
+/**
+ * Soma `months` meses a uma data "YYYY-MM-DD", preservando o dia quando
+ * possível e "encurtando" pro último dia do mês de destino quando não (ex:
+ * 31/01 + 1 mês = 28 ou 29/02, nunca 03/03 — o que Date.setMonth faria
+ * sozinho por conta do overflow de dias).
+ */
+export function addMonths(date: string, months: number): string {
+  const [year, month, day] = date.split("-").map(Number);
+  const targetIndex = month - 1 + months;
+  const targetYear = year + Math.floor(targetIndex / 12);
+  const targetMonth = ((targetIndex % 12) + 12) % 12;
+  const lastDayOfTargetMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+  const clampedDay = Math.min(day, lastDayOfTargetMonth);
+  return [targetYear, String(targetMonth + 1).padStart(2, "0"), String(clampedDay).padStart(2, "0")].join("-");
+}
+
+/** Quantos meses de calendário separam duas datas "YYYY-MM-DD" (só ano/mês, ignora o dia). */
+function monthDiff(from: string, to: string): number {
+  const [fy, fm] = from.split("-").map(Number);
+  const [ty, tm] = to.split("-").map(Number);
+  return (ty - fy) * 12 + (tm - fm);
+}
+
+function mapRecurringTransaction(row: RecurringTransactionRow): RecurringTransaction {
+  return {
+    id: row.id,
+    type: row.type,
+    amount: Number(row.amount),
+    description: row.description,
+    categoryId: row.category_id,
+    notes: row.notes ?? undefined,
+    startDate: row.start_date,
+    installmentsTotal: row.installments_total,
+    lastGeneratedDate: row.last_generated_date,
+    active: row.active,
+  };
+}
+
 function mapGoal(row: GoalRow): Goal {
   return {
     id: row.id,
@@ -256,6 +341,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [recurringTransactions, setRecurringTransactions] = useState<RecurringTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   // "Mês atual" é só o mês-calendário de hoje — nada na UI deve poder mudá-lo
   // globalmente. Dashboard, Planejamento e Relatórios usam esse valor pra
@@ -310,6 +396,70 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     return (data ?? []) as Category[];
   }, []);
 
+  // Gera as ocorrências que uma série recorrente indefinida (installmentsTotal
+  // null) "deveria" ter e ainda não tem, com base em quantos meses se
+  // passaram desde a última geração. É isso que substitui um cron/job de
+  // servidor, que este app não tem: a própria abertura do app, de vez em
+  // quando, "põe em dia" as recorrências ativas. Parcelados não entram aqui
+  // — já nascem com todas as ocorrências geradas de uma vez (ver
+  // addRecurringTransaction) e ficam com active=false.
+  const catchUpRecurringTransactions = useCallback(async (
+    authUser: User,
+    recurring: RecurringTransaction[],
+    loadedTransactions: Transaction[],
+  ): Promise<{ transactions: Transaction[]; recurring: RecurringTransaction[] }> => {
+    const today = getTodayDateInput();
+    let nextTransactions = loadedTransactions;
+    let nextRecurring = recurring;
+
+    for (const series of recurring) {
+      if (!series.active || series.installmentsTotal !== null) continue;
+
+      const monthsBehind = monthDiff(series.lastGeneratedDate, today);
+      if (monthsBehind <= 0) continue;
+
+      // Limite de segurança: uma série esquecida por anos (conta antiga,
+      // período sem abrir o app) não deveria gerar centenas de lançamentos
+      // de uma vez só na próxima abertura.
+      const toGenerate = Math.min(monthsBehind, 24);
+      const newRows = Array.from({ length: toGenerate }, (_, i) => ({
+        type: series.type,
+        amount: series.amount,
+        description: series.description,
+        category: series.categoryId,
+        date: addMonths(series.lastGeneratedDate, i + 1),
+        notes: series.notes,
+        recurring_id: series.id,
+        user_id: authUser.id,
+      }));
+
+      const { data, error } = await supabase.from("transactions").insert(newRows).select("*");
+      if (error) {
+        // Uma série com problema (ex: categoria apagada) não deveria travar
+        // o carregamento das outras — só loga e segue pras próximas.
+        console.error("Erro ao gerar ocorrências de transação recorrente:", error);
+        continue;
+      }
+
+      nextTransactions = [...(data as Transaction[]), ...nextTransactions];
+
+      const newLastGeneratedDate = addMonths(series.lastGeneratedDate, toGenerate);
+      const { error: updateError } = await supabase
+        .from("recurring_transactions")
+        .update({ last_generated_date: newLastGeneratedDate })
+        .eq("id", series.id)
+        .eq("user_id", authUser.id);
+
+      if (updateError) {
+        console.error("Erro ao atualizar data da última ocorrência gerada:", updateError);
+      }
+
+      nextRecurring = nextRecurring.map((r) => r.id === series.id ? { ...r, lastGeneratedDate: newLastGeneratedDate } : r);
+    }
+
+    return { transactions: nextTransactions, recurring: nextRecurring };
+  }, []);
+
   const loadFinanceData = useCallback(async (authUser: User | null) => {
     setLoading(true);
 
@@ -320,6 +470,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         setGoals([]);
         setInvestments([]);
         setBudgets([]);
+        setRecurringTransactions([]);
         return;
       }
 
@@ -329,12 +480,14 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         goalsResult,
         investmentsResult,
         budgetsResult,
+        recurringResult,
       ] = await Promise.all([
         supabase.from("transactions").select("*").eq("user_id", authUser.id).order("date", { ascending: false }),
         supabase.from("categories").select("*").eq("user_id", authUser.id).order("name", { ascending: true }),
         supabase.from("goals").select("*").eq("user_id", authUser.id).order("deadline", { ascending: true }),
         supabase.from("investments").select("*").eq("user_id", authUser.id).order("start_date", { ascending: false }),
         supabase.from("budgets").select("category_id, limit_amount, month").eq("user_id", authUser.id),
+        supabase.from("recurring_transactions").select("*").eq("user_id", authUser.id),
       ]);
 
       const failures: string[] = [];
@@ -343,25 +496,33 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       if (goalsResult.error) { console.error("Erro ao carregar metas:", goalsResult.error); failures.push("metas"); }
       if (investmentsResult.error) { console.error("Erro ao carregar investimentos:", investmentsResult.error); failures.push("investimentos"); }
       if (budgetsResult.error) { console.error("Erro ao carregar orçamentos:", budgetsResult.error); failures.push("orçamentos"); }
+      if (recurringResult.error) { console.error("Erro ao carregar transações recorrentes:", recurringResult.error); failures.push("transações recorrentes"); }
 
       if (failures.length > 0) {
         toast.error(`Não foi possível carregar: ${failures.join(", ")}. Tente recarregar a página.`);
       }
 
       const userCategories = await ensureDefaultCategories(authUser, (categoriesResult.data ?? []) as Category[]);
+      const loadedRecurring = ((recurringResult.data ?? []) as RecurringTransactionRow[]).map(mapRecurringTransaction);
+      const loadedTransactions = (transactionsResult.data ?? []) as Transaction[];
 
-      setTransactions((transactionsResult.data ?? []) as Transaction[]);
+      const { transactions: finalTransactions, recurring: finalRecurring } = recurringResult.error
+        ? { transactions: loadedTransactions, recurring: loadedRecurring }
+        : await catchUpRecurringTransactions(authUser, loadedRecurring, loadedTransactions);
+
+      setTransactions(finalTransactions);
       setCategories(userCategories);
       setGoals(((goalsResult.data ?? []) as GoalRow[]).map(mapGoal));
       setInvestments(((investmentsResult.data ?? []) as InvestmentRow[]).map(mapInvestment));
       setBudgets(((budgetsResult.data ?? []) as BudgetRow[]).map(mapBudget));
+      setRecurringTransactions(finalRecurring);
     } catch (err) {
       console.error("Erro inesperado ao carregar dados financeiros:", err);
       toast.error("Não foi possível carregar seus dados. Verifique sua conexão e tente novamente.");
     } finally {
       setLoading(false);
     }
-  }, [ensureDefaultCategories]);
+  }, [ensureDefaultCategories, catchUpRecurringTransactions]);
 
   useEffect(() => {
     // Espera o AuthProvider resolver a sessão inicial antes de decidir se
@@ -382,6 +543,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     goals,
     investments,
     budgets,
+    recurringTransactions,
     loading,
     currentMonth,
 
@@ -438,6 +600,87 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       }
 
       setTransactions((prev) => prev.filter((item) => item.id !== id));
+    },
+
+    addRecurringTransaction: async (input) => {
+      const user = await requireUser();
+
+      const installmentsTotal = input.installmentsTotal ?? null;
+      // Parcelado: gera as N ocorrências de uma vez e a série nasce
+      // "concluída" (active=false — nada mais pra gerar, nunca). Recorrente
+      // indefinida: gera só a 1ª ocorrência agora e fica active=true —
+      // catchUpRecurringTransactions (ver loadFinanceData) gera as próximas
+      // conforme os meses forem passando.
+      const occurrences = installmentsTotal ?? 1;
+      const lastDate = addMonths(input.startDate, occurrences - 1);
+
+      const { data: seriesData, error: seriesError } = await supabase
+        .from("recurring_transactions")
+        .insert({
+          user_id: user.id,
+          type: input.type,
+          amount: input.amount,
+          description: input.description,
+          category_id: input.categoryId,
+          notes: input.notes || null,
+          start_date: input.startDate,
+          installments_total: installmentsTotal,
+          last_generated_date: lastDate,
+          active: installmentsTotal === null,
+        })
+        .select("*")
+        .single();
+
+      if (seriesError) {
+        console.error("Erro ao criar transação recorrente:", seriesError);
+        toast.error("Não foi possível criar a recorrência.");
+        throw seriesError;
+      }
+
+      const series = mapRecurringTransaction(seriesData as RecurringTransactionRow);
+
+      const rows = Array.from({ length: occurrences }, (_, i) => ({
+        type: input.type,
+        amount: input.amount,
+        description: input.description,
+        category: input.categoryId,
+        date: addMonths(input.startDate, i),
+        notes: input.notes || null,
+        recurring_id: series.id,
+        installment_number: installmentsTotal ? i + 1 : null,
+        user_id: user.id,
+      }));
+
+      const { data: txData, error: txError } = await supabase.from("transactions").insert(rows).select("*");
+
+      if (txError) {
+        console.error("Erro ao gerar transações da recorrência:", txError);
+        toast.error("A recorrência foi criada, mas houve um erro ao gerar as transações. Tente recarregar a página.");
+        throw txError;
+      }
+
+      setRecurringTransactions((prev) => [...prev, series]);
+      setTransactions((prev) => [...(txData as Transaction[]), ...prev]);
+    },
+
+    // Só impede que a série gere novas ocorrências no futuro — não apaga o
+    // que já foi lançado, porque isso já é dinheiro real que entrou/saiu.
+    cancelRecurringTransaction: async (id) => {
+      const user = await requireUser();
+
+      const { error } = await supabase
+        .from("recurring_transactions")
+        .update({ active: false })
+        .eq("id", id)
+        .eq("user_id", user.id);
+
+      if (error) {
+        console.error("Erro ao cancelar transação recorrente:", error);
+        toast.error("Não foi possível cancelar a recorrência.");
+        throw error;
+      }
+
+      setRecurringTransactions((prev) => prev.map((r) => r.id === id ? { ...r, active: false } : r));
     },
 
     addCategory: async (category) => {
@@ -670,6 +913,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     investments,
     loading,
     transactions,
+    recurringTransactions,
   ]);
 
   return (
