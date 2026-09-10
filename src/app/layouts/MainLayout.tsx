@@ -3,11 +3,24 @@ import { Outlet } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { Menu } from "lucide-react";
 import { Sidebar } from "../components/Sidebar";
+import { NotificationsBell } from "../components/NotificationsBell";
+import { useAuth } from "../context/AuthContext";
+import { useNotifications } from "../hooks/useNotifications";
+import { useDismissedNotifications } from "../hooks/useDismissedNotifications";
 
 export default function MainLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+
+  // Fonte única das notificações: alimenta tanto o sino da navbar quanto o
+  // badge do atalho "Notificações" na Sidebar, que antes sempre mostrava 0
+  // (a prop `notificationCount` existia mas nunca era passada por ninguém).
+  const { user } = useAuth();
+  const allNotifications = useNotifications();
+  const activeIds = allNotifications.map((n) => n.id);
+  const { dismissed, dismiss } = useDismissedNotifications(user?.id, activeIds);
+  const visibleNotifications = allNotifications.filter((n) => !dismissed.includes(n.id));
 
   useEffect(() => {
     function check() {
@@ -67,6 +80,7 @@ export default function MainLayout() {
         }}
         isMobile={isMobile}
         mobileOpen={mobileOpen}
+        notificationCount={visibleNotifications.length}
       />
 
       {/* Conteúdo */}
@@ -112,6 +126,8 @@ export default function MainLayout() {
           </div>
 
           <div className="flex items-center gap-2">
+            <NotificationsBell notifications={visibleNotifications} onDismiss={dismiss} />
+
             <span
               className="hidden sm:block"
               style={{
