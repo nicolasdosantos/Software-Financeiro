@@ -302,3 +302,16 @@ alter table public.transactions add column if not exists recurring_id uuid refer
 alter table public.transactions add column if not exists installment_number int;
 
 create index if not exists transactions_recurring_id_idx on public.transactions(recurring_id);
+
+-- ============================================================================
+-- MIGRAÇÃO: dividir uma transação entre várias categorias
+-- ============================================================================
+
+-- Liga as "partes" de uma transação dividida entre categorias (ex: compra de
+-- mercado com item de limpeza e comida). Cada parte continua sendo uma linha
+-- normal em transactions, com sua própria categoria/valor — não muda em nada
+-- a lógica de orçamento/relatórios/gráficos, que já soma por t.category.
+-- null = transação avulsa, comportamento de sempre.
+alter table public.transactions add column if not exists split_group_id uuid;
+
+create index if not exists transactions_split_group_idx on public.transactions(user_id, split_group_id) where split_group_id is not null;
