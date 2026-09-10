@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Plus, Search, Edit2, Trash2, ChevronUp, ChevronDown, X, Copy, Ban } from "lucide-react";
 import { toast } from "sonner";
 import { useFinance, formatCurrency, getMonthName, getTodayDateInput, toLocalDate, getDistinctMonths } from "../context/FinanceContext";
-import type { Transaction, RecurringTransaction, NewRecurringTransaction } from "../context/FinanceContext";
+import type { Transaction, RecurringTransaction, NewRecurringTransaction, NewSplitTransaction } from "../context/FinanceContext";
 import { Modal } from "./shared/Modal";
 import { ConfirmDeleteDialog } from "./shared/ConfirmDeleteDialog";
 import { EmptyState } from "./shared/EmptyState";
@@ -13,6 +13,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
+import { Checkbox } from "./ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
 function TransactionsSkeleton() {
@@ -75,6 +76,19 @@ function canCancelRecurring(tx: Transaction, recurringTransactions: RecurringTra
   return Boolean(series?.active && series.installmentsTotal === null);
 }
 
+/** "✂️ 3x" quando a transação é uma das partes de uma compra dividida entre
+ * categorias — a contagem vem de contar quantas partes ainda existem entre as
+ * transações carregadas, não de um total fixo guardado em algum lugar (não
+ * existe "tabela do grupo", só o split_group_id em comum). */
+function getSplitBadge(tx: Transaction, transactions: Transaction[]): string | null {
+  if (!tx.split_group_id) return null;
+  const partCount = transactions.filter(t => t.split_group_id === tx.split_group_id).length;
+  // Se sobrou só 1 parte (as outras foram apagadas depois), não faz mais
+  // sentido rotular como "dividida" — virou uma transação avulsa normal.
+  if (partCount < 2) return null;
+  return `✂️ ${partCount}x`;
+}
+
 interface TransactionFormProps {
   initial?: Transaction;
   // Pré-preenche o formulário de uma NOVA transação com os valores de outra
@@ -84,12 +98,17 @@ interface TransactionFormProps {
   onAdd: (t: Omit<Transaction, "id">) => Promise<void>;
   onUpdate: (t: Transaction) => Promise<void>;
   onAddRecurring: (r: NewRecurringTransaction) => Promise<void>;
+  onAddSplit: (s: NewSplitTransaction) => Promise<void>;
   onClose: () => void;
 }
 
 type RepeatMode = "none" | "monthly" | "installments";
+interface SplitPartInput {
+  categoryId: string;
+  amount: string;
+}
 
-function TransactionForm({ initial, prefill, onAdd, onUpdate, onAddRecurring, onClose }: TransactionFormProps) {
+function TransactionForm({ initial, prefill, onAdd, onUpdate, onAddRecurring, onAddSplit, onClose }: TransactionFormProps) {
   const { categories } = useFinance();
   const source = initial ?? prefill;
   const [form, setForm] = useState({
@@ -101,15 +120,66 @@ function TransactionForm({ initial, prefill, onAdd, onUpdate, onAddRecurring, on
     notes: source?.notes || "",
   });
   const [submitting, setSubmitting] = useState(false);
-  // Repetir só faz sentido criando uma transação do zero — editar uma
-  // ocorrência existente ou duplicar não mexe em recorrência nenhuma.
+  // Repetir e Dividir só fazem sentido criando uma transação do zero — editar
+  // uma ocorrência existente ou duplicar não mexe em nenhum dos dois.
   const canRepeat = !initial && !prefill;
   const [repeatMode, setRepeatMode] = useState<RepeatMode>("none");
   const [installmentsCount, setInstallmentsCount] = useState("3");
+  // Repetir e Dividir são mutuamente exclusivos por enquanto — combinar as
+  // duas (ex: aluguel recorrente já dividido entre categorias) fica pra
+  // depois, é bem mais complexo de acertar.
+  const [isSplitting, setIsSplitting] = useState(false);
+  const [splitParts, setSplitParts] = useState<SplitPartInput[]>([
+    { categoryId: categories[0]?.id || "", amount: "" },
+    { categoryId: categories[1]?.id || categories[0]?.id || "", amount: "" },
+  ]);
+  const splitTotal = splitParts.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+
+  function updateSplitPart(index: number, patch: Partial<SplitPartInput>) {
+    setSplitParts(prev => prev.map((p, i) => i === index ? { ...p, ...patch } : p));
+  }
+  function addSplitPart() {
+    setSplitParts(prev => [...prev, { categoryId: categories[0]?.id || "", amount: "" }]);
+  }
+  function removeSplitPart(index: number) {
+    setSplitParts(prev => prev.filter((_, i) => i !== index));
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (submitting) return;
+
+    const isReallySplitting = canRepeat && isSplitting;
+
+    if (isReallySplitting) {
+      if (splitParts.length < 2) {
+        toast.error("Adicione pelo menos 2 categorias pra dividir.");
+        return;
+      }
+      const parts = splitParts.map(p => ({ categoryId: p.categoryId, amount: parseFloat(p.amount) }));
+      if (parts.some(p => !p.categoryId || Number.isNaN(p.amount) || p.amount <= 0)) {
+        toast.error("Escolha uma categoria e informe um valor válido (maior que zero) em cada parte.");
+        return;
+      }
+
+      setSubmitting(true);
+      try {
+        await onAddSplit({
+          type: form.type,
+          description: form.description,
+          date: form.date,
+          notes: form.notes || undefined,
+          parts,
+        });
+        toast.success("Transação dividida criada com sucesso!");
+        onClose();
+      } catch (err) {
+        console.error("Erro ao salvar transação dividida:", err);
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
 
     const amount = parseFloat(form.amount);
     if (Number.isNaN(amount) || amount <= 0) {
@@ -174,7 +244,8 @@ function TransactionForm({ initial, prefill, onAdd, onUpdate, onAddRecurring, on
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <Label htmlFor="tx-amount">Valor (R$)</Label>
-          <Input id="tx-amount" type="number" step="0.01" min="0" required value={form.amount}
+          <Input id="tx-amount" type="number" step="0.01" min="0" required={!isSplitting} disabled={isSplitting}
+            value={isSplitting ? splitTotal.toFixed(2) : form.amount}
             onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} placeholder="0,00" />
         </div>
         <div className="space-y-1.5">
@@ -188,21 +259,60 @@ function TransactionForm({ initial, prefill, onAdd, onUpdate, onAddRecurring, on
         <Input id="tx-description" required value={form.description}
           onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Ex: Supermercado" />
       </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="tx-category">Categoria</Label>
-        <Select value={form.category} onValueChange={(value) => setForm(f => ({ ...f, category: value }))}>
-          <SelectTrigger id="tx-category" className="w-full">
-            <SelectValue placeholder="Selecione uma categoria" />
-          </SelectTrigger>
-          <SelectContent>
-            {categories.map(c => <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
+      {isSplitting ? (
+        <div className="space-y-2">
+          <Label>Dividir entre categorias</Label>
+          {splitParts.map((part, i) => (
+            <div key={i} className="flex gap-2 items-center">
+              <Select value={part.categoryId} onValueChange={(value) => updateSplitPart(i, { categoryId: value })}>
+                <SelectTrigger className="flex-1"><SelectValue placeholder="Categoria" /></SelectTrigger>
+                <SelectContent>
+                  {categories.map(c => <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Input type="number" step="0.01" min="0" className="w-28 shrink-0" placeholder="0,00"
+                value={part.amount} onChange={e => updateSplitPart(i, { amount: e.target.value })} />
+              {splitParts.length > 2 && (
+                <button type="button" onClick={() => removeSplitPart(i)} aria-label="Remover esta parte da divisão"
+                  className="shrink-0 p-1.5 rounded-lg" style={{ color: "var(--muted-foreground)" }}>
+                  <Trash2 size={14} />
+                </button>
+              )}
+            </div>
+          ))}
+          <div className="flex items-center justify-between pt-0.5">
+            <Button type="button" variant="ghost" size="sm" onClick={addSplitPart}>
+              <Plus size={13} /> Adicionar categoria
+            </Button>
+            <span style={{ color: "var(--muted-foreground)", fontSize: "0.8rem" }}>Total: {formatCurrency(splitTotal)}</span>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-1.5">
+          <Label htmlFor="tx-category">Categoria</Label>
+          <Select value={form.category} onValueChange={(value) => setForm(f => ({ ...f, category: value }))}>
+            <SelectTrigger id="tx-category" className="w-full">
+              <SelectValue placeholder="Selecione uma categoria" />
+            </SelectTrigger>
+            <SelectContent>
+              {categories.map(c => <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+      {canRepeat && (
+        <label className="flex items-center gap-2 cursor-pointer" htmlFor="tx-split">
+          <Checkbox id="tx-split" checked={isSplitting} disabled={repeatMode !== "none"}
+            onCheckedChange={(checked) => setIsSplitting(checked === true)} />
+          <Label htmlFor="tx-split" className="cursor-pointer" style={{ fontWeight: 400, color: "var(--muted-foreground)", fontSize: "0.8rem" }}>
+            Dividir entre categorias
+          </Label>
+        </label>
+      )}
       {canRepeat && (
         <div className="space-y-1.5">
           <Label htmlFor="tx-repeat">Repetir</Label>
-          <Select value={repeatMode} onValueChange={(value) => setRepeatMode(value as RepeatMode)}>
+          <Select value={repeatMode} onValueChange={(value) => setRepeatMode(value as RepeatMode)} disabled={isSplitting}>
             <SelectTrigger id="tx-repeat" className="w-full">
               <SelectValue />
             </SelectTrigger>
@@ -212,12 +322,17 @@ function TransactionForm({ initial, prefill, onAdd, onUpdate, onAddRecurring, on
               <SelectItem value="installments">Parcelado</SelectItem>
             </SelectContent>
           </Select>
-          {repeatMode === "monthly" && (
+          {isSplitting && (
+            <p style={{ color: "var(--muted-foreground)", fontSize: "0.75rem" }}>
+              Ainda não dá pra combinar com "Dividir entre categorias".
+            </p>
+          )}
+          {!isSplitting && repeatMode === "monthly" && (
             <p style={{ color: "var(--muted-foreground)", fontSize: "0.75rem" }}>
               Lança este mês agora; os próximos meses são gerados sozinhos conforme o tempo passa — sem fim definido, até você cancelar.
             </p>
           )}
-          {repeatMode === "installments" && (
+          {!isSplitting && repeatMode === "installments" && (
             <div className="space-y-1.5 pt-1">
               <Label htmlFor="tx-installments">Em quantas vezes?</Label>
               <Input id="tx-installments" type="number" min="2" step="1" value={installmentsCount}
@@ -250,7 +365,7 @@ export function Transactions() {
   const {
     transactions, categories, recurringTransactions,
     addTransaction, updateTransaction, deleteTransaction,
-    addRecurringTransaction, cancelRecurringTransaction,
+    addRecurringTransaction, cancelRecurringTransaction, addSplitTransaction,
     loading,
   } = useFinance();
   const [search, setSearch] = useState("");
@@ -411,6 +526,7 @@ export function Transactions() {
               {paged.map(tx => {
                 const cat = categories.find(c => c.id === tx.category);
                 const recurringBadge = getRecurringBadge(tx, recurringTransactions);
+                const splitBadge = getSplitBadge(tx, transactions);
                 return (
                   <div key={tx.id} className="flex items-center justify-between p-4 gap-3">
                     <div className="flex items-center gap-3 min-w-0">
@@ -428,6 +544,11 @@ export function Transactions() {
                           {recurringBadge && (
                             <span className="px-1.5 py-0.5 rounded-full text-xs" style={{ background: "rgba(var(--primary-rgb),0.14)", color: "var(--primary)" }}>
                               {recurringBadge}
+                            </span>
+                          )}
+                          {splitBadge && (
+                            <span className="px-1.5 py-0.5 rounded-full text-xs" style={{ background: "rgba(var(--primary-rgb),0.14)", color: "var(--primary)" }}>
+                              {splitBadge}
                             </span>
                           )}
                           <span style={{ color: "var(--muted-foreground)", fontSize: "0.7rem" }}>
@@ -488,6 +609,7 @@ export function Transactions() {
                 {paged.map((tx, i) => {
                   const cat = categories.find(c => c.id === tx.category);
                   const recurringBadge = getRecurringBadge(tx, recurringTransactions);
+                  const splitBadge = getSplitBadge(tx, transactions);
                   return (
                     <motion.tr key={tx.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                       transition={{ delay: i * 0.04 }}
@@ -510,6 +632,11 @@ export function Transactions() {
                           {recurringBadge && (
                             <span className="px-2 py-1 rounded-full text-xs" style={{ background: "rgba(var(--primary-rgb),0.14)", color: "var(--primary)" }}>
                               {recurringBadge}
+                            </span>
+                          )}
+                          {splitBadge && (
+                            <span className="px-2 py-1 rounded-full text-xs" style={{ background: "rgba(var(--primary-rgb),0.14)", color: "var(--primary)" }}>
+                              {splitBadge}
                             </span>
                           )}
                         </div>
@@ -574,12 +701,12 @@ export function Transactions() {
       </motion.div>
 
       <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Nova Transação">
-        <TransactionForm onAdd={addTransaction} onUpdate={updateTransaction} onAddRecurring={addRecurringTransaction} onClose={() => setShowAdd(false)} />
+        <TransactionForm onAdd={addTransaction} onUpdate={updateTransaction} onAddRecurring={addRecurringTransaction} onAddSplit={addSplitTransaction} onClose={() => setShowAdd(false)} />
       </Modal>
 
       <Modal open={editingTx !== null} onClose={() => setEditingTx(null)} title="Editar Transação">
         {editingTx && (
-          <TransactionForm initial={editingTx} onAdd={addTransaction} onUpdate={updateTransaction} onAddRecurring={addRecurringTransaction} onClose={() => setEditingTx(null)} />
+          <TransactionForm initial={editingTx} onAdd={addTransaction} onUpdate={updateTransaction} onAddRecurring={addRecurringTransaction} onAddSplit={addSplitTransaction} onClose={() => setEditingTx(null)} />
         )}
       </Modal>
 
@@ -590,6 +717,7 @@ export function Transactions() {
             onAdd={addTransaction}
             onUpdate={updateTransaction}
             onAddRecurring={addRecurringTransaction}
+            onAddSplit={addSplitTransaction}
             onClose={() => setDuplicatingTx(null)}
           />
         )}

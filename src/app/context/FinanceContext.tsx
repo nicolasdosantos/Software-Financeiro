@@ -20,6 +20,23 @@ export interface Transaction {
   // então o nome aqui precisa ser IGUAL ao nome da coluna no banco.
   recurring_id?: string | null;
   installment_number?: number | null;
+  /** IDs iguais = partes da mesma transação dividida entre categorias (mesma
+   * data/descrição, valor e categoria próprios cada). null = transação avulsa. */
+  split_group_id?: string | null;
+}
+
+export interface SplitPart {
+  categoryId: string;
+  amount: number;
+}
+
+export interface NewSplitTransaction {
+  type: TransactionType;
+  description: string;
+  date: string;
+  notes?: string;
+  /** Pelo menos 2 partes — cada uma vira uma transação real independente. */
+  parts: SplitPart[];
 }
 
 /** null = recorrente indefinida (repete todo mês até ser cancelada);
@@ -101,6 +118,7 @@ interface FinanceContextType {
   deleteTransaction: (id: string) => Promise<void>;
   addRecurringTransaction: (r: NewRecurringTransaction) => Promise<void>;
   cancelRecurringTransaction: (id: string) => Promise<void>;
+  addSplitTransaction: (s: NewSplitTransaction) => Promise<void>;
   addCategory: (c: Omit<Category, "id">) => Promise<void>;
   updateCategory: (c: Category) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
@@ -681,6 +699,37 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       }
 
       setRecurringTransactions((prev) => prev.map((r) => r.id === id ? { ...r, active: false } : r));
+    },
+
+    // Cada parte vira uma transação real e independente, ligada só pelo
+    // split_group_id — não existe "objeto grupo" pra manter sincronizado.
+    // Editar ou apagar uma parte depois funciona com updateTransaction/
+    // deleteTransaction normais, sem nenhum caso especial: a parte deletada
+    // simplesmente deixa de existir, as outras continuam válidas sozinhas.
+    addSplitTransaction: async (input) => {
+      const user = await requireUser();
+
+      const splitGroupId = crypto.randomUUID();
+      const rows = input.parts.map((part) => ({
+        type: input.type,
+        amount: part.amount,
+        description: input.description,
+        category: part.categoryId,
+        date: input.date,
+        notes: input.notes || null,
+        split_group_id: splitGroupId,
+        user_id: user.id,
+      }));
+
+      const { data, error } = await supabase.from("transactions").insert(rows).select("*");
+
+      if (error) {
+        console.error("Erro ao criar transação dividida:", error);
+        toast.error("Não foi possível criar a transação dividida.");
+        throw error;
+      }
+
+      setTransactions((prev) => [...(data as Transaction[]), ...prev]);
     },
 
     addCategory: async (category) => {
