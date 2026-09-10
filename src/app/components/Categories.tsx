@@ -8,6 +8,11 @@ import type { Category } from "../context/FinanceContext";
 import { Modal } from "./shared/Modal";
 import { ConfirmDeleteDialog } from "./shared/ConfirmDeleteDialog";
 import { Skeleton } from "./ui/skeleton";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
+
+const MotionButton = motion.create(Button);
 
 function CategoriesSkeleton() {
   return (
@@ -74,11 +79,9 @@ function CategoryForm({ initial, onAdd, onUpdate, onClose }: CategoryFormProps) 
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className="block text-sm mb-1.5" style={{ color: "var(--muted-foreground)" }}>Nome</label>
-        <input
-          style={{ background: "var(--input-background)", border: "1px solid var(--border)", borderRadius: "10px", color: "var(--foreground)", padding: "10px 14px", width: "100%", fontSize: "0.875rem", outline: "none" }}
-          required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Nome da categoria" />
+      <div className="space-y-1.5">
+        <Label htmlFor="cat-name">Nome</Label>
+        <Input id="cat-name" required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Nome da categoria" />
       </div>
       <div>
         <label className="block text-sm mb-2" style={{ color: "var(--muted-foreground)" }}>Ícone</label>
@@ -111,14 +114,12 @@ function CategoryForm({ initial, onAdd, onUpdate, onClose }: CategoryFormProps) 
         </div>
       </div>
       <div className="flex gap-3 pt-2">
-        <button type="button" onClick={onClose} disabled={submitting} className="flex-1 py-2.5 rounded-xl text-sm font-medium"
-          style={{ background: "var(--secondary)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>
+        <Button type="button" variant="secondary" onClick={onClose} disabled={submitting} className="flex-1">
           Cancelar
-        </button>
-        <button type="submit" disabled={submitting} className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white hover:opacity-90"
-          style={{ background: "var(--primary)", opacity: submitting ? 0.7 : 1 }}>
+        </Button>
+        <Button type="submit" disabled={submitting} className="flex-1">
           {submitting ? "Salvando..." : initial ? "Salvar" : "Criar Categoria"}
-        </button>
+        </Button>
       </div>
     </form>
   );
@@ -154,13 +155,12 @@ export function Categories() {
             <p style={{ color: "var(--muted-foreground)", fontSize: "0.875rem" }}>{categories.length} categorias cadastradas</p>
           </div>
         </div>
-        <motion.button
+        <MotionButton
           whileTap={{ scale: 0.96 }} whileHover={{ scale: 1.02 }}
           onClick={() => setShowForm(true)}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white w-full sm:w-auto"
-          style={{ background: "var(--primary)" }}>
+          className="w-full sm:w-auto">
           <Plus size={16} /> Nova Categoria
-        </motion.button>
+        </MotionButton>
       </motion.div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
