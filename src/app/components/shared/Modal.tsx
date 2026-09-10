@@ -57,7 +57,7 @@ export function Modal({ open, onClose, title, maxWidth = 480, children }: ModalP
             role="dialog" aria-modal="true" aria-label={title}
           >
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-white" style={{ fontWeight: 600 }}>{title}</h2>
+              <h2 style={{ color: "var(--foreground)", fontWeight: 600 }}>{title}</h2>
               <button onClick={onClose} aria-label="Fechar" style={{ color: "var(--muted-foreground)" }}>
                 <X size={20} />
               </button>

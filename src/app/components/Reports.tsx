@@ -432,7 +432,7 @@ export function Reports() {
   return (
     <div className="space-y-4 sm:space-y-5">
       <div>
-        <h1 className="text-white" style={{ fontSize: "clamp(1.2rem,4vw,1.5rem)", fontWeight: 700 }}>Central de Relatórios</h1>
+        <h1 style={{ color: "var(--foreground)", fontSize: "clamp(1.2rem,4vw,1.5rem)", fontWeight: 700 }}>Central de Relatórios</h1>
         <p style={{ color: "var(--muted-foreground)", fontSize: "0.875rem" }}>Gere e exporte relatórios financeiros detalhados</p>
       </div>
 
@@ -449,14 +449,14 @@ export function Reports() {
               <span style={{ fontSize: "1rem" }}>{card.icon}</span>
               <p style={{ color: "var(--muted-foreground)", fontSize: "0.72rem" }}>{card.label}</p>
             </div>
-            <p className="text-white" style={{ fontWeight: 700, fontSize: "clamp(1.2rem,4vw,1.5rem)" }}>{card.value}</p>
+            <p style={{ color: "var(--foreground)", fontWeight: 700, fontSize: "clamp(1.2rem,4vw,1.5rem)" }}>{card.value}</p>
           </motion.div>
         ))}
       </div>
 
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28 }}
         className="rounded-2xl p-4 sm:p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
-        <h3 className="text-white mb-4" style={{ fontWeight: 600 }}>Gerar Relatórios</h3>
+        <h3 className="mb-4" style={{ color: "var(--foreground)", fontWeight: 600 }}>Gerar Relatórios</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {reportTypes.map(report => {
             const isGenerating = generating === report.id;
@@ -470,7 +470,7 @@ export function Reports() {
                   {report.icon}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-white" style={{ fontWeight: 500, fontSize: "0.875rem" }}>{report.label}</p>
+                  <p style={{ color: "var(--foreground)", fontWeight: 500, fontSize: "0.875rem" }}>{report.label}</p>
                   <p className="hidden sm:block truncate" style={{ color: "var(--muted-foreground)", fontSize: "0.72rem" }}>{report.desc}</p>
                   <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded-full text-xs"
                     style={{ background: `${report.color}20`, color: report.color }}>{report.format}</span>
@@ -492,7 +492,7 @@ export function Reports() {
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.36 }}
         className="rounded-2xl overflow-hidden" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
         <div className="p-4 sm:p-5" style={{ borderBottom: "1px solid var(--border)" }}>
-          <h3 className="text-white" style={{ fontWeight: 600 }}>Histórico por Mês</h3>
+          <h3 style={{ color: "var(--foreground)", fontWeight: 600 }}>Histórico por Mês</h3>
         </div>
 
         <div className="block sm:hidden divide-y" style={{ borderColor: "var(--border)" }}>
@@ -502,7 +502,7 @@ export function Reports() {
             return (
               <div key={m} className="p-4 flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-white" style={{ fontWeight: 500, fontSize: "0.875rem" }}>{getMonthName(m)}</p>
+                  <p style={{ color: "var(--foreground)", fontWeight: 500, fontSize: "0.875rem" }}>{getMonthName(m)}</p>
                   <p style={{ color: "var(--muted-foreground)", fontSize: "0.72rem" }}>{stats.count} transações</p>
                   <p style={{ color: stats.balance >= 0 ? "var(--success)" : "var(--red)", fontFamily: "var(--font-mono)", fontSize: "0.85rem", fontWeight: 600, marginTop: "2px" }}>
                     {stats.balance >= 0 ? "+" : ""}{formatCurrency(stats.balance)}
@@ -538,7 +538,7 @@ export function Reports() {
                 return (
                   <tr key={m} className="hover:bg-[var(--secondary)]" style={{ borderBottom: "1px solid var(--border)" }}>
                     <td style={{ padding: "12px 16px" }}>
-                      <span className="text-white" style={{ fontWeight: 500, fontSize: "0.875rem" }}>{getMonthName(m)}</span>
+                      <span style={{ color: "var(--foreground)", fontWeight: 500, fontSize: "0.875rem" }}>{getMonthName(m)}</span>
                     </td>
                     <td style={{ padding: "12px 16px", color: "var(--muted-foreground)", fontSize: "0.8rem" }}>{stats.count}</td>
                     <td style={{ padding: "12px 16px", color: "var(--success)", fontFamily: "var(--font-mono)", fontSize: "0.85rem", fontWeight: 500 }}>+{formatCurrency(stats.income)}</td>

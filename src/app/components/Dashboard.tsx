@@ -277,7 +277,7 @@ export function Dashboard() {
             <Sparkles size={18} style={{ color: "#8b9cff" }} />
           </motion.div>
           <div className="min-w-0">
-            <h1 className="text-white truncate" style={{ fontSize: "clamp(1.2rem, 4vw, 1.5rem)", fontWeight: 700 }}>
+            <h1 className="truncate" style={{ color: "var(--foreground)", fontSize: "clamp(1.2rem, 4vw, 1.5rem)", fontWeight: 700 }}>
               Bem-vindo, {user?.user_metadata?.name || "Usuário"}! 👋
             </h1>
             <p style={{ color: "var(--muted-foreground)", fontSize: "0.875rem" }}>
@@ -402,7 +402,7 @@ export function Dashboard() {
                       </span>
                     </div>
                     <p style={{ color: "var(--muted-foreground)", fontSize: "0.78rem" }}>{card.title}</p>
-                    <p className="text-white mt-1" style={{ fontSize: "clamp(1.1rem, 3vw, 1.4rem)", fontWeight: 700 }}>
+                    <p className="mt-1" style={{ color: "var(--foreground)", fontSize: "clamp(1.1rem, 3vw, 1.4rem)", fontWeight: 700 }}>
                       {hideValues ? "••••••" : <AnimatedCounter value={card.value} />}
                     </p>
                   </motion.div>
@@ -418,7 +418,7 @@ export function Dashboard() {
                 className="lg:col-span-2 rounded-2xl p-4 sm:p-5"
                 style={{ background: "var(--card)", border: "1px solid var(--border)" }}
               >
-                <h3 className="text-white mb-0.5" style={{ fontWeight: 600 }}>Evolução Financeira</h3>
+                <h3 className="mb-0.5" style={{ color: "var(--foreground)", fontWeight: 600 }}>Evolução Financeira</h3>
                 <p style={{ color: "var(--muted-foreground)", fontSize: "0.78rem", marginBottom: "12px" }}>
                   Receitas vs Despesas — {dataYearLabel}
                 </p>
@@ -453,7 +453,7 @@ export function Dashboard() {
               >
                 <div className="flex items-start justify-between gap-2 mb-0.5">
                   <div>
-                    <h3 className="text-white" style={{ fontWeight: 600 }}>Gastos por Categoria</h3>
+                    <h3 style={{ color: "var(--foreground)", fontWeight: 600 }}>Gastos por Categoria</h3>
                     <p style={{ color: "var(--muted-foreground)", fontSize: "0.78rem" }}>{getMonthName(pieMonth)}</p>
                   </div>
                   <Select value={pieMonth} onValueChange={setPieMonth}>
@@ -479,7 +479,7 @@ export function Dashboard() {
                         <Pie
                           key={pieMonth}
                           data={pieData} cx="50%" cy="50%" innerRadius={48} outerRadius={72}
-                          paddingAngle={3} dataKey="value" style={{ color: "white" }}
+                          paddingAngle={3} dataKey="value" style={{ color: "var(--foreground)" }}
                           activeIndex={activePieIndex} activeShape={renderActivePieShape}
                           onMouseEnter={(_, i) => setActivePieIndex(i)}
                           onMouseLeave={() => setActivePieIndex(-1)}
@@ -502,7 +502,7 @@ export function Dashboard() {
                         className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none"
                       >
                         <span style={{ color: "var(--muted-foreground)", fontSize: "0.68rem" }}>Total gasto</span>
-                        <span className="text-white" style={{ fontSize: "1rem", fontWeight: 700 }}>
+                        <span style={{ color: "var(--foreground)", fontSize: "1rem", fontWeight: 700 }}>
                           {formatCurrency(pieTotal)}
                         </span>
                       </motion.div>
@@ -527,7 +527,7 @@ export function Dashboard() {
                         <span style={{ color: "var(--muted-foreground)", fontSize: "0.68rem" }}>
                           {pieTotal ? ((d.value / pieTotal) * 100).toFixed(0) : 0}%
                         </span>
-                        <span className="text-white" style={{ fontSize: "0.72rem", fontWeight: 500 }}>
+                        <span style={{ color: "var(--foreground)", fontSize: "0.72rem", fontWeight: 500 }}>
                           {formatCurrency(d.value)}
                         </span>
                       </div>
@@ -544,7 +544,7 @@ export function Dashboard() {
               style={{ background: "var(--card)", border: "1px solid var(--border)" }}
             >
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-white flex items-center gap-2" style={{ fontWeight: 600 }}>
+                <h3 className="flex items-center gap-2" style={{ color: "var(--foreground)", fontWeight: 600 }}>
                   <Target size={16} style={{ color: "var(--primary)" }} /> Progresso de Metas
                 </h3>
                 <button
@@ -565,7 +565,7 @@ export function Dashboard() {
                     return (
                       <div key={goal.id}>
                         <div className="flex items-center justify-between mb-1.5 gap-2">
-                          <span className="flex items-center gap-1.5 min-w-0 text-sm text-white">
+                          <span className="flex items-center gap-1.5 min-w-0 text-sm" style={{ color: "var(--foreground)" }}>
                             <span className="shrink-0">{goal.icon}</span>
                             <span className="truncate">{goal.title}</span>
                           </span>
@@ -591,7 +591,7 @@ export function Dashboard() {
               style={{ background: "var(--card)", border: "1px solid var(--border)" }}
             >
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-white flex items-center gap-2" style={{ fontWeight: 600 }}>
+                <h3 className="flex items-center gap-2" style={{ color: "var(--foreground)", fontWeight: 600 }}>
                   <CircleDollarSign size={16} style={{ color: "var(--primary)" }} /> Orçamento do Mês
                 </h3>
                 <button
@@ -633,7 +633,7 @@ export function Dashboard() {
               style={{ background: "var(--card)", border: "1px solid var(--border)" }}
             >
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-white" style={{ fontWeight: 600 }}>Últimas Transações</h3>
+                <h3 style={{ color: "var(--foreground)", fontWeight: 600 }}>Últimas Transações</h3>
                 <button
                   type="button"
                   onClick={() => navigate("/transacoes")}
@@ -657,7 +657,7 @@ export function Dashboard() {
                           <span style={{ fontSize: "13px" }}>{cat?.icon || "💳"}</span>
                         </div>
                         <div className="min-w-0">
-                          <p className="text-white truncate" style={{ fontSize: "0.875rem", fontWeight: 500 }}>
+                          <p className="truncate" style={{ color: "var(--foreground)", fontSize: "0.875rem", fontWeight: 500 }}>
                             {tx.description}
                           </p>
                           <p className="truncate" style={{ color: "var(--muted-foreground)", fontSize: "0.72rem" }}>

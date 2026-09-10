@@ -197,7 +197,7 @@ export function Profile() {
       <div className="space-y-4 sm:space-y-5 max-w-2xl w-full">
 
         <motion.div variants={itemVariants} className="text-left">
-          <h1 className="text-white" style={{ fontSize: "clamp(1.2rem,4vw,1.5rem)", fontWeight: 700 }}>Perfil</h1>
+          <h1 style={{ color: "var(--foreground)", fontSize: "clamp(1.2rem,4vw,1.5rem)", fontWeight: 700 }}>Perfil</h1>
           <p style={{ color: "var(--muted-foreground)", fontSize: "0.875rem" }}>Gerencie suas informações pessoais e preferências</p>
         </motion.div>
 
@@ -253,8 +253,8 @@ export function Profile() {
             </motion.div>
 
             <motion.h2
-              className="text-white mt-3"
-              style={{ fontWeight: 700, fontSize: "clamp(1rem,3.2vw,1.25rem)" }}
+              className="mt-3"
+              style={{ color: "var(--foreground)", fontWeight: 700, fontSize: "clamp(1rem,3.2vw,1.25rem)" }}
               initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
             >
               {profile.name || "Seu nome"}
@@ -283,7 +283,7 @@ export function Profile() {
             <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: "rgba(var(--primary-rgb),0.14)" }}>
               <User size={15} style={{ color: "var(--primary)" }} />
             </div>
-            <h3 className="text-white" style={{ fontWeight: 600 }}>Dados Pessoais</h3>
+            <h3 style={{ color: "var(--foreground)", fontWeight: 600 }}>Dados Pessoais</h3>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
@@ -342,7 +342,7 @@ export function Profile() {
             <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: `rgba(${accentColorId ? ACCENT_COLORS.find(c => c.id === accentColorId)?.rgb : "32, 75, 202"}, 0.14)` }}>
               <Palette size={15} style={{ color: "var(--primary)" }} />
             </div>
-            <h3 className="text-white" style={{ fontWeight: 600 }}>Aparência</h3>
+            <h3 style={{ color: "var(--foreground)", fontWeight: 600 }}>Aparência</h3>
           </div>
           <p className="mb-3" style={{ color: "var(--muted-foreground)", fontSize: "0.8rem" }}>
             Escolha a cor de destaque usada em botões, links e itens ativos do menu.
@@ -356,7 +356,7 @@ export function Profile() {
                 aria-label={`Cor de destaque ${color.label}`}
                 aria-pressed={accentColorId === color.id}
                 className="w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-110"
-                style={{ background: color.hex, border: `2px solid ${accentColorId === color.id ? "#fff" : "transparent"}`, boxShadow: accentColorId === color.id ? `0 0 0 2px ${color.hex}` : "none" }}
+                style={{ background: color.hex, border: `2px solid ${accentColorId === color.id ? "var(--foreground)" : "transparent"}`, boxShadow: accentColorId === color.id ? `0 0 0 2px ${color.hex}` : "none" }}
               >
                 {accentColorId === color.id && <CheckCircle size={16} className="text-white" />}
               </button>
@@ -372,7 +372,7 @@ export function Profile() {
             <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: "rgba(245,158,11,0.14)" }}>
               <Bell size={15} style={{ color: "var(--warning)" }} />
             </div>
-            <h3 className="text-white" style={{ fontWeight: 600 }}>Notificações</h3>
+            <h3 style={{ color: "var(--foreground)", fontWeight: 600 }}>Notificações</h3>
           </div>
           <p className="mb-3" style={{ color: "var(--muted-foreground)", fontSize: "0.8rem" }}>
             Essas notificações aparecem no sininho 🔔 no topo do sistema, calculadas na hora a partir dos seus
@@ -391,7 +391,7 @@ export function Profile() {
                 className="flex items-center justify-between py-2.5 px-3 sm:px-4 rounded-xl gap-3"
                 style={{ background: "var(--secondary)" }}>
                 <div className="min-w-0">
-                  <p className="text-white" style={{ fontSize: "0.875rem", fontWeight: 500 }}>{item.label}</p>
+                  <p style={{ color: "var(--foreground)", fontSize: "0.875rem", fontWeight: 500 }}>{item.label}</p>
                   <p className="hidden sm:block" style={{ color: "var(--muted-foreground)", fontSize: "0.75rem" }}>{item.desc}</p>
                 </div>
                 <button
@@ -400,10 +400,11 @@ export function Profile() {
                   aria-checked={notifications[item.key as keyof typeof notifications]}
                   aria-label={item.label}
                   className="relative w-12 h-6 rounded-full shrink-0"
-                  style={{ background: notifications[item.key as keyof typeof notifications] ? "var(--primary)" : "rgba(255,255,255,0.1)", transition: "background 0.25s ease" }}
+                  style={{ background: notifications[item.key as keyof typeof notifications] ? "var(--primary)" : "var(--switch-background)", transition: "background 0.25s ease" }}
                 >
                   <motion.div
                     className="absolute top-1 w-4 h-4 rounded-full bg-white"
+                    style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.3)" }}
                     animate={{ left: notifications[item.key as keyof typeof notifications] ? 28 : 4 }}
                     transition={{ type: "spring", stiffness: 500, damping: 30 }}
                   />
@@ -421,7 +422,7 @@ export function Profile() {
             <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: "rgba(239,68,68,0.14)" }}>
               <Shield size={15} style={{ color: "var(--red)" }} />
             </div>
-            <h3 className="text-white" style={{ fontWeight: 600 }}>Segurança</h3>
+            <h3 style={{ color: "var(--foreground)", fontWeight: 600 }}>Segurança</h3>
           </div>
           <div className="space-y-2 sm:space-y-3">
             <div className="flex items-center justify-between py-2.5 px-3 sm:px-4 rounded-xl gap-3"
@@ -429,7 +430,7 @@ export function Profile() {
               <div className="min-w-0 flex items-center gap-2.5">
                 <KeyRound size={15} className="shrink-0" style={{ color: "var(--muted-foreground)" }} />
                 <div className="min-w-0">
-                  <p className="text-white" style={{ fontSize: "0.875rem", fontWeight: 500 }}>Alterar senha</p>
+                  <p style={{ color: "var(--foreground)", fontSize: "0.875rem", fontWeight: 500 }}>Alterar senha</p>
                   <p className="hidden sm:block" style={{ color: "var(--muted-foreground)", fontSize: "0.75rem" }}>Enviaremos um link de redefinição para o seu e-mail</p>
                 </div>
               </div>

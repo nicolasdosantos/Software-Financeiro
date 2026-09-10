@@ -441,7 +441,7 @@ export function Transactions() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-white" style={{ fontSize: "clamp(1.2rem,4vw,1.5rem)", fontWeight: 700 }}>Transações</h1>
+          <h1 style={{ fontSize: "clamp(1.2rem,4vw,1.5rem)", fontWeight: 700, color: "var(--foreground)" }}>Transações</h1>
           <p style={{ color: "var(--muted-foreground)", fontSize: "0.875rem" }}>{filtered.length} registros encontrados</p>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
@@ -542,7 +542,7 @@ export function Transactions() {
                         <span style={{ fontSize: "14px" }}>{cat?.icon || "💳"}</span>
                       </div>
                       <div className="min-w-0">
-                        <p className="text-white truncate" style={{ fontSize: "0.875rem", fontWeight: 500 }}>{tx.description}</p>
+                        <p className="truncate" style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--foreground)" }}>{tx.description}</p>
                         <div className="flex items-center gap-2 flex-wrap mt-0.5">
                           <span className="px-1.5 py-0.5 rounded-full text-xs"
                             style={{ background: cat ? `${cat.color}20` : "var(--secondary)", color: cat?.color || "var(--muted-foreground)" }}>
@@ -628,7 +628,7 @@ export function Transactions() {
                             style={{ background: cat ? `${cat.color}20` : "var(--secondary)" }}>
                             <span style={{ fontSize: "13px" }}>{cat?.icon || "💳"}</span>
                           </div>
-                          <span className="text-white" style={{ fontSize: "0.875rem", fontWeight: 500 }}>{tx.description}</span>
+                          <span style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--foreground)" }}>{tx.description}</span>
                         </div>
                       </td>
                       <td style={{ padding: "12px 16px" }}>
@@ -665,9 +665,9 @@ export function Transactions() {
                       <td style={{ padding: "12px 16px" }}>
                         <div className="flex items-center gap-1.5">
                           {canCancelRecurring(tx, recurringTransactions) && (
-                            <button onClick={() => setCancelingRecurringId(tx.recurring_id!)} aria-label={`Cancelar recorrência de "${tx.description}"`} className="p-1.5 rounded-lg hover:bg-white/5" style={{ color: "var(--muted-foreground)" }}><Ban size={14} /></button>
+                            <button onClick={() => setCancelingRecurringId(tx.recurring_id!)} aria-label={`Cancelar recorrência de "${tx.description}"`} className="p-1.5 rounded-lg hover:bg-[var(--secondary)]" style={{ color: "var(--muted-foreground)" }}><Ban size={14} /></button>
                           )}
-                          <button onClick={() => setDuplicatingTx(tx)} aria-label={`Duplicar transação "${tx.description}"`} className="p-1.5 rounded-lg hover:bg-white/5" style={{ color: "var(--muted-foreground)" }}><Copy size={14} /></button>
+                          <button onClick={() => setDuplicatingTx(tx)} aria-label={`Duplicar transação "${tx.description}"`} className="p-1.5 rounded-lg hover:bg-[var(--secondary)]" style={{ color: "var(--muted-foreground)" }}><Copy size={14} /></button>
                           <button onClick={() => setEditingTx(tx)} aria-label={`Editar transação "${tx.description}"`} className="p-1.5 rounded-lg hover:bg-blue-500/10" style={{ color: "var(--muted-foreground)" }}><Edit2 size={14} /></button>
                           <button onClick={() => setDeletingId(tx.id)} aria-label={`Excluir transação "${tx.description}"`} className="p-1.5 rounded-lg hover:bg-red-500/10" style={{ color: "var(--muted-foreground)" }}><Trash2 size={14} /></button>
                         </div>

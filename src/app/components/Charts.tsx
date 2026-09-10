@@ -14,10 +14,15 @@ import {
 } from "./ui/select";
 import { EmptyState } from "./shared/EmptyState";
 
-const PANEL_BACKGROUND = "#141828";
-const PANEL_BORDER = "#2a2f45";
+// Antes eram hex fixos (#141828/#2a2f45/#8892b0) — ficavam corretos no tema
+// escuro, mas essas constantes estilizam praticamente todos os painéis desta
+// tela (cards de resumo, gráficos, insights), então um valor fixo faria a
+// página inteira continuar escura mesmo com o tema claro ativo. Usando os
+// tokens de tema, os painéis acompanham o tema como o resto do app.
+const PANEL_BACKGROUND = "var(--card)";
+const PANEL_BORDER = "var(--border)";
 const PANEL_BORDER_STYLE = `1px solid ${PANEL_BORDER}`;
-const MUTED_TEXT = "#8892b0";
+const MUTED_TEXT = "var(--muted-foreground)";
 
 export function Charts() {
   const { transactions, categories, currentMonth, loading } = useFinance();
@@ -32,7 +37,7 @@ export function Charts() {
 
   if (loading) {
     return (
-      <div style={{ color: "#fff", padding: 20 }}>
+      <div style={{ color: "var(--foreground)", padding: 20 }}>
         Carregando dados...
       </div>
     );
@@ -101,15 +106,15 @@ export function Charts() {
   const tooltipStyle = {
     contentStyle: {
       background: PANEL_BACKGROUND,
-      border: "1px solid rgba(255,255,255,0.1)",
+      border: PANEL_BORDER_STYLE,
       borderRadius: "12px",
-      color: "#e8eeff"
+      color: "var(--foreground)"
     },
     itemStyle: {
-      color: "#e8eeff"
+      color: "var(--foreground)"
     },
     labelStyle: {
-      color: "#e8eeff",
+      color: "var(--foreground)",
       fontWeight: 700
     },
     formatter: (val: number) => [formatCurrency(val), ""]
@@ -121,10 +126,10 @@ export function Charts() {
       {/* HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-white" style={{ fontSize: "1.5rem", fontWeight: 700 }}>
+          <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--foreground)" }}>
             Gráficos & Relatórios
           </h1>
-          <p style={{ color: MUTED_TEXT, fontSize: "0.875rem" }}>
+          <p style={{ color: "var(--muted-foreground)", fontSize: "0.875rem" }}>
             Análise visual das suas finanças
           </p>
         </div>
@@ -132,7 +137,7 @@ export function Charts() {
         <Select value={selectedMonth} onValueChange={setSelectedMonth}>
           <SelectTrigger
             className="w-[160px]"
-            style={{ background: PANEL_BACKGROUND, borderColor: PANEL_BORDER, color: "#fff" }}
+            style={{ background: PANEL_BACKGROUND, borderColor: PANEL_BORDER, color: "var(--foreground)" }}
           >
             <SelectValue />
           </SelectTrigger>
@@ -172,7 +177,7 @@ export function Charts() {
               }}
             >
               <p style={{ color: MUTED_TEXT, fontSize: 12 }}>{c.label}</p>
-              <p style={{ color: "#fff", fontWeight: 700 }}>
+              <p style={{ color: "var(--foreground)", fontWeight: 700 }}>
                 {formatCurrency(c.value)}
               </p>
 
@@ -193,7 +198,7 @@ export function Charts() {
 
       {/* BAR CHART */}
       <div style={{ background: PANEL_BACKGROUND, padding: 16, borderRadius: 12 }}>
-        <h3 style={{ color: "#fff" }}>Receitas vs Despesas</h3>
+        <h3 style={{ color: "var(--foreground)" }}>Receitas vs Despesas</h3>
 
         <ResponsiveContainer width="100%" height={220}>
           <BarChart data={barData}>
@@ -211,10 +216,10 @@ export function Charts() {
       <div style={{ background: PANEL_BACKGROUND, padding: 16, borderRadius: 12 }}>
         <div className="flex flex-col lg:flex-row gap-4">
           <div className="flex-1 min-w-0">
-            <h3 style={{ color: "#fff" }}>Gastos por categoria</h3>
+            <h3 style={{ color: "var(--foreground)" }}>Gastos por categoria</h3>
 
             {pieData.length === 0 ? (
-              <div className="flex items-center justify-center rounded-xl mt-3" style={{ height: 220, background: "rgba(255,255,255,0.03)" }}>
+              <div className="flex items-center justify-center rounded-xl mt-3" style={{ height: 220, background: "var(--secondary)" }}>
                 <EmptyState icon="🧾" title="Sem despesas neste mês" compact />
               </div>
             ) : (
@@ -237,7 +242,7 @@ export function Charts() {
                         <Cell
                           key={d.id}
                           fill={d.color}
-                          stroke={active || hovered ? "#e8eeff" : PANEL_BACKGROUND}
+                          stroke={active || hovered ? "var(--foreground)" : PANEL_BACKGROUND}
                           strokeWidth={active || hovered ? 3 : 1}
                           style={{ cursor: "pointer", filter: hovered ? "brightness(1.18)" : "none", outline: "none" }}
                         />
@@ -263,17 +268,17 @@ export function Charts() {
                       onMouseLeave={() => setHoveredCategoryId(null)}
                       className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-left transition-colors"
                       style={{
-                        background: active ? `${item.color}18` : "rgba(255,255,255,0.03)",
-                        border: `1px solid ${active ? item.color + "80" : "rgba(255,255,255,0.06)"}`,
+                        background: active ? `${item.color}18` : "var(--secondary)",
+                        border: `1px solid ${active ? item.color + "80" : "var(--border)"}`,
                       }}
                     >
                       <span className="flex items-center gap-2 min-w-0">
                         <span>{item.icon}</span>
-                        <span className="truncate" style={{ color: hovered || active ? item.color : "#e8eeff", fontSize: "0.82rem", fontWeight: active ? 700 : 500 }}>
+                        <span className="truncate" style={{ color: hovered || active ? item.color : "var(--foreground)", fontSize: "0.82rem", fontWeight: active ? 700 : 500 }}>
                           {item.name}
                         </span>
                       </span>
-                      <span style={{ color: hovered || active ? item.color : MUTED_TEXT, fontSize: "0.78rem", fontFamily: "var(--font-mono)", fontWeight: 700 }}>
+                      <span style={{ color: hovered || active ? item.color : "var(--muted-foreground)", fontSize: "0.78rem", fontFamily: "var(--font-mono)", fontWeight: 700 }}>
                         {totalExpense > 0 ? ((item.value / totalExpense) * 100).toFixed(0) : 0}%
                       </span>
                     </button>
@@ -288,7 +293,7 @@ export function Charts() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             className="lg:w-[360px] rounded-xl p-4"
-            style={{ background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.08)" }}
+            style={{ background: "var(--secondary)", border: "1px solid var(--border)" }}
           >
             {activeCategory ? (
               <>
@@ -296,21 +301,21 @@ export function Charts() {
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <span style={{ fontSize: "1.15rem" }}>{activeCategory.icon}</span>
-                      <h4 className="text-white truncate" style={{ fontWeight: 700 }}>{activeCategory.name}</h4>
+                      <h4 className="truncate" style={{ fontWeight: 700, color: "var(--foreground)" }}>{activeCategory.name}</h4>
                     </div>
-                    <p style={{ color: MUTED_TEXT, fontSize: "0.78rem" }}>{getMonthName(selectedMonth)}</p>
+                    <p style={{ color: "var(--muted-foreground)", fontSize: "0.78rem" }}>{getMonthName(selectedMonth)}</p>
                   </div>
                   <div className="text-right shrink-0">
                     <p style={{ color: activeCategory.color, fontWeight: 800, fontFamily: "var(--font-mono)" }}>{formatCurrency(activeCategory.value)}</p>
-                    <p style={{ color: MUTED_TEXT, fontSize: "0.72rem" }}>{activeCategoryTransactions.length} gasto{activeCategoryTransactions.length !== 1 ? "s" : ""}</p>
+                    <p style={{ color: "var(--muted-foreground)", fontSize: "0.72rem" }}>{activeCategoryTransactions.length} gasto{activeCategoryTransactions.length !== 1 ? "s" : ""}</p>
                   </div>
                 </div>
 
                 <div className="space-y-2 overflow-y-auto pr-1" style={{ maxHeight: 260 }}>
                   {activeCategoryTransactions.map(tx => (
-                    <div key={tx.id} className="rounded-lg px-3 py-2" style={{ background: PANEL_BACKGROUND, border: "1px solid rgba(255,255,255,0.06)" }}>
+                    <div key={tx.id} className="rounded-lg px-3 py-2" style={{ background: PANEL_BACKGROUND, border: "1px solid var(--border)" }}>
                       <div className="flex items-center justify-between gap-3">
-                        <p className="text-white truncate" style={{ fontSize: "0.82rem", fontWeight: 600 }}>{tx.description}</p>
+                        <p className="truncate" style={{ color: "var(--foreground)", fontSize: "0.82rem", fontWeight: 600 }}>{tx.description}</p>
                         <span className="shrink-0" style={{ color: "var(--red)", fontWeight: 700, fontSize: "0.8rem", fontFamily: "var(--font-mono)" }}>
                           -{formatCurrency(tx.amount)}
                         </span>
@@ -323,7 +328,7 @@ export function Charts() {
                 </div>
               </>
             ) : (
-              <div className="h-full flex items-center justify-center text-center" style={{ color: MUTED_TEXT, minHeight: 220 }}>
+              <div className="h-full flex items-center justify-center text-center" style={{ color: "var(--muted-foreground)", minHeight: 220 }}>
                 Sem categoria selecionada
               </div>
             )}
@@ -333,7 +338,7 @@ export function Charts() {
 
       {/* LINE CHART */}
       <div style={{ background: PANEL_BACKGROUND, padding: 16, borderRadius: 12 }}>
-        <h3 style={{ color: "#fff" }}>Evolução</h3>
+        <h3 style={{ color: "var(--foreground)" }}>Evolução</h3>
 
         <ResponsiveContainer width="100%" height={220}>
           <LineChart data={lineData}>
@@ -351,7 +356,7 @@ export function Charts() {
       <div style={{ background: PANEL_BACKGROUND, padding: 16, borderRadius: 12 }}>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <Lightbulb color="var(--warning)" />
-          <h3 style={{ color: "#fff" }}>Insights</h3>
+          <h3 style={{ color: "var(--foreground)" }}>Insights</h3>
         </div>
 
         <p style={{ color: MUTED_TEXT }}>

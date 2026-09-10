@@ -104,7 +104,7 @@ export function Monthly() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-white" style={{ fontSize: "clamp(1.2rem,4vw,1.5rem)", fontWeight: 700 }}>Controle Mensal</h1>
+          <h1 style={{ fontSize: "clamp(1.2rem,4vw,1.5rem)", fontWeight: 700, color: "var(--foreground)" }}>Controle Mensal</h1>
           <p style={{ color: "var(--muted-foreground)", fontSize: "0.875rem" }}>Visualize suas finanças mês a mês</p>
         </div>
         <div className="flex items-center gap-2 self-start sm:self-auto">
@@ -113,8 +113,8 @@ export function Monthly() {
             style={{ background: "var(--secondary)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>
             <ChevronLeft size={16} />
           </button>
-          <span className="text-white text-sm font-semibold whitespace-nowrap px-1"
-            style={{ minWidth: "140px", textAlign: "center" }}>
+          <span className="text-sm font-semibold whitespace-nowrap px-1"
+            style={{ minWidth: "140px", textAlign: "center", color: "var(--foreground)" }}>
             {getMonthName(viewMonth)}
           </span>
           <button onClick={() => navigate(1)} disabled={currIdx === months.length - 1} aria-label="Próximo mês"
@@ -147,7 +147,7 @@ export function Monthly() {
         {/* Calendar — takes 2 cols on desktop */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
           className="lg:col-span-2 rounded-2xl p-4 sm:p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
-          <h3 className="text-white mb-4" style={{ fontWeight: 600 }}>Calendário Financeiro</h3>
+          <h3 className="mb-4" style={{ fontWeight: 600, color: "var(--foreground)" }}>Calendário Financeiro</h3>
           <div className="grid grid-cols-7 gap-0.5 sm:gap-1 mb-2">
             {weekDays.map(d => (
               <div key={d} className="text-center py-1" style={{ color: "var(--muted-foreground)", fontSize: "0.65rem" }}>{d}</div>
@@ -184,7 +184,7 @@ export function Monthly() {
               style={{ background: "var(--secondary)", border: "1px solid var(--border)" }}>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
                 <div>
-                  <h4 className="text-white" style={{ fontWeight: 600 }}>
+                  <h4 style={{ fontWeight: 600, color: "var(--foreground)" }}>
                     Relatório do dia {selectedDate ? toLocalDate(selectedDate).toLocaleDateString("pt-BR") : ""}
                   </h4>
                   <p style={{ color: "var(--muted-foreground)", fontSize: "0.78rem" }}>
@@ -222,7 +222,7 @@ export function Monthly() {
                             {cat?.icon || "💳"}
                           </span>
                           <div className="min-w-0">
-                            <p className="text-white truncate" style={{ fontSize: "0.82rem", fontWeight: 500 }}>{tx.description}</p>
+                            <p className="truncate" style={{ fontSize: "0.82rem", fontWeight: 500, color: "var(--foreground)" }}>{tx.description}</p>
                             <p style={{ color: "var(--muted-foreground)", fontSize: "0.68rem" }}>{cat?.name || "Sem categoria"}</p>
                           </div>
                         </div>
@@ -241,7 +241,7 @@ export function Monthly() {
         {/* Category breakdown */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28 }}
           className="rounded-2xl p-4 sm:p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
-          <h3 className="text-white mb-4" style={{ fontWeight: 600 }}>Por Categoria</h3>
+          <h3 className="mb-4" style={{ fontWeight: 600, color: "var(--foreground)" }}>Por Categoria</h3>
           {catSpend.length === 0 ? (
             <EmptyState icon="🧾" title="Sem despesas neste mês" compact />
           ) : (
@@ -271,7 +271,7 @@ export function Monthly() {
       {/* Monthly comparison bar */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.36 }}
         className="rounded-2xl p-4 sm:p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
-        <h3 className="text-white mb-1" style={{ fontWeight: 600 }}>Evolução do Saldo</h3>
+        <h3 className="mb-1" style={{ fontWeight: 600, color: "var(--foreground)" }}>Evolução do Saldo</h3>
         <p style={{ color: "var(--muted-foreground)", fontSize: "0.78rem", marginBottom: "16px" }}>Saldo mês a mês em {compDataYearLabel}</p>
         <ResponsiveContainer width="100%" height={180}>
           <BarChart data={compData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
@@ -288,7 +288,7 @@ export function Monthly() {
       {/* Transaction list */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.44 }}
         className="rounded-2xl p-4 sm:p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
-        <h3 className="text-white mb-4" style={{ fontWeight: 600 }}>Transações do Mês</h3>
+        <h3 className="mb-4" style={{ fontWeight: 600, color: "var(--foreground)" }}>Transações do Mês</h3>
         {txs.length === 0 ? (
           <EmptyState icon="🗓️" title="Nenhuma transação neste mês" compact />
         ) : (
@@ -302,7 +302,7 @@ export function Monthly() {
                       <span style={{ fontSize: "13px" }}>{cat?.icon || "💳"}</span>
                     </div>
                     <div className="min-w-0">
-                      <p className="text-white truncate" style={{ fontSize: "0.875rem", fontWeight: 500 }}>{tx.description}</p>
+                      <p className="truncate" style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--foreground)" }}>{tx.description}</p>
                       <p style={{ color: "var(--muted-foreground)", fontSize: "0.72rem" }}>
                         {toLocalDate(tx.date).toLocaleDateString("pt-BR")}
                       </p>

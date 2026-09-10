@@ -178,7 +178,7 @@ function GoalContributionForm({ goal, categories, onSave, onClose }: GoalContrib
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="p-3 rounded-xl" style={{ background: "var(--secondary)", border: "1px solid var(--border)" }}>
-        <p className="text-white" style={{ fontWeight: 600 }}>{goal.title}</p>
+        <p style={{ fontWeight: 600, color: "var(--foreground)" }}>{goal.title}</p>
         <p style={{ color: "var(--muted-foreground)", fontSize: "0.8rem" }}>
           Falta {formatCurrency(remaining)} para completar a meta.
         </p>
@@ -253,7 +253,7 @@ export function Goals() {
     <div className="space-y-4 sm:space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-white" style={{ fontSize: "clamp(1.2rem,4vw,1.5rem)", fontWeight: 700 }}>Metas Financeiras</h1>
+          <h1 style={{ fontSize: "clamp(1.2rem,4vw,1.5rem)", fontWeight: 700, color: "var(--foreground)" }}>Metas Financeiras</h1>
           <p style={{ color: "var(--muted-foreground)", fontSize: "0.875rem" }}>Acompanhe seu progresso rumo aos objetivos</p>
         </div>
         <Button onClick={() => setShowForm(true)} className="w-full sm:w-auto">
@@ -287,21 +287,21 @@ export function Goals() {
                       style={{ background: `${goal.color}20` }}>{goal.icon}</div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <h3 className="text-white" style={{ fontWeight: 600, fontSize: "0.9rem" }}>{goal.title}</h3>
+                        <h3 style={{ fontWeight: 600, fontSize: "0.9rem", color: "var(--foreground)" }}>{goal.title}</h3>
                         {done && <CheckCircle size={14} style={{ color: goal.color }} />}
                       </div>
                       <p className="truncate" style={{ color: "var(--muted-foreground)", fontSize: "0.75rem" }}>{goal.description}</p>
                     </div>
                   </div>
                   <div className="flex gap-1 shrink-0">
-                    <button onClick={() => setEditing(goal)} aria-label={`Editar meta "${goal.title}"`} className="p-1.5 rounded-lg hover:bg-white/5" style={{ color: "var(--muted-foreground)" }}><Edit2 size={13} /></button>
+                    <button onClick={() => setEditing(goal)} aria-label={`Editar meta "${goal.title}"`} className="p-1.5 rounded-lg hover:bg-[var(--secondary)]" style={{ color: "var(--muted-foreground)" }}><Edit2 size={13} /></button>
                     <button onClick={() => setDeleting(goal.id)} aria-label={`Excluir meta "${goal.title}"`} className="p-1.5 rounded-lg hover:bg-red-500/10" style={{ color: "var(--muted-foreground)" }}><Trash2 size={13} /></button>
                   </div>
                 </div>
 
                 <div className="mb-3">
                   <div className="flex justify-between mb-1.5">
-                    <span className="text-white" style={{ fontWeight: 700, fontSize: "1rem", fontFamily: "var(--font-mono)" }}>{formatCurrency(goal.current)}</span>
+                    <span style={{ fontWeight: 700, fontSize: "1rem", fontFamily: "var(--font-mono)", color: "var(--foreground)" }}>{formatCurrency(goal.current)}</span>
                     <span style={{ color: "var(--muted-foreground)", fontSize: "0.78rem" }}>de {formatCurrency(goal.target)}</span>
                   </div>
                   <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: "var(--secondary)" }}>
