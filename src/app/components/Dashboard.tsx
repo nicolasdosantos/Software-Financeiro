@@ -204,11 +204,27 @@ export function Dashboard() {
   });
 
   const catSpend = sumExpensesByCategory(transactions, pieMonth);
-  const pieData = Object.entries(catSpend).map(([id, value]) => {
+  const catSpendEntries = Object.entries(catSpend).map(([id, value]) => {
     const cat = categories.find(c => c.id === id);
     return { name: cat?.name || id, value, color: cat?.color || "#8892b0" };
-  }).sort((a, b) => b.value - a.value).slice(0, 6);
-  const pieTotal = pieData.reduce((s, d) => s + d.value, 0);
+  }).sort((a, b) => b.value - a.value);
+  // Total sempre soma TODAS as categorias, nunca só as que aparecem na fatia
+  // — mostrar um "Total gasto" que não bate com a soma real das despesas do
+  // mês seria enganoso. Com mais de 6 categorias com gasto, as 5 maiores
+  // aparecem individualmente e o resto vira uma fatia "Outras categorias"
+  // (em vez de simplesmente desaparecer do gráfico sem aviso).
+  const PIE_TOP_N = 5;
+  const pieData = catSpendEntries.length > 6
+    ? [
+        ...catSpendEntries.slice(0, PIE_TOP_N),
+        {
+          name: "Outras categorias",
+          value: catSpendEntries.slice(PIE_TOP_N).reduce((s, d) => s + d.value, 0),
+          color: "#475569",
+        },
+      ]
+    : catSpendEntries;
+  const pieTotal = catSpendEntries.reduce((s, d) => s + d.value, 0);
   const activePieSlice = activePieIndex >= 0 ? pieData[activePieIndex] : null;
 
   const recentTxs = [...transactions].sort((a, b) => b.date.localeCompare(a.date)).slice(0, layout.settings.recentCount);
