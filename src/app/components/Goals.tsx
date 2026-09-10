@@ -3,8 +3,8 @@ import type { FormEvent } from "react";
 import { motion } from "motion/react";
 import { Plus, Edit2, Trash2, CheckCircle, CircleDollarSign } from "lucide-react";
 import { toast } from "sonner";
-import { useFinance, formatCurrency, toLocalDate } from "../context/FinanceContext";
-import type { Goal } from "../context/FinanceContext";
+import { useFinance, formatCurrency, toLocalDate, getTodayDateInput } from "../context/FinanceContext";
+import type { Goal, Category } from "../context/FinanceContext";
 import { Modal } from "./shared/Modal";
 import { ConfirmDeleteDialog } from "./shared/ConfirmDeleteDialog";
 import { EmptyState } from "./shared/EmptyState";
@@ -12,6 +12,7 @@ import { Skeleton } from "./ui/skeleton";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
 function GoalsSkeleton() {
   return (
@@ -151,12 +152,15 @@ function GoalForm({ initial, onAdd, onUpdate, onClose }: GoalFormProps) {
 
 interface GoalContributionFormProps {
   goal: Goal;
-  onSave: (amount: number) => Promise<void>;
+  categories: Category[];
+  onSave: (amount: number, categoryId: string) => Promise<void>;
   onClose: () => void;
 }
 
-function GoalContributionForm({ goal, onSave, onClose }: GoalContributionFormProps) {
+function GoalContributionForm({ goal, categories, onSave, onClose }: GoalContributionFormProps) {
   const [amount, setAmount] = useState("");
+  const defaultCategoryId = categories.find(c => c.name === "Investimentos")?.id || categories[0]?.id || "";
+  const [categoryId, setCategoryId] = useState(defaultCategoryId);
   const [submitting, setSubmitting] = useState(false);
   const remaining = Math.max(0, goal.target - goal.current);
 
@@ -168,10 +172,14 @@ function GoalContributionForm({ goal, onSave, onClose }: GoalContributionFormPro
       toast.error("Informe um valor válido maior que zero.");
       return;
     }
+    if (!categoryId) {
+      toast.error("Selecione de qual categoria esse valor está saindo.");
+      return;
+    }
 
     setSubmitting(true);
     try {
-      await onSave(value);
+      await onSave(value, categoryId);
       toast.success("Valor guardado com sucesso!");
       onClose();
     } catch (err) {
@@ -206,6 +214,21 @@ function GoalContributionForm({ goal, onSave, onClose }: GoalContributionFormPro
         />
       </div>
 
+      <div className="space-y-1.5">
+        <Label htmlFor="goal-contribution-category">De onde esse valor está saindo?</Label>
+        <Select value={categoryId} onValueChange={setCategoryId}>
+          <SelectTrigger id="goal-contribution-category" className="w-full">
+            <SelectValue placeholder="Selecione uma categoria" />
+          </SelectTrigger>
+          <SelectContent>
+            {categories.map(c => <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <p style={{ color: "var(--muted-foreground)", fontSize: "0.72rem" }}>
+          Esse valor vira uma despesa de verdade nessa categoria, pra sair do seu saldo de fato — não só um número somado na meta.
+        </p>
+      </div>
+
       <div className="flex gap-3 pt-2">
         <Button type="button" variant="secondary" onClick={onClose} disabled={submitting} className="flex-1">Cancelar</Button>
         <Button type="submit" disabled={submitting} className="flex-1">{submitting ? "Salvando..." : "Adicionar"}</Button>
@@ -215,7 +238,7 @@ function GoalContributionForm({ goal, onSave, onClose }: GoalContributionFormPro
 }
 
 export function Goals() {
-  const { goals, addGoal, updateGoal, deleteGoal, loading } = useFinance();
+  const { goals, categories, addGoal, updateGoal, deleteGoal, addTransaction, loading } = useFinance();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Goal | null>(null);
   const [contributing, setContributing] = useState<Goal | null>(null);
@@ -223,7 +246,17 @@ export function Goals() {
 
   if (loading) return <GoalsSkeleton />;
 
-  async function addContribution(goal: Goal, amount: number) {
+  async function addContribution(goal: Goal, amount: number, categoryId: string) {
+    // Registra a saída como uma despesa de verdade primeiro — assim o valor
+    // guardado na meta sempre corresponde a dinheiro que realmente saiu do
+    // saldo, e não só a um número solto somado na meta.
+    await addTransaction({
+      type: "expense",
+      amount,
+      description: `Aporte para meta: ${goal.title}`,
+      category: categoryId,
+      date: getTodayDateInput(),
+    });
     await updateGoal({
       ...goal,
       current: Math.min(goal.target, goal.current + amount),
@@ -344,7 +377,8 @@ export function Goals() {
         {contributing && (
           <GoalContributionForm
             goal={contributing}
-            onSave={(amount) => addContribution(contributing, amount)}
+            categories={categories}
+            onSave={(amount, categoryId) => addContribution(contributing, amount, categoryId)}
             onClose={() => setContributing(null)}
           />
         )}
