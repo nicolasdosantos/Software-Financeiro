@@ -250,3 +250,55 @@ with check (auth.uid() = id);
 -- do search_path) — nenhuma mudança de comportamento.
 alter function public.set_updated_at() set search_path = '';
 alter function public.handle_new_user() set search_path = '';
+
+-- ============================================================================
+-- MIGRAÇÃO: transações recorrentes e parceladas
+-- ============================================================================
+
+-- "Molde" de uma transação recorrente/parcelada. Cada linha aqui gera uma ou
+-- mais linhas reais em public.transactions (ligadas via transactions.recurring_id).
+-- installments_total NULL = recorrente indefinida (ex: aluguel, assinatura);
+-- installments_total = N = parcelado em N vezes (ex: compra em 3x) — nesse
+-- caso as N transações já são geradas de uma vez na criação.
+-- last_generated_date guarda a data da última ocorrência já criada, pra saber
+-- até onde já foi gerado sem precisar recalcular contando linhas.
+create table if not exists public.recurring_transactions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  type text not null check (type in ('income', 'expense')),
+  amount numeric(12, 2) not null check (amount > 0),
+  description text not null,
+  category_id text not null,
+  notes text,
+  start_date date not null,
+  installments_total int check (installments_total is null or installments_total > 1),
+  last_generated_date date not null,
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  foreign key (user_id, category_id) references public.categories(user_id, id) on delete cascade
+);
+
+drop trigger if exists set_recurring_transactions_updated_at on public.recurring_transactions;
+create trigger set_recurring_transactions_updated_at
+before update on public.recurring_transactions
+for each row execute function public.set_updated_at();
+
+alter table public.recurring_transactions enable row level security;
+
+drop policy if exists "Users can manage own recurring transactions" on public.recurring_transactions;
+create policy "Users can manage own recurring transactions"
+on public.recurring_transactions
+for all
+using ((select auth.uid()) = user_id)
+with check ((select auth.uid()) = user_id);
+
+create index if not exists recurring_transactions_user_active_idx on public.recurring_transactions(user_id, active);
+
+-- Liga uma transação real à série que a gerou (null = transação avulsa,
+-- comportamento de sempre). on delete set null: cancelar/apagar a série
+-- não apaga o histórico de transações já geradas, só para de gerar novas.
+alter table public.transactions add column if not exists recurring_id uuid references public.recurring_transactions(id) on delete set null;
+alter table public.transactions add column if not exists installment_number int;
+
+create index if not exists transactions_recurring_id_idx on public.transactions(recurring_id);
