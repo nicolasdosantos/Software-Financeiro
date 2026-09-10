@@ -41,35 +41,39 @@ function MonthlySkeleton() {
 
 export function Monthly() {
 
-  const { transactions, categories, currentMonth, setCurrentMonth, loading } = useFinance();
+  const { transactions, categories, currentMonth, loading } = useFinance();
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  // Navegar pelo histórico de meses aqui é local a esta tela — não deve mudar
+  // o mês "oficial" usado em Dashboard/Planejamento/Relatórios. Começa igual
+  // ao mês atual, mas anterior/próximo só afetam esta visualização.
+  const [viewMonth, setViewMonth] = useState(currentMonth);
 
   if (loading) return <MonthlySkeleton />;
 
-  const months = getDistinctMonths(transactions, [currentMonth]);
+  const months = getDistinctMonths(transactions, [viewMonth]);
 
-  const currIdx = months.indexOf(currentMonth);
+  const currIdx = months.indexOf(viewMonth);
 
   function navigate(dir: -1 | 1) {
     const next = currIdx + dir;
     if (next >= 0 && next < months.length) {
-      setCurrentMonth(months[next]);
+      setViewMonth(months[next]);
       setSelectedDay(null);
     }
   }
-  const txs = transactions.filter(t => t.date.startsWith(currentMonth));
-  const { income, expense, balance } = getMonthTotals(transactions, currentMonth);
+  const txs = transactions.filter(t => t.date.startsWith(viewMonth));
+  const { income, expense, balance } = getMonthTotals(transactions, viewMonth);
 
-  const [year, month] = currentMonth.split("-").map(Number);
+  const [year, month] = viewMonth.split("-").map(Number);
   const daysInMonth = new Date(year, month, 0).getDate();
   const firstDay = new Date(year, month - 1, 1).getDay();
 
   function getDayTxs(day: number) {
-    const d = `${currentMonth}-${String(day).padStart(2, "0")}`;
+    const d = `${viewMonth}-${String(day).padStart(2, "0")}`;
     return transactions.filter(t => t.date === d);
   }
 
-  const monthlyCategorySpend = sumExpensesByCategory(transactions, currentMonth);
+  const monthlyCategorySpend = sumExpensesByCategory(transactions, viewMonth);
   const catSpend: { cat: Category; total: number }[] = categories
     .map(cat => ({ cat, total: monthlyCategorySpend[cat.id] || 0 }))
     .filter(item => item.total > 0)
@@ -89,7 +93,7 @@ export function Monthly() {
 
   const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
   const today = getTodayDateInput();
-  const selectedDate = selectedDay ? `${currentMonth}-${String(selectedDay).padStart(2, "0")}` : null;
+  const selectedDate = selectedDay ? `${viewMonth}-${String(selectedDay).padStart(2, "0")}` : null;
   const selectedTxs = selectedDay ? getDayTxs(selectedDay) : [];
   const selectedIncome = selectedTxs.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0);
   const selectedExpense = selectedTxs.filter(t => t.type === "expense").reduce((s, t) => s + t.amount, 0);
@@ -111,7 +115,7 @@ export function Monthly() {
           </button>
           <span className="text-white text-sm font-semibold whitespace-nowrap px-1"
             style={{ minWidth: "140px", textAlign: "center" }}>
-            {getMonthName(currentMonth)}
+            {getMonthName(viewMonth)}
           </span>
           <button onClick={() => navigate(1)} disabled={currIdx === months.length - 1} aria-label="Próximo mês"
             className="p-2 rounded-xl disabled:opacity-30 transition-colors"
@@ -156,7 +160,7 @@ export function Monthly() {
               const dayTxs = getDayTxs(day);
               const net = dayTxs.reduce((s, t) => s + (t.type === "income" ? t.amount : -t.amount), 0);
               const hasActivity = dayTxs.length > 0;
-              const isToday = `${currentMonth}-${String(day).padStart(2, "0")}` === today;
+              const isToday = `${viewMonth}-${String(day).padStart(2, "0")}` === today;
               return (
                 <button key={day} type="button" onClick={() => setSelectedDay(day)}
                   aria-label={`Dia ${day}${hasActivity ? `, ${dayTxs.length} transaç${dayTxs.length !== 1 ? "ões" : "ão"}` : ", sem movimentação"}`}
