@@ -8,6 +8,7 @@ import type { Category } from "../context/FinanceContext";
 import { Modal } from "./shared/Modal";
 import { ConfirmDeleteDialog } from "./shared/ConfirmDeleteDialog";
 import { ColorPicker } from "./shared/ColorPicker";
+import { IconPicker } from "./shared/IconPicker";
 import { Skeleton } from "./ui/skeleton";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -86,19 +87,7 @@ function CategoryForm({ initial, onAdd, onUpdate, onClose }: CategoryFormProps) 
       </div>
       <div>
         <label className="block text-sm mb-2" style={{ color: "var(--muted-foreground)" }}>Ícone</label>
-        <div className="flex flex-wrap gap-2">
-          {ICONS.map(ic => (
-            <motion.button key={ic} type="button" onClick={() => setForm(f => ({ ...f, icon: ic }))}
-              aria-label={`Ícone ${ic}`} aria-pressed={form.icon === ic}
-              whileTap={{ scale: 0.88 }}
-              animate={{ scale: form.icon === ic ? 1.08 : 1 }}
-              transition={{ type: "spring", stiffness: 400, damping: 20 }}
-              className="w-10 h-10 rounded-xl text-xl flex items-center justify-center"
-              style={{ background: form.icon === ic ? "var(--primary)" : "var(--secondary)", border: `2px solid ${form.icon === ic ? "var(--primary)" : "transparent"}` }}>
-              {ic}
-            </motion.button>
-          ))}
-        </div>
+        <IconPicker value={form.icon} presets={ICONS} onChange={(ic) => setForm(f => ({ ...f, icon: ic }))} />
       </div>
       <div>
         <label className="block text-sm mb-2" style={{ color: "var(--muted-foreground)" }}>Cor</label>
