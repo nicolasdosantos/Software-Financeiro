@@ -8,6 +8,7 @@ import type { Goal, Category } from "../context/FinanceContext";
 import { Modal } from "./shared/Modal";
 import { ConfirmDeleteDialog } from "./shared/ConfirmDeleteDialog";
 import { EmptyState } from "./shared/EmptyState";
+import { ColorPicker } from "./shared/ColorPicker";
 import { Skeleton } from "./ui/skeleton";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -133,14 +134,7 @@ function GoalForm({ initial, onAdd, onUpdate, onClose }: GoalFormProps) {
       </div>
       <div>
         <Label className="mb-2">Cor</Label>
-        <div className="flex flex-wrap gap-2">
-          {COLORS.map(c => (
-            <button key={c} type="button" onClick={() => setForm(f => ({ ...f, color: c }))}
-              aria-label={`Cor ${c}`} aria-pressed={form.color === c}
-              className="w-8 h-8 rounded-full transition-transform hover:scale-110"
-              style={{ background: c, border: `3px solid ${form.color === c ? "white" : "transparent"}` }} />
-          ))}
-        </div>
+        <ColorPicker value={form.color} presets={COLORS} onChange={(c) => setForm(f => ({ ...f, color: c }))} />
       </div>
       <div className="flex gap-3 pt-2">
         <Button type="button" variant="secondary" onClick={onClose} disabled={submitting} className="flex-1">Cancelar</Button>
