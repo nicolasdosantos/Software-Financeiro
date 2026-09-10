@@ -6,6 +6,8 @@ import {
   getMonthTotals,
   getMonthName,
   formatCurrency,
+  getBudgetLimit,
+  getBudgetCategoryIds,
 } from "../context/FinanceContext";
 
 export type NotificationKind = "budgetAlert" | "goalUpdate" | "weeklyReport" | "monthlyBalance";
@@ -73,21 +75,26 @@ export function useNotifications(): AppNotification[] {
     const list: AppNotification[] = [];
 
     if (prefs.budgetAlert) {
-      for (const budget of budgets) {
-        if (budget.limit <= 0) continue;
-        const spend = getCategorySpend(transactions, budget.categoryId, currentMonth);
-        const ratio = spend / budget.limit;
+      // Uma linha por categoria, não por registro de budgets — a tabela pode
+      // ter mais de uma linha por categoria agora (limite padrão + override
+      // de um mês específico), e getBudgetLimit já resolve qual vale em
+      // currentMonth, então iterar budgets direto geraria alerta duplicado.
+      for (const categoryId of getBudgetCategoryIds(budgets)) {
+        const limit = getBudgetLimit(budgets, categoryId, currentMonth);
+        if (limit <= 0) continue;
+        const spend = getCategorySpend(transactions, categoryId, currentMonth);
+        const ratio = spend / limit;
         if (ratio < 0.8) continue;
 
-        const categoryName = categories.find((c) => c.id === budget.categoryId)?.name ?? "categoria";
+        const categoryName = categories.find((c) => c.id === categoryId)?.name ?? "categoria";
         const over = ratio >= 1;
         list.push({
           // A faixa (near/over) entra no id de propósito: dispensar o aviso
           // de "perto do limite" não silencia o de "estourou" quando o gasto
           // continuar subindo depois — e o mês novo reseta os dois.
-          id: `budget-${budget.categoryId}-${currentMonth}-${over ? "over" : "near"}`,
+          id: `budget-${categoryId}-${currentMonth}-${over ? "over" : "near"}`,
           title: over ? `Limite de ${categoryName} estourado` : `${categoryName} perto do limite`,
-          description: `Já foram ${formatCurrency(spend)} de ${formatCurrency(budget.limit)} (${Math.round(ratio * 100)}%) neste mês.`,
+          description: `Já foram ${formatCurrency(spend)} de ${formatCurrency(limit)} (${Math.round(ratio * 100)}%) neste mês.`,
           kind: "budgetAlert",
         });
       }

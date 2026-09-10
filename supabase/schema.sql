@@ -170,3 +170,47 @@ for delete
 using (auth.uid() = user_id);
 
 create index if not exists transactions_user_date_idx on public.transactions(user_id, date desc);
+
+-- ============================================================================
+-- MIGRAÇÃO: orçamento por mês (rode este bloco mesmo se o resto do arquivo já
+-- foi aplicado antes — é seguro rodar de novo, todos os comandos são
+-- idempotentes). Sem isso, a tela de Planejamento não funciona: o código do
+-- app já espera a coluna "month" existir na tabela budgets.
+--
+-- Antes, um limite de orçamento por categoria valia para sempre, em todos os
+-- meses — não dava para, por exemplo, ter um limite maior em dezembro sem
+-- mudar o limite do ano inteiro. Agora cada linha de budgets tem um "month":
+--   month = ''        -> limite PADRÃO, vale em qualquer mês sem override
+--   month = 'YYYY-MM' -> limite só daquele mês, tem prioridade sobre o padrão
+-- Os limites já cadastrados viram automaticamente o padrão (month = '').
+-- ============================================================================
+
+alter table public.budgets add column if not exists month text not null default '';
+
+-- A unique constraint antiga era só (user_id, category_id) — précisa sair
+-- para permitir uma linha "padrão" (month = '') e, opcionalmente, uma linha
+-- por mês específico para a mesma categoria. O nome exato da constraint
+-- gerada pelo Postgres pode variar, então este bloco encontra e remove
+-- qualquer unique constraint em (user_id, category_id) na tabela budgets,
+-- em vez de assumir um nome fixo.
+do $$
+declare
+  found_constraint text;
+begin
+  select c.conname into found_constraint
+  from pg_constraint c
+  where c.conrelid = 'public.budgets'::regclass
+    and c.contype = 'u'
+    and pg_get_constraintdef(c.oid) = 'UNIQUE (user_id, category_id)';
+
+  if found_constraint is not null then
+    execute format('alter table public.budgets drop constraint %I', found_constraint);
+  end if;
+end $$;
+
+drop index if exists budgets_user_category_idx;
+
+alter table public.budgets drop constraint if exists budgets_user_category_month_unique;
+alter table public.budgets add constraint budgets_user_category_month_unique unique (user_id, category_id, month);
+
+create index if not exists budgets_user_category_month_idx on public.budgets(user_id, category_id, month);
