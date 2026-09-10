@@ -9,6 +9,10 @@ import { Modal } from "./shared/Modal";
 import { ConfirmDeleteDialog } from "./shared/ConfirmDeleteDialog";
 import { EmptyState } from "./shared/EmptyState";
 import { Skeleton } from "./ui/skeleton";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
 function InvestmentsSkeleton() {
   return (
@@ -97,45 +101,46 @@ function InvestForm({ initial, onAdd, onUpdate, onClose }: InvestFormProps) {
     }
   }
 
-  const inp = { background: "var(--input-background)", border: "1px solid var(--border)", borderRadius: "10px", color: "var(--foreground)", padding: "10px 14px", width: "100%", fontSize: "0.875rem", outline: "none" };
-
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className="block text-sm mb-1.5" style={{ color: "var(--muted-foreground)" }}>Nome do ativo</label>
-        <input style={inp} required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Ex: CDB Banco Inter" />
+      <div className="space-y-1.5">
+        <Label htmlFor="inv-name">Nome do ativo</Label>
+        <Input id="inv-name" required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Ex: CDB Banco Inter" />
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-sm mb-1.5" style={{ color: "var(--muted-foreground)" }}>Tipo</label>
-          <select style={{ ...inp, cursor: "pointer" }} value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
-            {TYPES.map(t => <option key={t} value={t} style={{ background: "#141828" }}>{t}</option>)}
-          </select>
+        <div className="space-y-1.5">
+          <Label htmlFor="inv-type">Tipo</Label>
+          <Select value={form.type} onValueChange={(value) => setForm(f => ({ ...f, type: value }))}>
+            <SelectTrigger id="inv-type" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </div>
-        <div>
-          <label className="block text-sm mb-1.5" style={{ color: "var(--muted-foreground)" }}>Instituição</label>
-          <input style={inp} value={form.institution} onChange={e => setForm(f => ({ ...f, institution: e.target.value }))} placeholder="Banco/Corretora" />
+        <div className="space-y-1.5">
+          <Label htmlFor="inv-institution">Instituição</Label>
+          <Input id="inv-institution" value={form.institution} onChange={e => setForm(f => ({ ...f, institution: e.target.value }))} placeholder="Banco/Corretora" />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-sm mb-1.5" style={{ color: "var(--muted-foreground)" }}>Investido (R$)</label>
-          <input style={inp} type="number" min="0" step="0.01" required value={form.invested} onChange={e => setForm(f => ({ ...f, invested: e.target.value }))} />
+        <div className="space-y-1.5">
+          <Label htmlFor="inv-invested">Investido (R$)</Label>
+          <Input id="inv-invested" type="number" min="0" step="0.01" required value={form.invested} onChange={e => setForm(f => ({ ...f, invested: e.target.value }))} />
         </div>
-        <div>
-          <label className="block text-sm mb-1.5" style={{ color: "var(--muted-foreground)" }}>Valor atual (R$)</label>
-          <input style={inp} type="number" min="0" step="0.01" required value={form.currentValue} onChange={e => setForm(f => ({ ...f, currentValue: e.target.value }))} />
+        <div className="space-y-1.5">
+          <Label htmlFor="inv-current">Valor atual (R$)</Label>
+          <Input id="inv-current" type="number" min="0" step="0.01" required value={form.currentValue} onChange={e => setForm(f => ({ ...f, currentValue: e.target.value }))} />
         </div>
       </div>
-      <div>
-        <label className="block text-sm mb-1.5" style={{ color: "var(--muted-foreground)" }}>Data de início</label>
-        <input style={inp} type="date" required value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} />
+      <div className="space-y-1.5">
+        <Label htmlFor="inv-start-date">Data de início</Label>
+        <Input id="inv-start-date" type="date" required value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} />
       </div>
       <div className="flex gap-3 pt-1">
-        <button type="button" onClick={onClose} disabled={submitting} className="flex-1 py-2.5 rounded-xl text-sm font-medium"
-          style={{ background: "var(--secondary)", color: "var(--muted-foreground)", border: "1px solid var(--border)" }}>Cancelar</button>
-        <button type="submit" disabled={submitting} className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white hover:opacity-90"
-          style={{ background: "var(--primary)", opacity: submitting ? 0.7 : 1 }}>{submitting ? "Salvando..." : initial ? "Salvar" : "Adicionar"}</button>
+        <Button type="button" variant="secondary" onClick={onClose} disabled={submitting} className="flex-1">Cancelar</Button>
+        <Button type="submit" disabled={submitting} className="flex-1">{submitting ? "Salvando..." : initial ? "Salvar" : "Adicionar"}</Button>
       </div>
     </form>
   );
@@ -168,11 +173,9 @@ export function Investments() {
           <h1 className="text-white" style={{ fontSize: "clamp(1.2rem,4vw,1.5rem)", fontWeight: 700 }}>Investimentos</h1>
           <p style={{ color: "var(--muted-foreground)", fontSize: "0.875rem" }}>Acompanhe seu portfólio e rentabilidade</p>
         </div>
-        <button onClick={() => setShowForm(true)}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white hover:opacity-90 w-full sm:w-auto"
-          style={{ background: "var(--primary)" }}>
+        <Button onClick={() => setShowForm(true)} className="w-full sm:w-auto">
           <Plus size={16} /> Novo Investimento
-        </button>
+        </Button>
       </div>
 
       {/* Summary */}
