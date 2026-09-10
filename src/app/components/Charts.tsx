@@ -20,12 +20,15 @@ const PANEL_BORDER_STYLE = `1px solid ${PANEL_BORDER}`;
 const MUTED_TEXT = "#8892b0";
 
 export function Charts() {
-  const { transactions, categories, currentMonth, setCurrentMonth, loading } = useFinance();
+  const { transactions, categories, currentMonth, loading } = useFinance();
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [hoveredCategoryId, setHoveredCategoryId] = useState<string | null>(null);
+  // Mês exibido aqui é independente do mês "oficial" usado em Dashboard/
+  // Planejamento — trocar o mês só pra olhar um gráfico não deve mudar o que
+  // aparece nas outras telas. Começa igual ao mês atual, mas vive só aqui.
+  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
 
   const safeTransactions = transactions ?? [];
-  const selectedMonth = currentMonth;
 
   if (loading) {
     return (
@@ -126,7 +129,7 @@ export function Charts() {
           </p>
         </div>
 
-        <Select value={selectedMonth} onValueChange={setCurrentMonth}>
+        <Select value={selectedMonth} onValueChange={setSelectedMonth}>
           <SelectTrigger
             className="w-[160px]"
             style={{ background: PANEL_BACKGROUND, borderColor: PANEL_BORDER, color: "#fff" }}

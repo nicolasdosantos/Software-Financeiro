@@ -71,7 +71,6 @@ interface FinanceContextType {
   deleteInvestment: (id: string) => Promise<void>;
   updateBudget: (b: Budget) => Promise<void>;
   currentMonth: string;
-  setCurrentMonth: (m: string) => void;
 }
 
 type GoalRow = {
@@ -232,7 +231,13 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentMonth, setCurrentMonth] = useState(todayMonth);
+  // "Mês atual" é só o mês-calendário de hoje — nada na UI deve poder mudá-lo
+  // globalmente. Dashboard, Planejamento e Relatórios usam esse valor pra
+  // saber "o que está acontecendo agora"; Gráficos e Controle Mensal, que
+  // deixam o usuário navegar por outros meses, mantêm esse estado localmente
+  // em vez de escrever aqui, senão navegar num gráfico mudaria sem aviso o
+  // orçamento mostrado em Planejamento.
+  const [currentMonth] = useState(todayMonth);
 
   // O usuário já vem resolvido pelo AuthProvider (uma única assinatura de
   // auth para o app inteiro) — não precisa de um supabase.auth.getUser()
@@ -353,7 +358,6 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     budgets,
     loading,
     currentMonth,
-    setCurrentMonth,
 
     addTransaction: async (transaction) => {
       const user = await requireUser();
