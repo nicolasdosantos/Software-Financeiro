@@ -34,25 +34,29 @@ const buttonVariants = cva(
   },
 );
 
-function Button({
-  className,
-  variant,
-  size,
-  asChild = false,
-  ...props
-}: React.ComponentProps<"button"> &
-  VariantProps<typeof buttonVariants> & {
-    asChild?: boolean;
-  }) {
+// forwardRef é necessário aqui: qualquer trigger do Radix (Popover, Tooltip,
+// DropdownMenu...) usado com `asChild` precisa conseguir anexar um ref ao
+// <button> real por baixo pra medir a posição do elemento e abrir o conteúdo
+// no lugar certo. Sem isso, o gatilho até funciona (o clique abre), mas o
+// conteúdo renderiza sem saber onde ancorar — some fora da tela.
+const Button = React.forwardRef<
+  HTMLButtonElement,
+  React.ComponentProps<"button"> &
+    VariantProps<typeof buttonVariants> & {
+      asChild?: boolean;
+    }
+>(({ className, variant, size, asChild = false, ...props }, ref) => {
   const Comp = asChild ? Slot : "button";
 
   return (
     <Comp
+      ref={ref}
       data-slot="button"
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
     />
   );
-}
+});
+Button.displayName = "Button";
 
 export { Button, buttonVariants };

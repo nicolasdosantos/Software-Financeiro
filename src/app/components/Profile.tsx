@@ -374,12 +374,16 @@ export function Profile() {
             </div>
             <h3 className="text-white" style={{ fontWeight: 600 }}>Notificações</h3>
           </div>
+          <p className="mb-3" style={{ color: "var(--muted-foreground)", fontSize: "0.8rem" }}>
+            Essas notificações aparecem no sininho 🔔 no topo do sistema, calculadas na hora a partir dos seus
+            dados — não enviamos e-mail nem push.
+          </p>
           <div className="space-y-2 sm:space-y-3">
             {[
-              { key: "budgetAlert", label: "Alertas de orçamento", desc: "Quando uma categoria atingir 80% do limite" },
-              { key: "weeklyReport", label: "Relatório semanal", desc: "Resumo financeiro toda segunda-feira" },
-              { key: "goalUpdate", label: "Atualização de metas", desc: "Notificar quando uma meta for atingida" },
-              { key: "monthlyBalance", label: "Balanço mensal", desc: "Resumo completo ao final de cada mês" },
+              { key: "budgetAlert", label: "Alertas de orçamento", desc: "Quando uma categoria atingir 80% do limite do mês" },
+              { key: "weeklyReport", label: "Relatório semanal", desc: "Resumo de receitas e despesas desde a última segunda-feira" },
+              { key: "goalUpdate", label: "Atualização de metas", desc: "Quando uma meta for atingida" },
+              { key: "monthlyBalance", label: "Balanço mensal", desc: "Receitas, despesas e saldo do mês atual" },
             ].map((item, i) => (
               <motion.div
                 key={item.key}
