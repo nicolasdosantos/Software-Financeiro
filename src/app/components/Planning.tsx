@@ -51,14 +51,18 @@ export function Planning() {
   }
   function getBudget(catId: string) { return budgets.find(b => b.categoryId === catId)?.limit || 0; }
 
-  const expenseCategories = categories.filter(c =>
-    transactions.some(t => t.category === c.id && t.type === "expense") || budgets.some(b => b.categoryId === c.id)
-  );
+  // Todas as categorias entram aqui — não só as que já têm gasto lançado ou
+  // limite definido. Antes, uma categoria nova ficava invisível nesta tela até
+  // o usuário gastar nela pela primeira vez, o que tornava impossível planejar
+  // um limite com antecedência. getSpend() já retorna 0 pra categorias sem
+  // despesa (inclusive as tipicamente usadas em receita, como Salário), então
+  // isso não distorce os totais abaixo.
+  const budgetCategories = categories;
 
   const totalLimit = budgets.reduce((s, b) => s + b.limit, 0);
-  const totalSpent = expenseCategories.reduce((s, c) => s + getSpend(c.id), 0);
-  const overBudget = expenseCategories.filter(c => { const l = getBudget(c.id); return l > 0 && getSpend(c.id) > l; }).length;
-  const nearLimit = expenseCategories.filter(c => { const l = getBudget(c.id); const sp = getSpend(c.id); return l > 0 && sp >= l * 0.8 && sp <= l; }).length;
+  const totalSpent = budgetCategories.reduce((s, c) => s + getSpend(c.id), 0);
+  const overBudget = budgetCategories.filter(c => { const l = getBudget(c.id); return l > 0 && getSpend(c.id) > l; }).length;
+  const nearLimit = budgetCategories.filter(c => { const l = getBudget(c.id); const sp = getSpend(c.id); return l > 0 && sp >= l * 0.8 && sp <= l; }).length;
 
   async function saveLimit(catId: string) {
     if (savingLimit) return;
@@ -136,7 +140,7 @@ export function Planning() {
         className="rounded-2xl p-4 sm:p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
         <h3 className="text-white mb-4" style={{ fontWeight: 600 }}>Limite por Categoria</h3>
         <div className="space-y-3">
-          {expenseCategories.map(cat => {
+          {budgetCategories.map(cat => {
             const spend = getSpend(cat.id);
             const limit = getBudget(cat.id);
             const pct = limit > 0 ? Math.min(100, (spend / limit) * 100) : 0;
