@@ -122,7 +122,7 @@ export function Planning() {
   return (
     <div className="space-y-4 sm:space-y-5">
       <div>
-        <h1 className="text-white" style={{ fontSize: "clamp(1.2rem,4vw,1.5rem)", fontWeight: 700 }}>Planejamento Financeiro</h1>
+        <h1 style={{ color: "var(--foreground)", fontSize: "clamp(1.2rem,4vw,1.5rem)", fontWeight: 700 }}>Planejamento Financeiro</h1>
         <p style={{ color: "var(--muted-foreground)", fontSize: "0.875rem" }}>{getMonthName(currentMonth)} — Controle seu orçamento por categoria</p>
       </div>
 
@@ -151,7 +151,7 @@ export function Planning() {
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
         className="rounded-2xl p-4 sm:p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
         <div className="flex justify-between items-center mb-3">
-          <h3 className="text-white" style={{ fontWeight: 600 }}>Orçamento Global</h3>
+          <h3 style={{ color: "var(--foreground)", fontWeight: 600 }}>Orçamento Global</h3>
           <span style={{ color: "var(--muted-foreground)", fontSize: "0.78rem" }}>
             {formatCurrency(totalSpent)} / {formatCurrency(totalLimit)}
           </span>
@@ -172,7 +172,7 @@ export function Planning() {
       {/* Per category */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.38 }}
         className="rounded-2xl p-4 sm:p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
-        <h3 className="text-white mb-4" style={{ fontWeight: 600 }}>Limite por Categoria</h3>
+        <h3 className="mb-4" style={{ color: "var(--foreground)", fontWeight: 600 }}>Limite por Categoria</h3>
         <div className="space-y-3">
           {budgetCategories.map(cat => {
             const spend = getSpend(cat.id);
@@ -188,7 +188,7 @@ export function Planning() {
                 <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
                   <div className="flex items-center gap-2">
                     <span style={{ fontSize: "15px" }}>{cat.icon}</span>
-                    <span className="text-white" style={{ fontSize: "0.875rem", fontWeight: 500 }}>{cat.name}</span>
+                    <span style={{ color: "var(--foreground)", fontSize: "0.875rem", fontWeight: 500 }}>{cat.name}</span>
                     {over && <AlertTriangle size={13} style={{ color: "var(--red)" }} />}
                     {near && !over && <AlertTriangle size={13} style={{ color: "var(--warning)" }} />}
                     {limit > 0 && !over && !near && <CheckCircle size={13} style={{ color: "var(--success)" }} />}
@@ -228,7 +228,7 @@ export function Planning() {
                     </div>
                   )}
                 </div>
-                <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
+                <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: "var(--border)" }}>
                   {limit > 0 && (
                     <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.8 }}
                       className="h-full rounded-full" style={{ background: over ? "var(--red)" : near ? "var(--warning)" : cat.color }} />
@@ -251,7 +251,7 @@ export function Planning() {
       {/* Tips */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.46 }}
         className="rounded-2xl p-4 sm:p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
-        <h3 className="text-white mb-3" style={{ fontWeight: 600 }}>Dicas Financeiras</h3>
+        <h3 className="mb-3" style={{ color: "var(--foreground)", fontWeight: 600 }}>Dicas Financeiras</h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[
             { icon: "💡", tip: "Regra 50/30/20", desc: "50% necessidades, 30% desejos, 20% poupança." },

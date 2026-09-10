@@ -90,7 +90,7 @@ export function ConfirmDeleteDialog({
             role="alertdialog" aria-modal="true" aria-label={title}
           >
             <p style={{ fontSize: "2.5rem", marginBottom: "12px" }}>{icon}</p>
-            <h3 className="text-white mb-2" style={{ fontWeight: 600 }}>{title}</h3>
+            <h3 className="mb-2" style={{ color: "var(--foreground)", fontWeight: 600 }}>{title}</h3>
             <p style={{ color: "var(--muted-foreground)", fontSize: "0.875rem", marginBottom: "24px" }}>
               {description}
             </p>

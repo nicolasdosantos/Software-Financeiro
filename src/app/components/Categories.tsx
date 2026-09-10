@@ -131,7 +131,7 @@ export function Categories() {
             <Tag size={18} style={{ color: "var(--primary)" }} />
           </div>
           <div>
-            <h1 className="text-white" style={{ fontSize: "clamp(1.2rem,4vw,1.5rem)", fontWeight: 700 }}>Categorias</h1>
+            <h1 style={{ fontSize: "clamp(1.2rem,4vw,1.5rem)", fontWeight: 700, color: "var(--foreground)" }}>Categorias</h1>
             <p style={{ color: "var(--muted-foreground)", fontSize: "0.875rem" }}>{categories.length} categorias cadastradas</p>
           </div>
         </div>
@@ -170,14 +170,14 @@ export function Categories() {
                     {cat.icon}
                   </motion.div>
                   <div className="min-w-0">
-                    <p className="text-white truncate" style={{ fontWeight: 600, fontSize: "0.95rem" }}>{cat.name}</p>
+                    <p className="truncate" style={{ fontWeight: 600, fontSize: "0.95rem", color: "var(--foreground)" }}>{cat.name}</p>
                     <p style={{ color: "var(--muted-foreground)", fontSize: "0.75rem" }}>
                       {txCount} transaç{txCount !== 1 ? "ões" : "ão"}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200 shrink-0">
-                  <button onClick={() => setEditing(cat)} aria-label={`Editar categoria "${cat.name}"`} className="p-1.5 rounded-lg hover:bg-white/5" style={{ color: "var(--muted-foreground)" }}>
+                  <button onClick={() => setEditing(cat)} aria-label={`Editar categoria "${cat.name}"`} className="p-1.5 rounded-lg hover:bg-[var(--secondary)]" style={{ color: "var(--muted-foreground)" }}>
                     <Edit2 size={14} />
                   </button>
                   {cat.type === "custom" && (
@@ -207,7 +207,7 @@ export function Categories() {
               {cat.type === "default" && (
                 <div className="relative mt-2">
                   <span className="text-xs px-2 py-0.5 rounded-full"
-                    style={{ background: "rgba(255,255,255,0.05)", color: "var(--muted-foreground)" }}>
+                    style={{ background: "var(--secondary)", color: "var(--muted-foreground)" }}>
                     Padrão
                   </span>
                 </div>

@@ -55,6 +55,56 @@
   --sidebar-accent-foreground: #e8eeff;
   --sidebar-border: rgba(255, 255, 255, 0.06);
   --sidebar-ring: #204bca;
+  /* Fundo translúcido com blur da navbar sticky (MainLayout) — como ela
+     fica sobre conteúdo que rola por baixo, precisa de um valor próprio por
+     tema em vez de reaproveitar --card/--popover puros. */
+  --surface-translucent: rgba(8, 10, 19, 0.92);
+}
+
+/**
+ * Tema claro (Perfil > Aparência). Aplicado via classe (ver src/lib/theme.ts
+ * + ThemeEffect.tsx) em vez de media query, pra ser uma escolha do usuário,
+ * não do sistema operacional.
+ *
+ * --sidebar* NÃO é redefinido aqui de propósito: a barra lateral fica sempre
+ * escura nos dois temas (âncora visual fixa da marca) — só a área de
+ * conteúdo troca de cor. --primary/--primary-rgb/--ring também ficam de
+ * fora: o azul de destaque é o mesmo nos dois temas, e continua podendo ser
+ * trocado pela cor de destaque do usuário (applyAccentColor), que tem
+ * prioridade sobre qualquer classe de tema por ser aplicada como estilo
+ * inline.
+ */
+.light {
+  --background: #f5f7fc;
+  --foreground: #0a0d1a;
+  --card: #ffffff;
+  --card-foreground: #0a0d1a;
+  --popover: #ffffff;
+  --popover-foreground: #0a0d1a;
+  --primary-foreground: #ffffff;
+  --secondary: #eef1f8;
+  --secondary-foreground: #46516b;
+  --muted: #eef1f8;
+  --muted-foreground: #64708a;
+  --accent: #e3e9fb;
+  --accent-foreground: #16224d;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  /* Borda azul translúcida — mesma família de cor do --input corrigido
+     recentemente, mantendo a identidade "preto com contraste em azul"
+     também no modo claro. */
+  --border: rgba(32, 75, 202, 0.14);
+  --input-background: #ffffff;
+  --switch-background: #d7deef;
+  --success: #059669;
+  --warning: #b45309;
+  --red: #dc2626;
+  /* Mais opaco e nítido que um branco translúcido puro — o --background
+     claro (#f5f7fc) já é quase branco, então um simples rgba(255,255,255,..)
+     ficava visualmente idêntico ao conteúdo por baixo. Junto com a sombra
+     azulada da navbar (MainLayout), cria separação visível entre a barra e
+     a página, mesmo com blur. */
+  --surface-translucent: rgba(255, 255, 255, 0.94);
 }
 
 @theme inline {

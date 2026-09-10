@@ -47,7 +47,7 @@ export function EmptyState({ icon, title, subtitle, action, compact = false }: E
       >
         {icon}
       </motion.span>
-      <p className="text-white mb-1.5" style={{ fontWeight: 600 }}>{title}</p>
+      <p className="mb-1.5" style={{ color: "var(--foreground)", fontWeight: 600 }}>{title}</p>
       {subtitle && (
         <p style={{ color: "var(--muted-foreground)", fontSize: "0.875rem", maxWidth: "320px" }}>{subtitle}</p>
       )}

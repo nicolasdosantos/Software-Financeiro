@@ -170,7 +170,7 @@ export function Investments() {
     <div className="space-y-4 sm:space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-white" style={{ fontSize: "clamp(1.2rem,4vw,1.5rem)", fontWeight: 700 }}>Investimentos</h1>
+          <h1 style={{ color: "var(--foreground)", fontSize: "clamp(1.2rem,4vw,1.5rem)", fontWeight: 700 }}>Investimentos</h1>
           <p style={{ color: "var(--muted-foreground)", fontSize: "0.875rem" }}>Acompanhe seu portfólio e rentabilidade</p>
         </div>
         <Button onClick={() => setShowForm(true)} className="w-full sm:w-auto">
@@ -182,7 +182,7 @@ export function Investments() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
         {[
           { label: "Total Investido", value: formatCurrency(totalInvested), color: "var(--primary)", icon: "💼" },
-          { label: "Valor Atual", value: formatCurrency(totalCurrent), color: "#e8eeff", icon: "📊" },
+          { label: "Valor Atual", value: formatCurrency(totalCurrent), color: "var(--foreground)", icon: "📊" },
           { label: "Rentabilidade", value: `${returnPct >= 0 ? "+" : ""}${returnPct.toFixed(2)}%`, color: returnPct >= 0 ? "var(--success)" : "var(--red)", icon: returnPct >= 0 ? "📈" : "📉" },
           { label: "Lucro/Prejuízo", value: formatCurrency(totalReturn), color: totalReturn >= 0 ? "var(--success)" : "var(--red)", icon: totalReturn >= 0 ? "✅" : "⚠️" },
         ].map((card, i) => (
@@ -201,7 +201,7 @@ export function Investments() {
       {Object.keys(byType).length > 0 && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
           className="rounded-2xl p-4 sm:p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
-          <h3 className="text-white mb-4" style={{ fontWeight: 600 }}>Por Tipo de Ativo</h3>
+          <h3 className="mb-4" style={{ color: "var(--foreground)", fontWeight: 600 }}>Por Tipo de Ativo</h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
             {Object.entries(byType).map(([type, data]) => {
               const ret = (data.invested > 0 ? (data.current - data.invested) / data.invested * 100 : 0).toFixed(2);
@@ -210,7 +210,7 @@ export function Investments() {
                 <div key={type} className="p-3 rounded-xl" style={{ background: "var(--secondary)" }}>
                   <div className="flex items-center gap-2 mb-1.5">
                     <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: TYPE_COLORS[type] || "#94a3b8" }} />
-                    <span className="text-white" style={{ fontSize: "0.78rem", fontWeight: 500 }}>{type}</span>
+                    <span style={{ color: "var(--foreground)", fontSize: "0.78rem", fontWeight: 500 }}>{type}</span>
                   </div>
                   <p style={{ color: "var(--foreground)", fontWeight: 700, fontFamily: "var(--font-mono)", fontSize: "0.9rem" }}>
                     {formatCurrency(data.current)}
@@ -230,7 +230,7 @@ export function Investments() {
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.38 }}
         className="rounded-2xl overflow-hidden" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
         <div className="p-4 sm:p-5" style={{ borderBottom: "1px solid var(--border)" }}>
-          <h3 className="text-white" style={{ fontWeight: 600 }}>Portfólio</h3>
+          <h3 style={{ color: "var(--foreground)", fontWeight: 600 }}>Portfólio</h3>
         </div>
 
         {investments.length === 0 ? (
@@ -249,7 +249,7 @@ export function Investments() {
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 rounded-full shrink-0" style={{ background: color }} />
                         <div>
-                          <p className="text-white" style={{ fontWeight: 500, fontSize: "0.875rem" }}>{inv.name}</p>
+                          <p style={{ color: "var(--foreground)", fontWeight: 500, fontSize: "0.875rem" }}>{inv.name}</p>
                           <p style={{ color: "var(--muted-foreground)", fontSize: "0.72rem" }}>{inv.type} · {inv.institution}</p>
                         </div>
                       </div>
@@ -265,7 +265,7 @@ export function Investments() {
                       </div>
                       <div>
                         <p style={{ color: "var(--muted-foreground)", fontSize: "0.68rem" }}>Atual</p>
-                        <p className="text-white" style={{ fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: "0.8rem" }}>{formatCurrency(inv.currentValue)}</p>
+                        <p style={{ color: "var(--foreground)", fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: "0.8rem" }}>{formatCurrency(inv.currentValue)}</p>
                       </div>
                       <div>
                         <p style={{ color: "var(--muted-foreground)", fontSize: "0.68rem" }}>Rentab.</p>
@@ -300,7 +300,7 @@ export function Investments() {
                     return (
                       <tr key={inv.id} className="hover:bg-[var(--secondary)]" style={{ borderBottom: "1px solid var(--border)" }}>
                         <td style={{ padding: "12px 16px" }}>
-                          <p className="text-white" style={{ fontWeight: 500, fontSize: "0.875rem" }}>{inv.name}</p>
+                          <p style={{ color: "var(--foreground)", fontWeight: 500, fontSize: "0.875rem" }}>{inv.name}</p>
                           <p style={{ color: "var(--muted-foreground)", fontSize: "0.72rem" }}>{inv.institution}</p>
                         </td>
                         <td style={{ padding: "12px 16px" }}>
@@ -310,7 +310,7 @@ export function Investments() {
                           </span>
                         </td>
                         <td style={{ padding: "12px 16px", fontFamily: "var(--font-mono)", fontSize: "0.85rem", color: "var(--muted-foreground)" }}>{formatCurrency(inv.invested)}</td>
-                        <td style={{ padding: "12px 16px", fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: "0.85rem" }} className="text-white">{formatCurrency(inv.currentValue)}</td>
+                        <td style={{ padding: "12px 16px", fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: "0.85rem", color: "var(--foreground)" }}>{formatCurrency(inv.currentValue)}</td>
                         <td style={{ padding: "12px 16px" }}>
                           <div className="flex items-center gap-1">
                             {ret >= 0 ? <TrendingUp size={12} style={{ color: "var(--success)" }} /> : <TrendingDown size={12} style={{ color: "var(--red)" }} />}
@@ -319,7 +319,7 @@ export function Investments() {
                         </td>
                         <td style={{ padding: "12px 16px" }}>
                           <div className="flex gap-1.5">
-                            <button onClick={() => setEditing(inv)} aria-label={`Editar investimento "${inv.name}"`} className="p-1.5 rounded-lg hover:bg-white/5" style={{ color: "var(--muted-foreground)" }}><Edit2 size={14} /></button>
+                            <button onClick={() => setEditing(inv)} aria-label={`Editar investimento "${inv.name}"`} className="p-1.5 rounded-lg hover:bg-[var(--secondary)]" style={{ color: "var(--muted-foreground)" }}><Edit2 size={14} /></button>
                             <button onClick={() => setDeleting(inv.id)} aria-label={`Excluir investimento "${inv.name}"`} className="p-1.5 rounded-lg hover:bg-red-500/10" style={{ color: "var(--muted-foreground)" }}><Trash2 size={14} /></button>
                           </div>
                         </td>

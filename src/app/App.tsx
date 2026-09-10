@@ -4,6 +4,7 @@ import { Toaster } from "./components/ui/sonner";
 import { AuthProvider } from "./context/AuthContext";
 import { FinanceProvider } from "./context/FinanceContext";
 import { AccentColorEffect } from "./components/AccentColorEffect";
+import { ThemeEffect } from "./components/ThemeEffect";
 
 import MainLayout from "./layouts/MainLayout";
 
@@ -27,6 +28,7 @@ export default function App() {
   return (
     <AuthProvider>
       <AccentColorEffect />
+      <ThemeEffect />
       <FinanceProvider>
         <Toaster theme="dark" richColors position="top-right" />
         <BrowserRouter>

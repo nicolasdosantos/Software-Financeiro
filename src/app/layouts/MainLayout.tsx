@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Menu } from "lucide-react";
 import { Sidebar } from "../components/Sidebar";
 import { NotificationsBell } from "../components/NotificationsBell";
+import { ThemeToggle } from "../components/ThemeToggle";
 import { useAuth } from "../context/AuthContext";
 import { useNotifications } from "../hooks/useNotifications";
 import { useDismissedNotifications } from "../hooks/useDismissedNotifications";
@@ -94,9 +95,10 @@ export default function MainLayout() {
         <div
           className="sticky top-0 z-30 flex items-center justify-between px-4 py-3"
           style={{
-            background: "rgba(8,10,19,0.92)",
+            background: "var(--surface-translucent)",
             backdropFilter: "blur(12px)",
             borderBottom: "1px solid var(--border)",
+            boxShadow: "0 8px 24px -16px rgba(var(--primary-rgb), 0.35)",
           }}
         >
           <div className="flex items-center gap-3">
@@ -115,8 +117,8 @@ export default function MainLayout() {
             )}
 
             <span
-              className="text-white"
               style={{
+                color: "var(--foreground)",
                 fontWeight: 600,
                 fontSize: "1rem",
               }}
@@ -126,6 +128,7 @@ export default function MainLayout() {
           </div>
 
           <div className="flex items-center gap-2">
+            <ThemeToggle />
             <NotificationsBell notifications={visibleNotifications} onDismiss={dismiss} />
 
             <span
