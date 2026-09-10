@@ -114,6 +114,7 @@ interface FinanceContextType {
   recurringTransactions: RecurringTransaction[];
   loading: boolean;
   addTransaction: (t: Omit<Transaction, "id">) => Promise<void>;
+  addTransactionsBulk: (t: Omit<Transaction, "id">[]) => Promise<void>;
   updateTransaction: (t: Transaction) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
   addRecurringTransaction: (r: NewRecurringTransaction) => Promise<void>;
@@ -581,6 +582,24 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       }
 
       setTransactions((prev) => [data as Transaction, ...prev]);
+    },
+
+    // Usado pela importação de extrato (CSV/OFX) — um insert só pra todas as
+    // transações da vez, em vez de N chamadas de addTransaction em sequência.
+    addTransactionsBulk: async (transactions) => {
+      if (transactions.length === 0) return;
+      const user = await requireUser();
+
+      const rows = transactions.map((t) => ({ ...t, user_id: user.id }));
+      const { data, error } = await supabase.from("transactions").insert(rows).select("*");
+
+      if (error) {
+        console.error("Erro ao importar transações:", error);
+        toast.error("Não foi possível importar as transações.");
+        throw error;
+      }
+
+      setTransactions((prev) => [...(data as Transaction[]), ...prev]);
     },
 
     updateTransaction: async (transaction) => {

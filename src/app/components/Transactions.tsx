@@ -1,11 +1,12 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Plus, Search, Edit2, Trash2, ChevronUp, ChevronDown, X, Copy, Ban } from "lucide-react";
+import { Plus, Search, Edit2, Trash2, ChevronUp, ChevronDown, X, Copy, Ban, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useFinance, formatCurrency, getMonthName, getTodayDateInput, toLocalDate, getDistinctMonths } from "../context/FinanceContext";
 import type { Transaction, RecurringTransaction, NewRecurringTransaction, NewSplitTransaction } from "../context/FinanceContext";
 import { Modal } from "./shared/Modal";
+import { ImportTransactionsModal } from "./ImportTransactions";
 import { ConfirmDeleteDialog } from "./shared/ConfirmDeleteDialog";
 import { EmptyState } from "./shared/EmptyState";
 import { Skeleton } from "./ui/skeleton";
@@ -383,6 +384,7 @@ export function Transactions() {
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [duplicatingTx, setDuplicatingTx] = useState<Transaction | null>(null);
   const [showAdd, setShowAdd] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [cancelingRecurringId, setCancelingRecurringId] = useState<string | null>(null);
 
@@ -442,9 +444,14 @@ export function Transactions() {
           <h1 className="text-white" style={{ fontSize: "clamp(1.2rem,4vw,1.5rem)", fontWeight: 700 }}>Transações</h1>
           <p style={{ color: "var(--muted-foreground)", fontSize: "0.875rem" }}>{filtered.length} registros encontrados</p>
         </div>
-        <Button onClick={() => setShowAdd(true)} className="w-full sm:w-auto">
-          <Plus size={16} /> Nova Transação
-        </Button>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <Button variant="secondary" onClick={() => setShowImport(true)} className="flex-1 sm:flex-none">
+            <Upload size={16} /> Importar
+          </Button>
+          <Button onClick={() => setShowAdd(true)} className="flex-1 sm:flex-none">
+            <Plus size={16} /> Nova Transação
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -699,6 +706,8 @@ export function Transactions() {
           </div>
         )}
       </motion.div>
+
+      <ImportTransactionsModal open={showImport} onClose={() => setShowImport(false)} />
 
       <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Nova Transação">
         <TransactionForm onAdd={addTransaction} onUpdate={updateTransaction} onAddRecurring={addRecurringTransaction} onAddSplit={addSplitTransaction} onClose={() => setShowAdd(false)} />
