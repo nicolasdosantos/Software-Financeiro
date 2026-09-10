@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Plus, Search, Edit2, Trash2 } from "lucide-react";
+import { Plus, Search, Edit2, Trash2, ChevronUp, ChevronDown, X } from "lucide-react";
 import { toast } from "sonner";
 import { useFinance, formatCurrency, getMonthName, getTodayDateInput, toLocalDate, getDistinctMonths } from "../context/FinanceContext";
 import type { Transaction } from "../context/FinanceContext";
@@ -45,6 +45,17 @@ function TransactionsSkeleton() {
 }
 
 const ITEMS_PER_PAGE = 8;
+
+type SortKey = "date" | "amount" | "description" | "category";
+
+const TABLE_COLUMNS: { key: SortKey | null; label: string }[] = [
+  { key: "description", label: "Descrição" },
+  { key: "category", label: "Categoria" },
+  { key: "date", label: "Data" },
+  { key: null, label: "Tipo" },
+  { key: "amount", label: "Valor" },
+  { key: null, label: "Ações" },
+];
 
 interface TransactionFormProps {
   initial?: Transaction;
@@ -154,6 +165,13 @@ export function Transactions() {
   const [filterType, setFilterType] = useState<"all" | "income" | "expense">("all");
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterMonth, setFilterMonth] = useState("all");
+  // Intervalo de datas livre, independente do filtro de mês — dá pra auditar
+  // qualquer período (ex: uma quinzena entre pagamentos), não só um mês
+  // inteiro do calendário. Os dois filtros combinam (AND) se usados juntos.
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [sortBy, setSortBy] = useState<SortKey>("date");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [showAdd, setShowAdd] = useState(false);
@@ -161,13 +179,47 @@ export function Transactions() {
 
   if (loading) return <TransactionsSkeleton />;
 
+  function toggleSort(key: SortKey) {
+    if (sortBy === key) {
+      setSortDir(d => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(key);
+      setSortDir(key === "description" || key === "category" ? "asc" : "desc");
+    }
+  }
+
+  const hasCustomFilters = search !== "" || filterType !== "all" || filterCategory !== "all" || filterMonth !== "all" || dateFrom !== "" || dateTo !== "";
+
+  function clearFilters() {
+    setSearch("");
+    setFilterType("all");
+    setFilterCategory("all");
+    setFilterMonth("all");
+    setDateFrom("");
+    setDateTo("");
+    setPage(1);
+  }
+
   const filtered = transactions.filter(t => {
     if (filterType !== "all" && t.type !== filterType) return false;
     if (filterCategory !== "all" && t.category !== filterCategory) return false;
     if (filterMonth !== "all" && !t.date.startsWith(filterMonth)) return false;
+    if (dateFrom && t.date < dateFrom) return false;
+    if (dateTo && t.date > dateTo) return false;
     if (search && !t.description.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
-  }).sort((a, b) => b.date.localeCompare(a.date));
+  }).sort((a, b) => {
+    let result: number;
+    if (sortBy === "date") result = a.date.localeCompare(b.date);
+    else if (sortBy === "amount") result = a.amount - b.amount;
+    else if (sortBy === "description") result = a.description.localeCompare(b.description, "pt-BR");
+    else {
+      const nameA = categories.find(c => c.id === a.category)?.name || "";
+      const nameB = categories.find(c => c.id === b.category)?.name || "";
+      result = nameA.localeCompare(nameB, "pt-BR");
+    }
+    return sortDir === "asc" ? result : -result;
+  });
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
   const paged = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
@@ -225,6 +277,26 @@ export function Transactions() {
               ))}
             </SelectContent>
           </Select>
+        </div>
+        {/* Intervalo de datas livre — combina com o filtro de mês acima, útil
+            pra auditar um período específico (ex: entre dois pagamentos) em
+            vez de só um mês inteiro do calendário. */}
+        <div className="grid grid-cols-2 sm:grid-cols-[1fr_1fr_auto] gap-2 items-end">
+          <div className="space-y-1.5">
+            <Label htmlFor="tx-date-from" className="text-xs" style={{ color: "var(--muted-foreground)" }}>De</Label>
+            <Input id="tx-date-from" type="date" value={dateFrom}
+              onChange={e => { setDateFrom(e.target.value); setPage(1); }} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="tx-date-to" className="text-xs" style={{ color: "var(--muted-foreground)" }}>Até</Label>
+            <Input id="tx-date-to" type="date" value={dateTo}
+              onChange={e => { setDateTo(e.target.value); setPage(1); }} />
+          </div>
+          {hasCustomFilters && (
+            <Button type="button" variant="ghost" size="sm" onClick={clearFilters} className="col-span-2 sm:col-span-1">
+              <X size={14} /> Limpar filtros
+            </Button>
+          )}
         </div>
       </div>
 
@@ -289,8 +361,17 @@ export function Transactions() {
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "640px" }}>
             <thead>
               <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                {["Descrição", "Categoria", "Data", "Tipo", "Valor", "Ações"].map(h => (
-                  <th key={h} style={{ padding: "13px 16px", textAlign: "left", color: "var(--muted-foreground)", fontSize: "0.78rem", fontWeight: 500, whiteSpace: "nowrap" }}>{h}</th>
+                {TABLE_COLUMNS.map(col => (
+                  <th key={col.label} style={{ padding: "13px 16px", textAlign: "left", color: "var(--muted-foreground)", fontSize: "0.78rem", fontWeight: 500, whiteSpace: "nowrap" }}>
+                    {col.key ? (
+                      <button type="button" onClick={() => toggleSort(col.key!)}
+                        className="flex items-center gap-1 transition-colors hover:text-[var(--foreground)]"
+                        style={{ background: "none", border: "none", padding: 0, font: "inherit", color: "inherit", cursor: "pointer" }}>
+                        {col.label}
+                        {sortBy === col.key && (sortDir === "asc" ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
+                      </button>
+                    ) : col.label}
+                  </th>
                 ))}
               </tr>
             </thead>
