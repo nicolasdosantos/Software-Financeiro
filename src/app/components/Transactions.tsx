@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Plus, Search, Edit2, Trash2, ChevronUp, ChevronDown, X } from "lucide-react";
+import { Plus, Search, Edit2, Trash2, ChevronUp, ChevronDown, X, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { useFinance, formatCurrency, getMonthName, getTodayDateInput, toLocalDate, getDistinctMonths } from "../context/FinanceContext";
 import type { Transaction } from "../context/FinanceContext";
@@ -59,20 +59,25 @@ const TABLE_COLUMNS: { key: SortKey | null; label: string }[] = [
 
 interface TransactionFormProps {
   initial?: Transaction;
+  // Pré-preenche o formulário de uma NOVA transação com os valores de outra
+  // (usado por "Duplicar"), sem transformar isso numa edição — ao contrário
+  // de "initial", salvar aqui sempre cria uma transação nova (onAdd).
+  prefill?: Omit<Transaction, "id">;
   onAdd: (t: Omit<Transaction, "id">) => Promise<void>;
   onUpdate: (t: Transaction) => Promise<void>;
   onClose: () => void;
 }
 
-function TransactionForm({ initial, onAdd, onUpdate, onClose }: TransactionFormProps) {
+function TransactionForm({ initial, prefill, onAdd, onUpdate, onClose }: TransactionFormProps) {
   const { categories } = useFinance();
+  const source = initial ?? prefill;
   const [form, setForm] = useState({
-    type: initial?.type || "expense" as "income" | "expense",
-    amount: initial?.amount?.toString() || "",
-    description: initial?.description || "",
-    category: initial?.category || categories[0]?.id || "",
-    date: initial?.date || getTodayDateInput(),
-    notes: initial?.notes || "",
+    type: source?.type || "expense" as "income" | "expense",
+    amount: source?.amount?.toString() || "",
+    description: source?.description || "",
+    category: source?.category || categories[0]?.id || "",
+    date: source?.date || getTodayDateInput(),
+    notes: source?.notes || "",
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -174,6 +179,7 @@ export function Transactions() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
+  const [duplicatingTx, setDuplicatingTx] = useState<Transaction | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -341,6 +347,9 @@ export function Transactions() {
                         {tx.type === "income" ? "+" : "-"}{formatCurrency(tx.amount)}
                       </span>
                       <div className="flex gap-1">
+                        <button onClick={() => setDuplicatingTx(tx)} aria-label={`Duplicar transação "${tx.description}"`} className="p-1.5 rounded-lg" style={{ color: "var(--muted-foreground)", background: "var(--secondary)" }}>
+                          <Copy size={13} />
+                        </button>
                         <button onClick={() => setEditingTx(tx)} aria-label={`Editar transação "${tx.description}"`} className="p-1.5 rounded-lg" style={{ color: "var(--muted-foreground)", background: "var(--secondary)" }}>
                           <Edit2 size={13} />
                         </button>
@@ -414,6 +423,7 @@ export function Transactions() {
                       </td>
                       <td style={{ padding: "12px 16px" }}>
                         <div className="flex items-center gap-1.5">
+                          <button onClick={() => setDuplicatingTx(tx)} aria-label={`Duplicar transação "${tx.description}"`} className="p-1.5 rounded-lg hover:bg-white/5" style={{ color: "var(--muted-foreground)" }}><Copy size={14} /></button>
                           <button onClick={() => setEditingTx(tx)} aria-label={`Editar transação "${tx.description}"`} className="p-1.5 rounded-lg hover:bg-blue-500/10" style={{ color: "var(--muted-foreground)" }}><Edit2 size={14} /></button>
                           <button onClick={() => setDeletingId(tx.id)} aria-label={`Excluir transação "${tx.description}"`} className="p-1.5 rounded-lg hover:bg-red-500/10" style={{ color: "var(--muted-foreground)" }}><Trash2 size={14} /></button>
                         </div>
@@ -460,6 +470,17 @@ export function Transactions() {
       <Modal open={editingTx !== null} onClose={() => setEditingTx(null)} title="Editar Transação">
         {editingTx && (
           <TransactionForm initial={editingTx} onAdd={addTransaction} onUpdate={updateTransaction} onClose={() => setEditingTx(null)} />
+        )}
+      </Modal>
+
+      <Modal open={duplicatingTx !== null} onClose={() => setDuplicatingTx(null)} title="Duplicar Transação">
+        {duplicatingTx && (
+          <TransactionForm
+            prefill={{ ...duplicatingTx, date: getTodayDateInput() }}
+            onAdd={addTransaction}
+            onUpdate={updateTransaction}
+            onClose={() => setDuplicatingTx(null)}
+          />
         )}
       </Modal>
 
