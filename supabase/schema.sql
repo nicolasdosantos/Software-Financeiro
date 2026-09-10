@@ -214,3 +214,39 @@ alter table public.budgets drop constraint if exists budgets_user_category_month
 alter table public.budgets add constraint budgets_user_category_month_unique unique (user_id, category_id, month);
 
 create index if not exists budgets_user_category_month_idx on public.budgets(user_id, category_id, month);
+
+-- ============================================================================
+-- CORREÇÃO DE SEGURANÇA (2026-09-10): public.profiles e as funções auxiliares
+-- não são criadas por este arquivo (profiles veio do template padrão de Auth
+-- do Supabase, de antes deste schema.sql existir) — mas as correções abaixo
+-- são registradas aqui pra ficar documentado no repositório. Já aplicadas
+-- direto no projeto via MCP do Supabase, com aprovação prévia.
+--
+-- profiles estava com policies cadastradas (select/insert/update, todas
+-- auth.uid() = id) mas RLS DESLIGADO — ou seja, as policies nunca valiam de
+-- verdade: qualquer requisição com a anon key conseguia ler/escrever
+-- qualquer linha. O app não usa essa tabela em nenhum lugar do código (usa
+-- user_metadata do Auth em vez dela), e o trigger que a popula no cadastro
+-- (handle_new_user, SECURITY DEFINER) contorna RLS — então habilitar RLS não
+-- teve nenhum efeito colateral.
+-- ============================================================================
+
+alter table public.profiles enable row level security;
+
+-- A policy de UPDATE só tinha USING, sem WITH CHECK — um UPDATE poderia em
+-- teoria reatribuir o "id" da linha pra outro valor sem validação no que é
+-- de fato gravado.
+drop policy if exists "Users can update their own profile" on public.profiles;
+create policy "Users can update their own profile"
+on public.profiles
+for update
+using (auth.uid() = id)
+with check (auth.uid() = id);
+
+-- Proteção padrão contra search_path hijacking. Seguro aqui: as duas funções
+-- já qualificam tudo que usam (set_updated_at só mexe em campos do próprio
+-- registro; handle_new_user referencia public.profiles com schema explícito,
+-- e now()/insert são resolvidos via pg_catalog, sempre pesquisado independente
+-- do search_path) — nenhuma mudança de comportamento.
+alter function public.set_updated_at() set search_path = '';
+alter function public.handle_new_user() set search_path = '';
