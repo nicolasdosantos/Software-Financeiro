@@ -12,6 +12,7 @@ import {
 import {
   useFinance, formatCurrency, getMonthName, getMonthTotals, getShortMonthName, toLocalDate,
   getDistinctMonths, getAccumulatedBalance, sumExpensesByCategory, getCategorySpend,
+  getBudgetLimit, getBudgetCategoryIds,
 } from "../context/FinanceContext";
 import { useUser } from "../../hooks/useUser";
 import { supabase } from "../../lib/supabase";
@@ -237,9 +238,14 @@ export function Dashboard() {
 
   // Só considera categorias que de fato têm um limite definido em
   // Planejamento — orçamento "total" aqui não é a soma de todas as
-  // despesas, é a soma dos limites que o usuário configurou.
-  const totalBudgetLimit = budgets.reduce((s, b) => s + b.limit, 0);
-  const totalBudgetSpent = budgets.reduce((s, b) => s + getCategorySpend(transactions, b.categoryId, currentMonth), 0);
+  // despesas, é a soma dos limites que o usuário configurou. Cada categoria
+  // entra só uma vez (usando o limite efetivo do mês — o override de
+  // currentMonth quando existe, senão o padrão): budgets pode ter mais de
+  // uma linha por categoria agora (padrão + overrides por mês), então somar
+  // b.limit direto contaria a mesma categoria em dobro.
+  const budgetCategoryIds = getBudgetCategoryIds(budgets);
+  const totalBudgetLimit = budgetCategoryIds.reduce((s, id) => s + getBudgetLimit(budgets, id, currentMonth), 0);
+  const totalBudgetSpent = budgetCategoryIds.reduce((s, id) => s + getCategorySpend(transactions, id, currentMonth), 0);
   const budgetPct = totalBudgetLimit > 0 ? Math.min(100, (totalBudgetSpent / totalBudgetLimit) * 100) : 0;
   const isOverBudget = totalBudgetLimit > 0 && totalBudgetSpent > totalBudgetLimit;
 

@@ -1,10 +1,15 @@
 import { useState } from "react";
 import { motion } from "motion/react";
-import { AlertTriangle, CheckCircle, Edit2, X } from "lucide-react";
+import { AlertTriangle, CheckCircle, Edit2, Pin, X } from "lucide-react";
 import { toast } from "sonner";
-import { useFinance, formatCurrency, getMonthName, getCategorySpend } from "../context/FinanceContext";
+import {
+  useFinance, formatCurrency, getMonthName, getShortMonthName, getCategorySpend,
+  getBudgetLimit, DEFAULT_BUDGET_MONTH,
+} from "../context/FinanceContext";
 import { Skeleton } from "./ui/skeleton";
 import { Input } from "./ui/input";
+import { Checkbox } from "./ui/checkbox";
+import { Label } from "./ui/label";
 
 function PlanningSkeleton() {
   return (
@@ -39,17 +44,24 @@ function PlanningSkeleton() {
 }
 
 export function Planning() {
-  const { transactions, categories, budgets, updateBudget, currentMonth, loading } = useFinance();
+  const { transactions, categories, budgets, updateBudget, deleteBudget, currentMonth, loading } = useFinance();
   const [editingCat, setEditingCat] = useState<string | null>(null);
   const [newLimit, setNewLimit] = useState("");
+  const [monthOnly, setMonthOnly] = useState(false);
   const [savingLimit, setSavingLimit] = useState(false);
+  const [removingOverride, setRemovingOverride] = useState<string | null>(null);
 
   if (loading) return <PlanningSkeleton />;
 
   function getSpend(catId: string) {
     return getCategorySpend(transactions, catId, currentMonth);
   }
-  function getBudget(catId: string) { return budgets.find(b => b.categoryId === catId)?.limit || 0; }
+  // Limite efetivo deste mês: usa o override de currentMonth quando existe,
+  // senão cai pro limite padrão — ver getBudgetLimit.
+  function getBudget(catId: string) { return getBudgetLimit(budgets, catId, currentMonth); }
+  function getMonthOverride(catId: string) {
+    return budgets.find(b => b.categoryId === catId && b.month === currentMonth);
+  }
 
   // Todas as categorias entram aqui — não só as que já têm gasto lançado ou
   // limite definido. Antes, uma categoria nova ficava invisível nesta tela até
@@ -59,10 +71,17 @@ export function Planning() {
   // isso não distorce os totais abaixo.
   const budgetCategories = categories;
 
-  const totalLimit = budgets.reduce((s, b) => s + b.limit, 0);
+  const totalLimit = budgetCategories.reduce((s, c) => s + getBudget(c.id), 0);
   const totalSpent = budgetCategories.reduce((s, c) => s + getSpend(c.id), 0);
   const overBudget = budgetCategories.filter(c => { const l = getBudget(c.id); return l > 0 && getSpend(c.id) > l; }).length;
   const nearLimit = budgetCategories.filter(c => { const l = getBudget(c.id); const sp = getSpend(c.id); return l > 0 && sp >= l * 0.8 && sp <= l; }).length;
+
+  function startEditing(catId: string) {
+    const override = getMonthOverride(catId);
+    setEditingCat(catId);
+    setMonthOnly(!!override);
+    setNewLimit(getBudget(catId).toString());
+  }
 
   async function saveLimit(catId: string) {
     if (savingLimit) return;
@@ -74,7 +93,7 @@ export function Planning() {
 
     setSavingLimit(true);
     try {
-      await updateBudget({ categoryId: catId, limit: val });
+      await updateBudget({ categoryId: catId, limit: val, month: monthOnly ? currentMonth : DEFAULT_BUDGET_MONTH });
       toast.success("Limite de orçamento atualizado com sucesso!");
       setEditingCat(null);
       setNewLimit("");
@@ -82,6 +101,21 @@ export function Planning() {
       console.error("Erro ao salvar limite de orçamento:", err);
     } finally {
       setSavingLimit(false);
+    }
+  }
+
+  // Volta a categoria pro limite padrão, removendo só o override deste mês
+  // — o limite padrão (se houver) continua valendo pros outros meses.
+  async function removeOverride(catId: string) {
+    if (removingOverride) return;
+    setRemovingOverride(catId);
+    try {
+      await deleteBudget(catId, currentMonth);
+      toast.success(`Limite personalizado de ${getMonthName(currentMonth)} removido — voltou ao padrão.`);
+    } catch (err) {
+      console.error("Erro ao remover limite personalizado:", err);
+    } finally {
+      setRemovingOverride(null);
     }
   }
 
@@ -143,6 +177,7 @@ export function Planning() {
           {budgetCategories.map(cat => {
             const spend = getSpend(cat.id);
             const limit = getBudget(cat.id);
+            const override = getMonthOverride(cat.id);
             const pct = limit > 0 ? Math.min(100, (spend / limit) * 100) : 0;
             const over = limit > 0 && spend > limit;
             const near = limit > 0 && spend >= limit * 0.8 && spend <= limit;
@@ -159,19 +194,38 @@ export function Planning() {
                     {limit > 0 && !over && !near && <CheckCircle size={13} style={{ color: "var(--success)" }} />}
                   </div>
                   {isEditing ? (
-                    <div className="flex items-center gap-2">
-                      <Input autoFocus type="number" value={newLimit} onChange={e => setNewLimit(e.target.value)}
-                        placeholder="Limite R$" className="w-[110px] h-8 text-sm"
-                        onKeyDown={e => { if (e.key === "Enter") saveLimit(cat.id); if (e.key === "Escape") setEditingCat(null); }} />
-                      <button onClick={() => saveLimit(cat.id)} disabled={savingLimit} aria-label={`Salvar limite de "${cat.name}"`} style={{ color: "var(--success)", opacity: savingLimit ? 0.6 : 1 }}><CheckCircle size={16} /></button>
-                      <button onClick={() => setEditingCat(null)} disabled={savingLimit} aria-label="Cancelar edição do limite" style={{ color: "var(--muted-foreground)" }}><X size={16} /></button>
+                    <div className="flex flex-col items-end gap-1.5">
+                      <div className="flex items-center gap-2">
+                        <Input autoFocus type="number" value={newLimit} onChange={e => setNewLimit(e.target.value)}
+                          placeholder="Limite R$" className="w-[110px] h-8 text-sm"
+                          onKeyDown={e => { if (e.key === "Enter") saveLimit(cat.id); if (e.key === "Escape") setEditingCat(null); }} />
+                        <button onClick={() => saveLimit(cat.id)} disabled={savingLimit} aria-label={`Salvar limite de "${cat.name}"`} style={{ color: "var(--success)", opacity: savingLimit ? 0.6 : 1 }}><CheckCircle size={16} /></button>
+                        <button onClick={() => setEditingCat(null)} disabled={savingLimit} aria-label="Cancelar edição do limite" style={{ color: "var(--muted-foreground)" }}><X size={16} /></button>
+                      </div>
+                      <label className="flex items-center gap-1.5 cursor-pointer" htmlFor={`month-only-${cat.id}`}>
+                        <Checkbox id={`month-only-${cat.id}`} checked={monthOnly} onCheckedChange={c => setMonthOnly(c === true)} />
+                        <Label htmlFor={`month-only-${cat.id}`} className="cursor-pointer" style={{ color: "var(--muted-foreground)", fontSize: "0.7rem", fontWeight: 400 }}>
+                          Só em {getMonthName(currentMonth)} (não muda o padrão)
+                        </Label>
+                      </label>
                     </div>
                   ) : (
-                    <button onClick={() => { setEditingCat(cat.id); setNewLimit(limit.toString()); }}
-                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition-colors hover:text-[var(--foreground)]"
-                      style={{ color: "var(--muted-foreground)" }}>
-                      <Edit2 size={11} />{limit > 0 ? formatCurrency(limit) : "Definir limite"}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {override && (
+                        <button onClick={() => removeOverride(cat.id)} disabled={removingOverride === cat.id}
+                          aria-label={`Remover limite personalizado de ${getMonthName(currentMonth)} em "${cat.name}"`}
+                          title={`Limite personalizado só para ${getMonthName(currentMonth)} — clique para voltar ao padrão`}
+                          className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-xs"
+                          style={{ background: "rgba(var(--primary-rgb),0.14)", color: "var(--primary)", opacity: removingOverride === cat.id ? 0.6 : 1 }}>
+                          <Pin size={10} />{getShortMonthName(currentMonth)}<X size={10} />
+                        </button>
+                      )}
+                      <button onClick={() => startEditing(cat.id)}
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition-colors hover:text-[var(--foreground)]"
+                        style={{ color: "var(--muted-foreground)" }}>
+                        <Edit2 size={11} />{limit > 0 ? formatCurrency(limit) : "Definir limite"}
+                      </button>
+                    </div>
                   )}
                 </div>
                 <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>

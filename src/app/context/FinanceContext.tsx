@@ -45,10 +45,16 @@ export interface Investment {
   institution: string;
 }
 
+/** "" (DEFAULT_BUDGET_MONTH) = limite padrão, vale em qualquer mês sem
+ * override específico. "YYYY-MM" = limite só daquele mês, tem prioridade
+ * sobre o padrão — ver getBudgetLimit. */
 export interface Budget {
   categoryId: string;
   limit: number;
+  month: string;
 }
+
+export const DEFAULT_BUDGET_MONTH = "";
 
 interface FinanceContextType {
   transactions: Transaction[];
@@ -70,6 +76,7 @@ interface FinanceContextType {
   updateInvestment: (i: Investment) => Promise<void>;
   deleteInvestment: (id: string) => Promise<void>;
   updateBudget: (b: Budget) => Promise<void>;
+  deleteBudget: (categoryId: string, month: string) => Promise<void>;
   currentMonth: string;
 }
 
@@ -95,6 +102,7 @@ type InvestmentRow = {
 type BudgetRow = {
   category_id: string;
   limit_amount: number;
+  month: string;
 };
 
 const DEFAULT_CATEGORIES: Category[] = [
@@ -189,6 +197,23 @@ export function getAccumulatedBalance(transactions: Transaction[], uptoMonth: st
   return income - expense;
 }
 
+/**
+ * Limite efetivo de uma categoria num mês: usa o override daquele mês
+ * específico quando existe, senão cai pro limite padrão (DEFAULT_BUDGET_MONTH).
+ * Sem override nenhum, retorna 0 (sem limite definido).
+ */
+export function getBudgetLimit(budgets: Budget[], categoryId: string, month: string): number {
+  const override = budgets.find((b) => b.categoryId === categoryId && b.month === month);
+  if (override) return override.limit;
+  const fallback = budgets.find((b) => b.categoryId === categoryId && b.month === DEFAULT_BUDGET_MONTH);
+  return fallback?.limit ?? 0;
+}
+
+/** IDs distintos de categoria que têm algum limite configurado (padrão e/ou por mês). */
+export function getBudgetCategoryIds(budgets: Budget[]): string[] {
+  return [...new Set(budgets.map((b) => b.categoryId))];
+}
+
 function mapGoal(row: GoalRow): Goal {
   return {
     id: row.id,
@@ -218,6 +243,7 @@ function mapBudget(row: BudgetRow): Budget {
   return {
     categoryId: row.category_id,
     limit: Number(row.limit_amount),
+    month: row.month,
   };
 }
 
@@ -308,7 +334,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         supabase.from("categories").select("*").eq("user_id", authUser.id).order("name", { ascending: true }),
         supabase.from("goals").select("*").eq("user_id", authUser.id).order("deadline", { ascending: true }),
         supabase.from("investments").select("*").eq("user_id", authUser.id).order("start_date", { ascending: false }),
-        supabase.from("budgets").select("category_id, limit_amount").eq("user_id", authUser.id),
+        supabase.from("budgets").select("category_id, limit_amount, month").eq("user_id", authUser.id),
       ]);
 
       const failures: string[] = [];
@@ -600,7 +626,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
           user_id: user.id,
           category_id: budget.categoryId,
           limit_amount: budget.limit,
-        }, { onConflict: "user_id,category_id" });
+          month: budget.month,
+        }, { onConflict: "user_id,category_id,month" });
 
       if (error) {
         console.error("Erro ao atualizar orçamento:", error);
@@ -609,11 +636,30 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       }
 
       setBudgets((prev) => {
-        const exists = prev.some((item) => item.categoryId === budget.categoryId);
+        const exists = prev.some((item) => item.categoryId === budget.categoryId && item.month === budget.month);
         return exists
-          ? prev.map((item) => item.categoryId === budget.categoryId ? budget : item)
+          ? prev.map((item) => item.categoryId === budget.categoryId && item.month === budget.month ? budget : item)
           : [...prev, budget];
       });
+    },
+
+    deleteBudget: async (categoryId, month) => {
+      const user = await requireUser();
+
+      const { error } = await supabase
+        .from("budgets")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("category_id", categoryId)
+        .eq("month", month);
+
+      if (error) {
+        console.error("Erro ao remover limite de orçamento:", error);
+        toast.error("Não foi possível remover o limite de orçamento.");
+        throw error;
+      }
+
+      setBudgets((prev) => prev.filter((item) => !(item.categoryId === categoryId && item.month === month)));
     },
   }), [
     budgets,
