@@ -5,6 +5,7 @@ import {
   getAccumulatedBalance,
   getCategorySpend,
   getDistinctMonths,
+  getFinancialInsights,
   getMonthName,
   getMonthTotals,
   getShortMonthName,
@@ -13,12 +14,21 @@ import {
   toLocalDate,
   toLocalMonthDate,
 } from "./FinanceContext";
-import type { Transaction } from "./FinanceContext";
+import type { Category, Transaction } from "./FinanceContext";
 
 function tx(overrides: Partial<Transaction> & Pick<Transaction, "type" | "amount" | "date" | "category">): Transaction {
   return {
     id: overrides.id ?? crypto.randomUUID(),
     description: overrides.description ?? "Transação de teste",
+    ...overrides,
+  };
+}
+
+function cat(overrides: Partial<Category> & Pick<Category, "id" | "name">): Category {
+  return {
+    icon: "💳",
+    color: "#204bca",
+    type: "custom",
     ...overrides,
   };
 }
@@ -206,5 +216,146 @@ describe("datas", () => {
   it("getMonthName e getShortMonthName não lançam erro e retornam texto não vazio", () => {
     expect(getMonthName("2026-01").length).toBeGreaterThan(0);
     expect(getShortMonthName("2026-01").length).toBeGreaterThan(0);
+  });
+});
+
+describe("getFinancialInsights", () => {
+  const categories: Category[] = [cat({ id: "alimentacao", name: "Alimentação" })];
+  // Dia 15 de um mês de 30 dias — depois do mínimo pra projeção (5) e não é
+  // o último dia, então a regra de projeção fica ativa nos testes que não
+  // mexem nisso de propósito.
+  const midMonth = new Date(2026, 3, 15); // 15/04/2026
+
+  it("aponta a categoria fora do padrão quando o gasto atual passa muito da média dos 3 meses anteriores", () => {
+    const transactions: Transaction[] = [
+      tx({ type: "expense", amount: 500, date: "2026-04-01", category: "alimentacao" }), // atual
+      tx({ type: "expense", amount: 100, date: "2026-03-01", category: "alimentacao" }),
+      tx({ type: "expense", amount: 100, date: "2026-02-01", category: "alimentacao" }),
+      tx({ type: "expense", amount: 100, date: "2026-01-01", category: "alimentacao" }),
+    ];
+
+    const insights = getFinancialInsights(transactions, categories, "2026-04", midMonth);
+
+    const outlier = insights.find((i) => i.id === "category-outlier");
+    expect(outlier).toBeDefined();
+    expect(outlier?.kind).toBe("warning");
+    expect(outlier?.description).toContain("Alimentação");
+  });
+
+  it("não aponta outlier quando a média histórica é baixa demais pra ser uma referência confiável", () => {
+    const transactions: Transaction[] = [
+      tx({ type: "expense", amount: 50, date: "2026-04-01", category: "alimentacao" }),
+      tx({ type: "expense", amount: 5, date: "2026-03-01", category: "alimentacao" }),
+      // sem gasto em fevereiro/janeiro — média cai bem abaixo do mínimo
+    ];
+
+    const insights = getFinancialInsights(transactions, categories, "2026-04", midMonth);
+
+    expect(insights.find((i) => i.id === "category-outlier")).toBeUndefined();
+  });
+
+  it("não aponta outlier quando o aumento fica abaixo do limiar", () => {
+    const transactions: Transaction[] = [
+      tx({ type: "expense", amount: 110, date: "2026-04-01", category: "alimentacao" }), // só 10% acima
+      tx({ type: "expense", amount: 100, date: "2026-03-01", category: "alimentacao" }),
+      tx({ type: "expense", amount: 100, date: "2026-02-01", category: "alimentacao" }),
+      tx({ type: "expense", amount: 100, date: "2026-01-01", category: "alimentacao" }),
+    ];
+
+    const insights = getFinancialInsights(transactions, categories, "2026-04", midMonth);
+
+    expect(insights.find((i) => i.id === "category-outlier")).toBeUndefined();
+  });
+
+  it("projeta o fechamento do mês pelo ritmo de gastos, só para o mês corrente de verdade", () => {
+    const transactions: Transaction[] = [
+      tx({ type: "income", amount: 3000, date: "2026-04-01", category: "salario" }),
+      // R$450 gastos em 15 dias -> projeção de R$900 no mês inteiro (30 dias)
+      tx({ type: "expense", amount: 450, date: "2026-04-10", category: "alimentacao" }),
+    ];
+
+    const insights = getFinancialInsights(transactions, [], "2026-04", midMonth);
+
+    const projection = insights.find((i) => i.id === "month-projection");
+    expect(projection).toBeDefined();
+    expect(projection?.kind).toBe("positive");
+    expect(projection?.description).toContain(formatCurrency(2100));
+  });
+
+  it("não projeta fechamento de um mês que não é o mês corrente de verdade", () => {
+    const transactions: Transaction[] = [
+      tx({ type: "income", amount: 3000, date: "2026-03-01", category: "salario" }),
+      tx({ type: "expense", amount: 450, date: "2026-03-10", category: "alimentacao" }),
+    ];
+
+    // "hoje" é 15/04, mas o mês analisado é março (já fechado)
+    const insights = getFinancialInsights(transactions, [], "2026-03", midMonth);
+
+    expect(insights.find((i) => i.id === "month-projection")).toBeUndefined();
+  });
+
+  it("não projeta fechamento antes do 5º dia do mês", () => {
+    const earlyMonth = new Date(2026, 3, 3); // 03/04/2026
+    const transactions: Transaction[] = [
+      tx({ type: "expense", amount: 50, date: "2026-04-01", category: "alimentacao" }),
+    ];
+
+    const insights = getFinancialInsights(transactions, [], "2026-04", earlyMonth);
+
+    expect(insights.find((i) => i.id === "month-projection")).toBeUndefined();
+  });
+
+  it("comenta taxa de poupança boa quando guarda uma parcela alta da renda", () => {
+    const transactions: Transaction[] = [
+      tx({ type: "income", amount: 1000, date: "2026-04-01", category: "salario" }),
+      tx({ type: "expense", amount: 200, date: "2026-04-01", category: "alimentacao" }),
+    ];
+
+    const insights = getFinancialInsights(transactions, [], "2026-04", midMonth);
+
+    const savings = insights.find((i) => i.id === "savings-rate");
+    expect(savings).toBeDefined();
+    expect(savings?.kind).toBe("positive");
+  });
+
+  it("avisa quando os gastos do mês passam a renda", () => {
+    const transactions: Transaction[] = [
+      tx({ type: "income", amount: 1000, date: "2026-04-01", category: "salario" }),
+      tx({ type: "expense", amount: 1500, date: "2026-04-01", category: "alimentacao" }),
+    ];
+
+    const insights = getFinancialInsights(transactions, [], "2026-04", midMonth);
+
+    const savings = insights.find((i) => i.id === "savings-rate");
+    expect(savings).toBeDefined();
+    expect(savings?.kind).toBe("warning");
+  });
+
+  it("não comenta taxa de poupança sem renda no mês", () => {
+    const transactions: Transaction[] = [
+      tx({ type: "expense", amount: 100, date: "2026-04-01", category: "alimentacao" }),
+    ];
+
+    const insights = getFinancialInsights(transactions, [], "2026-04", midMonth);
+
+    expect(insights.find((i) => i.id === "savings-rate")).toBeUndefined();
+  });
+
+  it("retorna no máximo 3 insights", () => {
+    const transactions: Transaction[] = [
+      tx({ type: "income", amount: 1000, date: "2026-04-01", category: "salario" }),
+      tx({ type: "expense", amount: 500, date: "2026-04-01", category: "alimentacao" }),
+      tx({ type: "expense", amount: 100, date: "2026-03-01", category: "alimentacao" }),
+      tx({ type: "expense", amount: 100, date: "2026-02-01", category: "alimentacao" }),
+      tx({ type: "expense", amount: 100, date: "2026-01-01", category: "alimentacao" }),
+    ];
+
+    const insights = getFinancialInsights(transactions, categories, "2026-04", midMonth);
+
+    expect(insights.length).toBeLessThanOrEqual(3);
+  });
+
+  it("retorna lista vazia sem transações", () => {
+    expect(getFinancialInsights([], [], "2026-04", midMonth)).toEqual([]);
   });
 });

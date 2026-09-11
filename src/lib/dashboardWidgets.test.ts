@@ -10,20 +10,23 @@ describe("normalizeDashboardLayout", () => {
 
   it("preserva uma ordem customizada válida", () => {
     const result = normalizeDashboardLayout({ order: ["recent", "stats", "charts", "goals", "budget"], hidden: [] });
-    expect(result.order).toEqual(["recent", "stats", "charts", "goals", "budget"]);
+    // "insights" não estava na ordem salva (widget mais novo que a lista
+    // simulada) — entra no fim, sem alterar o resto da ordem escolhida.
+    expect(result.order).toEqual(["recent", "stats", "charts", "goals", "budget", "insights"]);
   });
 
   it("adiciona ao fim widgets conhecidos que faltam na ordem salva", () => {
     // Simula um usuário que personalizou o dashboard antes dos widgets
-    // "goals" e "budget" existirem — eles precisam aparecer no fim, não
-    // sumir nem quebrar a ordem já escolhida.
+    // "insights", "goals" e "budget" existirem — eles precisam aparecer no
+    // fim, na ordem em que aparecem em DASHBOARD_WIDGETS, sem sumir nem
+    // quebrar a ordem já escolhida.
     const result = normalizeDashboardLayout({ order: ["recent", "stats", "charts"], hidden: [] });
-    expect(result.order).toEqual(["recent", "stats", "charts", "goals", "budget"]);
+    expect(result.order).toEqual(["recent", "stats", "charts", "insights", "goals", "budget"]);
   });
 
   it("descarta da ordem ids que não existem mais como widget", () => {
     const result = normalizeDashboardLayout({ order: ["stats", "widget-antigo-removido", "charts", "recent"], hidden: [] });
-    expect(result.order).toEqual(["stats", "charts", "recent", "goals", "budget"]);
+    expect(result.order).toEqual(["stats", "charts", "recent", "insights", "goals", "budget"]);
   });
 
   it("preserva hidden válido e descarta ids desconhecidos", () => {
