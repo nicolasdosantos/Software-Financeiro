@@ -303,6 +303,116 @@ function monthDiff(from: string, to: string): number {
   return (ty - fy) * 12 + (tm - fm);
 }
 
+export type InsightKind = "warning" | "positive" | "neutral";
+
+export interface FinancialInsight {
+  id: string;
+  kind: InsightKind;
+  title: string;
+  description: string;
+}
+
+// Abaixo desse valor, a média histórica de uma categoria é considerada baixa
+// demais pra servir de referência confiável (evita apontar "gastou 300% a
+// mais" numa categoria que só teve R$5 de gasto ocasional antes).
+const OUTLIER_MIN_AVERAGE = 20;
+const OUTLIER_MIN_INCREASE_PCT = 25;
+// Só projeta o fechamento do mês a partir do 5º dia — com pouquíssimos dias
+// de dado, a extrapolação linear fica sensível demais a um gasto pontual.
+const PROJECTION_MIN_DAY = 5;
+const SAVINGS_RATE_GOOD_PCT = 20;
+const MAX_INSIGHTS = 3;
+
+/**
+ * Insights automáticos calculados só a partir do histórico de transações que
+ * o usuário já tem — nada de IA/serviço externo, apenas comparações
+ * estatísticas simples (média histórica, ritmo de gastos, taxa de poupança).
+ * Limitado a MAX_INSIGHTS pra não virar um mural de avisos: cada regra só
+ * entra na lista quando realmente tem algo relevante pra dizer.
+ */
+export function getFinancialInsights(
+  transactions: Transaction[],
+  categories: Category[],
+  currentMonth: string,
+  today: Date = new Date(),
+): FinancialInsight[] {
+  const insights: FinancialInsight[] = [];
+
+  // 1) Categoria com gasto fora do padrão neste mês, comparado à média dos
+  // 3 meses anteriores — a mais acionável das três, então entra primeiro.
+  const trailingMonths = [1, 2, 3].map((n) => addMonths(`${currentMonth}-01`, -n).slice(0, 7));
+  const currentSpend = sumExpensesByCategory(transactions, currentMonth);
+  let outlier: { categoryId: string; pct: number; current: number } | null = null;
+
+  for (const [categoryId, current] of Object.entries(currentSpend)) {
+    const trailingTotal = trailingMonths.reduce(
+      (sum, m) => sum + (sumExpensesByCategory(transactions, m)[categoryId] || 0),
+      0,
+    );
+    const average = trailingTotal / trailingMonths.length;
+    if (average < OUTLIER_MIN_AVERAGE) continue;
+
+    const pct = ((current - average) / average) * 100;
+    if (pct >= OUTLIER_MIN_INCREASE_PCT && (!outlier || pct > outlier.pct)) {
+      outlier = { categoryId, pct, current };
+    }
+  }
+  if (outlier) {
+    const categoryName = categories.find((c) => c.id === outlier.categoryId)?.name ?? "uma categoria";
+    insights.push({
+      id: "category-outlier",
+      kind: "warning",
+      title: "Gasto fora do padrão",
+      description: `${categoryName}: ${formatCurrency(outlier.current)} este mês, ${outlier.pct.toFixed(0)}% acima da média dos últimos 3 meses.`,
+    });
+  }
+
+  // 2) Projeção de fechamento do mês, pelo ritmo de gastos até agora — só
+  // faz sentido para o mês corrente de verdade (currentMonth == mês real de
+  // `today`), nunca para um mês passado que já fechou.
+  const isRealCurrentMonth = currentMonth === `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+  const dayOfMonth = today.getDate();
+  const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+  const currentTotals = getMonthTotals(transactions, currentMonth);
+  if (isRealCurrentMonth && dayOfMonth >= PROJECTION_MIN_DAY && dayOfMonth < daysInMonth && currentTotals.expense > 0) {
+    const { income, expense } = currentTotals;
+    const projectedExpense = (expense / dayOfMonth) * daysInMonth;
+    const projectedBalance = income - projectedExpense;
+    insights.push({
+      id: "month-projection",
+      kind: projectedBalance >= 0 ? "positive" : "warning",
+      title: "Projeção do mês",
+      description: projectedBalance >= 0
+        ? `No ritmo atual de gastos, você deve fechar o mês com ${formatCurrency(projectedBalance)} de saldo.`
+        : `No ritmo atual de gastos, você deve fechar o mês no negativo em ${formatCurrency(Math.abs(projectedBalance))}.`,
+    });
+  }
+
+  // 3) Taxa de poupança do mês — só comenta nos extremos (muito boa ou
+  // negativa), pra não virar ruído todo mês com um número mediano qualquer.
+  const { income, balance } = currentTotals;
+  if (income > 0) {
+    const savingsRate = (balance / income) * 100;
+    if (savingsRate >= SAVINGS_RATE_GOOD_PCT) {
+      insights.push({
+        id: "savings-rate",
+        kind: "positive",
+        title: "Ótimo ritmo de economia",
+        description: `Você guardou ${savingsRate.toFixed(0)}% da sua renda este mês. Continue assim!`,
+      });
+    } else if (balance < 0) {
+      insights.push({
+        id: "savings-rate",
+        kind: "warning",
+        title: "Gastos acima da renda",
+        description: `Você gastou ${formatCurrency(Math.abs(balance))} a mais do que recebeu este mês.`,
+      });
+    }
+  }
+
+  return insights.slice(0, MAX_INSIGHTS);
+}
+
 function mapRecurringTransaction(row: RecurringTransactionRow): RecurringTransaction {
   return {
     id: row.id,

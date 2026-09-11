@@ -7,13 +7,14 @@ import {
 import type { PieSectorDataItem } from "recharts/types/polar/Pie";
 import {
   TrendingUp, TrendingDown, Wallet, PiggyBank, ArrowUpRight, ArrowDownRight, Eye, EyeOff, Sparkles,
-  Settings2, GripVertical, ChevronUp, ChevronDown, Target, CircleDollarSign,
+  Settings2, GripVertical, ChevronUp, ChevronDown, Target, CircleDollarSign, Lightbulb, AlertTriangle, Info,
 } from "lucide-react";
 import {
   useFinance, formatCurrency, getMonthName, getMonthTotals, getShortMonthName, toLocalDate,
   getDistinctMonths, getAccumulatedBalance, sumExpensesByCategory, getCategorySpend,
-  getBudgetLimit, getBudgetCategoryIds,
+  getBudgetLimit, getBudgetCategoryIds, getFinancialInsights,
 } from "../context/FinanceContext";
+import type { InsightKind } from "../context/FinanceContext";
 import { useUser } from "../../hooks/useUser";
 import { supabase } from "../../lib/supabase";
 import { toast } from "sonner";
@@ -249,6 +250,8 @@ export function Dashboard() {
   const budgetPct = totalBudgetLimit > 0 ? Math.min(100, (totalBudgetSpent / totalBudgetLimit) * 100) : 0;
   const isOverBudget = totalBudgetLimit > 0 && totalBudgetSpent > totalBudgetLimit;
 
+  const financialInsights = getFinancialInsights(transactions, categories, currentMonth);
+
   const tooltipStyle = {
     contentStyle: { background: "#141828", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "12px", color: "#ffffff" },
     itemStyle: { color: "#ffffff" },
@@ -409,6 +412,43 @@ export function Dashboard() {
                 );
               })}
             </div>
+          ),
+          insights: (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+              className="rounded-2xl p-4 sm:p-5"
+              style={{ background: "var(--card)", border: "1px solid var(--border)" }}
+            >
+              <h3 className="flex items-center gap-2 mb-4" style={{ color: "var(--foreground)", fontWeight: 600 }}>
+                <Lightbulb size={16} style={{ color: "var(--warning)" }} /> Insights Financeiros
+              </h3>
+              {financialInsights.length === 0 ? (
+                <EmptyState icon="💡" title="Sem insights por enquanto"
+                  subtitle="Continue registrando suas transações — assim que houver histórico suficiente, mostramos comparações e projeções aqui." compact />
+              ) : (
+                <div className="space-y-2.5">
+                  {financialInsights.map((insight) => {
+                    const palette: Record<InsightKind, { color: string; bg: string; Icon: typeof Lightbulb }> = {
+                      warning: { color: "var(--warning)", bg: "rgba(245,158,11,0.12)", Icon: AlertTriangle },
+                      positive: { color: "var(--success)", bg: "rgba(16,217,164,0.12)", Icon: TrendingUp },
+                      neutral: { color: "var(--primary)", bg: "rgba(var(--primary-rgb),0.12)", Icon: Info },
+                    };
+                    const { color, bg, Icon } = palette[insight.kind];
+                    return (
+                      <div key={insight.id} className="flex items-start gap-3 rounded-xl p-3" style={{ background: "var(--secondary)" }}>
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: bg }}>
+                          <Icon size={15} style={{ color }} />
+                        </div>
+                        <div className="min-w-0">
+                          <p style={{ color: "var(--foreground)", fontSize: "0.85rem", fontWeight: 600 }}>{insight.title}</p>
+                          <p style={{ color: "var(--muted-foreground)", fontSize: "0.78rem" }}>{insight.description}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </motion.div>
           ),
           charts: (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">

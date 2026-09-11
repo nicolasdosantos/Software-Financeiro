@@ -11,6 +11,7 @@ export interface DashboardWidget {
 
 export const DASHBOARD_WIDGETS: DashboardWidget[] = [
   { id: "stats", label: "Cards de resumo" },
+  { id: "insights", label: "Insights Financeiros" },
   { id: "charts", label: "Gráficos (Evolução + Categorias)" },
   { id: "goals", label: "Progresso de Metas" },
   { id: "budget", label: "Orçamento do Mês" },
