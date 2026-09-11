@@ -47,7 +47,7 @@ export function NotificationsBell({ notifications, onDismiss }: NotificationsBel
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 p-0 max-h-[70vh] overflow-y-auto">
+      <PopoverContent align="end" className="w-80 max-w-[calc(100vw-2rem)] p-0 max-h-[70vh] overflow-y-auto">
         <div className="px-4 py-3" style={{ borderBottom: "1px solid var(--border)" }}>
           <p style={{ fontWeight: 600, fontSize: "0.875rem" }}>Notificações</p>
           <p style={{ color: "var(--muted-foreground)", fontSize: "0.75rem" }}>

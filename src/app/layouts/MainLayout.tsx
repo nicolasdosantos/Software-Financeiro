@@ -101,12 +101,12 @@ export default function MainLayout() {
             boxShadow: "0 8px 24px -16px rgba(var(--primary-rgb), 0.35)",
           }}
         >
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             {isMobile && (
               <button
                 onClick={() => setMobileOpen(true)}
                 aria-label="Abrir menu"
-                className="p-2 rounded-xl"
+                className="p-2 rounded-xl shrink-0"
                 style={{
                   background: "var(--secondary)",
                   color: "var(--foreground)",
@@ -116,7 +116,12 @@ export default function MainLayout() {
               </button>
             )}
 
+            {/* Escondido em telas muito estreitas (<640px): junto com o
+                hambúrguer, sino, tema e o badge "Online", não cabem todos
+                numa única linha sem quebrar — cada página já tem seu
+                próprio título (h1), então esse texto é só um extra. */}
             <span
+              className="hidden sm:block truncate"
               style={{
                 color: "var(--foreground)",
                 fontWeight: 600,
@@ -127,7 +132,7 @@ export default function MainLayout() {
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <ThemeToggle />
             <NotificationsBell notifications={visibleNotifications} onDismiss={dismiss} />
 
@@ -145,8 +150,10 @@ export default function MainLayout() {
               })}
             </span>
 
+            {/* Também escondido em telas muito estreitas — decorativo, não
+                essencial no celular, e mais uma peça pra caber na navbar. */}
             <div
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl"
+              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl"
               style={{
                 background: "var(--secondary)",
                 border: "1px solid var(--border)",
@@ -171,8 +178,11 @@ export default function MainLayout() {
           </div>
         </div>
 
-        {/* Página atual */}
-        <div className="p-3 sm:p-4 lg:p-6">
+        {/* Página atual — teto de largura em monitores largos/ultrawide:
+            sem isso, grids, tabelas e principalmente os gráficos (altura
+            fixa, largura 100%) esticavam sem limite e ficavam com uma
+            proporção ruim (cards enormes, gráficos achatados). */}
+        <div className="p-3 sm:p-4 lg:p-6 max-w-[1600px] mx-auto">
           <Outlet />
         </div>
       </div>

@@ -136,7 +136,7 @@ export function Charts() {
 
         <Select value={selectedMonth} onValueChange={setSelectedMonth}>
           <SelectTrigger
-            className="w-[160px]"
+            className="w-full sm:w-[190px] shrink-0"
             style={{ background: PANEL_BACKGROUND, borderColor: PANEL_BORDER, color: "var(--foreground)" }}
           >
             <SelectValue />

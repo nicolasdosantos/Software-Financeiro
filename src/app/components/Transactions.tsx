@@ -242,7 +242,7 @@ function TransactionForm({ initial, prefill, onAdd, onUpdate, onAddRecurring, on
           </button>
         ))}
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <Label htmlFor="tx-amount">Valor (R$)</Label>
           <Input id="tx-amount" type="number" step="0.01" min="0" required={!isSplitting} disabled={isSplitting}
