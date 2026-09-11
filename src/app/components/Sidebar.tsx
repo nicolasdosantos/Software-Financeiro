@@ -69,7 +69,7 @@ export function Sidebar({
     >
       {/* Logo */}
       <div
-        className="flex items-center gap-3 px-4 py-5 shrink-0"
+        className={`flex items-center gap-3 px-4 py-5 shrink-0 ${showLabels ? "" : "justify-center"}`}
         style={{ borderBottom: "1px solid var(--sidebar-border)" }}
       >
         <motion.div
@@ -116,7 +116,7 @@ export function Sidebar({
           return (
             <NavLink key={item.path} to={item.path} aria-label={item.label}>
               {({ isActive }) => (
-                <div className="relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl group">
+                <div className={`relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl group ${showLabels ? "" : "justify-center"}`}>
                   {isActive && (
                     <motion.div
                       layoutId="sidebar-active-pill"
@@ -161,7 +161,7 @@ export function Sidebar({
           whileTap={{ scale: 0.97 }}
           onClick={() => navigate("/perfil")}
           aria-label={notificationCount > 0 ? `Notificações, ${notificationCount} não lidas` : "Notificações"}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors hover:bg-[var(--sidebar-accent)]"
+          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors hover:bg-[var(--sidebar-accent)] ${showLabels ? "" : "justify-center"}`}
           style={{ color: "var(--muted-foreground)" }}
         >
           <div className="relative shrink-0">
@@ -187,7 +187,7 @@ export function Sidebar({
           whileTap={{ scale: 0.98 }}
           onClick={() => navigate("/perfil")}
           aria-label={`Ver perfil de ${user?.user_metadata?.name || user?.email || "usuário"}`}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors hover:bg-[var(--sidebar-accent)]"
+          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors hover:bg-[var(--sidebar-accent)] ${showLabels ? "" : "justify-center"}`}
         >
           <div className="relative shrink-0">
             <div
