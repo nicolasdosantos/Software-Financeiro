@@ -30,7 +30,9 @@ interface ConfirmDeleteDialogProps {
   onConfirm: () => Promise<void>;
   title: string;
   description: string;
-  successMessage: string;
+  /** Se omitido, nenhum toast é mostrado aqui — útil quando quem chama já
+   * mostra o próprio toast (ex: fluxo de exclusão com "Desfazer"). */
+  successMessage?: string;
   errorLog: string;
   /** Emoji no topo do card. Padrão 🗑️ (exclusão) — outras confirmações
    * destrutivas-mas-não-exclusão (ex: cancelar uma recorrência) podem trocar. */
@@ -68,7 +70,7 @@ export function ConfirmDeleteDialog({
     setIsDeleting(true);
     try {
       await onConfirm();
-      toast.success(successMessage);
+      if (successMessage) toast.success(successMessage);
       onClose();
     } catch (err) {
       console.error(errorLog, err);

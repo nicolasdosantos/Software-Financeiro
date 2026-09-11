@@ -5,6 +5,7 @@ import { Plus, Search, Edit2, Trash2, ChevronUp, ChevronDown, X, Copy, Ban, Uplo
 import { toast } from "sonner";
 import { useFinance, formatCurrency, getMonthName, getTodayDateInput, toLocalDate, getDistinctMonths } from "../context/FinanceContext";
 import type { Transaction, RecurringTransaction, NewRecurringTransaction, NewSplitTransaction } from "../context/FinanceContext";
+import { useUndoableDelete } from "../hooks/useUndoableDelete";
 import { Modal } from "./shared/Modal";
 import { ImportTransactionsModal } from "./ImportTransactions";
 import { ConfirmDeleteDialog } from "./shared/ConfirmDeleteDialog";
@@ -387,6 +388,7 @@ export function Transactions() {
   const [showImport, setShowImport] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [cancelingRecurringId, setCancelingRecurringId] = useState<string | null>(null);
+  const { pendingIds: pendingDeleteIds, requestDelete: requestDeleteTransaction } = useUndoableDelete(deleteTransaction);
 
   if (loading) return <TransactionsSkeleton />;
 
@@ -412,6 +414,7 @@ export function Transactions() {
   }
 
   const filtered = transactions.filter(t => {
+    if (pendingDeleteIds.has(t.id)) return false;
     if (filterType !== "all" && t.type !== filterType) return false;
     if (filterCategory !== "all" && t.category !== filterCategory) return false;
     if (filterMonth !== "all" && !t.date.startsWith(filterMonth)) return false;
@@ -748,10 +751,9 @@ export function Transactions() {
       <ConfirmDeleteDialog
         open={deletingId !== null}
         onClose={() => setDeletingId(null)}
-        onConfirm={() => deleteTransaction(deletingId!)}
+        onConfirm={async () => requestDeleteTransaction(deletingId!, "Transação excluída")}
         title="Excluir transação?"
-        description="Esta ação não pode ser desfeita."
-        successMessage="Transação excluída com sucesso!"
+        description="Você tem alguns segundos pra desfazer depois de confirmar."
         errorLog="Erro ao excluir transação:"
       />
     </div>
