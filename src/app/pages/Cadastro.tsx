@@ -8,7 +8,11 @@ import { AuthCard } from "../components/auth/AuthCard";
 import { AuthField } from "../components/auth/AuthField";
 import { PasswordVisibilityToggle } from "../components/auth/PasswordVisibilityToggle";
 
-const MIN_PASSWORD_LENGTH = 6;
+// 8 é o mínimo recomendado (NIST/OWASP) — force também no Supabase Auth
+// (Dashboard > Authentication > Sign In / Providers > Password) o mesmo
+// valor, já que essa checagem aqui é só client-side/UX; quem chama a API
+// de auth diretamente ainda está sujeito só ao mínimo configurado lá.
+const MIN_PASSWORD_LENGTH = 8;
 
 export function Cadastro() {
   const navigate = useNavigate();
