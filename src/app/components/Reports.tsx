@@ -2,7 +2,6 @@ import { useState } from "react";
 import { motion } from "motion/react";
 import { Download, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
-import XLSX from "xlsx-js-style";
 import { useFinance, formatCurrency, getMonthName, getMonthTotals, toLocalDate, getDistinctMonths, sumExpensesByCategory } from "../context/FinanceContext";
 import { Skeleton } from "./ui/skeleton";
 
@@ -126,7 +125,7 @@ export function Reports() {
     try {
       await new Promise(resolve => setTimeout(resolve, 350));
 
-      if (id === "full-excel") downloadFullExcelReport();
+      if (id === "full-excel") await downloadFullExcelReport();
       else if (id === "category-report") downloadCategoryReport(selectedMonth);
       else if (id === "goal-report") downloadGoalsReport();
       else if (id === "investment-report") downloadInvestmentsReport();
@@ -194,7 +193,11 @@ export function Reports() {
     downloadFile(html, `extrato-${normalizeFileName(getMonthName(month))}.html`, "text/html;charset=utf-8");
   }
 
-  function downloadFullExcelReport() {
+  // xlsx-js-style é uma dependência relativamente pesada e só é usada aqui
+  // (exportação em Excel) — carregada sob demanda (só quando esse relatório
+  // é gerado) em vez de entrar no bundle inicial de toda a tela de Relatórios.
+  async function downloadFullExcelReport() {
+    const XLSX = (await import("xlsx-js-style")).default;
     const workbook = XLSX.utils.book_new();
 
     const transactionsData = transactions.map(tx => ({
