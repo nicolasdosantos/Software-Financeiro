@@ -17,4 +17,14 @@ export default defineConfig({
 
   // File types to support raw imports.
   assetsInclude: ['**/*.svg', '**/*.csv'],
+
+  build: {
+    // As páginas já são code-split por rota (App.tsx) e as duas dependências
+    // realmente pesadas (xlsx-js-style, o núcleo do Recharts) só carregam
+    // sob demanda — então os chunks que ainda passam de 500kb (o Recharts
+    // interno e o xlsx-js-style em si) são grandes por natureza da lib, não
+    // por estarem misturados com o resto do app. Sobe o limite só pra parar
+    // de avisar sobre isso.
+    chunkSizeWarningLimit: 900,
+  },
 })
