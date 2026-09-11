@@ -106,7 +106,7 @@ function GoalForm({ initial, onAdd, onUpdate, onClose }: GoalFormProps) {
         <Label htmlFor="goal-description">Descrição</Label>
         <Input id="goal-description" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Descrição da meta..." />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <Label htmlFor="goal-target">Valor alvo (R$)</Label>
           <Input id="goal-target" type="number" min="1" step="0.01" required value={form.target} onChange={e => setForm(f => ({ ...f, target: e.target.value }))} />

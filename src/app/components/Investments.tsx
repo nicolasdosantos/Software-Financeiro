@@ -107,7 +107,7 @@ function InvestForm({ initial, onAdd, onUpdate, onClose }: InvestFormProps) {
         <Label htmlFor="inv-name">Nome do ativo</Label>
         <Input id="inv-name" required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Ex: CDB Banco Inter" />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <Label htmlFor="inv-type">Tipo</Label>
           <Select value={form.type} onValueChange={(value) => setForm(f => ({ ...f, type: value }))}>
@@ -124,7 +124,7 @@ function InvestForm({ initial, onAdd, onUpdate, onClose }: InvestFormProps) {
           <Input id="inv-institution" value={form.institution} onChange={e => setForm(f => ({ ...f, institution: e.target.value }))} placeholder="Banco/Corretora" />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <Label htmlFor="inv-invested">Investido (R$)</Label>
           <Input id="inv-invested" type="number" min="0" step="0.01" required value={form.invested} onChange={e => setForm(f => ({ ...f, invested: e.target.value }))} />
