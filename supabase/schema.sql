@@ -315,3 +315,21 @@ create index if not exists transactions_recurring_id_idx on public.transactions(
 alter table public.transactions add column if not exists split_group_id uuid;
 
 create index if not exists transactions_split_group_idx on public.transactions(user_id, split_group_id) where split_group_id is not null;
+
+-- ============================================================================
+-- MIGRAÇÃO: revogar EXECUTE direto de handle_new_user() (segurança)
+-- ============================================================================
+
+-- Advisor de segurança do Supabase apontava que handle_new_user() — o
+-- trigger que cria a linha em public.profiles quando um usuário se cadastra
+-- (auth.users) — podia ser chamado diretamente via API REST
+-- (/rest/v1/rpc/handle_new_user) por qualquer visitante (anon) ou usuário
+-- logado, já que é SECURITY DEFINER e não tinha o EXECUTE revogado dos
+-- papéis padrão. Na prática não é explorável (é uma função `returns
+-- trigger`, que usa `new.id`/`new.email` — só existem em contexto de
+-- trigger, então uma chamada direta sempre falha com erro do Postgres:
+-- "trigger functions can only be called as triggers"), mas não há motivo
+-- pra deixar essa permissão exposta. Revogar o EXECUTE não afeta o
+-- trigger em si — o Postgres executa triggers com o privilégio do dono da
+-- função, não do papel que disparou o evento (insert em auth.users).
+revoke execute on function public.handle_new_user() from public, anon, authenticated;
