@@ -333,3 +333,29 @@ create index if not exists transactions_split_group_idx on public.transactions(u
 -- trigger em si — o Postgres executa triggers com o privilégio do dono da
 -- função, não do papel que disparou o evento (insert em auth.users).
 revoke execute on function public.handle_new_user() from public, anon, authenticated;
+
+-- ============================================================================
+-- MIGRAÇÃO: restringir políticas de RLS ao papel authenticated (segurança)
+-- ============================================================================
+
+-- Todas as políticas de RLS deste projeto já eram seguras (sempre exigem
+-- auth.uid() = user_id, e auth.uid() é null para requisições anônimas — uma
+-- linha nunca "vaza" pra quem não está logado). Mas até aqui elas estavam
+-- registradas pra valer pro papel `public` (ou seja, também `anon`) em vez
+-- de restritas explicitamente a `authenticated`. Isso não é explorável (a
+-- checagem de dono já bloqueia anon), mas escopar pra `authenticated` é a
+-- prática recomendada pela própria Supabase — uma camada extra de defesa em
+-- profundidade, caso algum dia uma política seja editada e a checagem de
+-- dono acabe removida/quebrada por engano.
+alter policy "Users can manage own budgets" on public.budgets to authenticated;
+alter policy "Users can manage own categories" on public.categories to authenticated;
+alter policy "Users can manage own goals" on public.goals to authenticated;
+alter policy "Users can manage own investments" on public.investments to authenticated;
+alter policy "Users can insert their own profile" on public.profiles to authenticated;
+alter policy "Users can update their own profile" on public.profiles to authenticated;
+alter policy "Users can view their own profile" on public.profiles to authenticated;
+alter policy "Users can manage own recurring transactions" on public.recurring_transactions to authenticated;
+alter policy "select_own_transactions" on public.transactions to authenticated;
+alter policy "insert_own_transactions" on public.transactions to authenticated;
+alter policy "update_own_transactions" on public.transactions to authenticated;
+alter policy "delete_own_transactions" on public.transactions to authenticated;
