@@ -1,10 +1,10 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
-import { Toaster } from "./components/ui/sonner";
 import { AuthProvider } from "./context/AuthContext";
 import { FinanceProvider } from "./context/FinanceContext";
 import { AccentColorEffect } from "./components/AccentColorEffect";
 import { ThemeEffect } from "./components/ThemeEffect";
+import { ThemedToaster } from "./components/ThemedToaster";
 
 import MainLayout from "./layouts/MainLayout";
 
@@ -30,7 +30,7 @@ export default function App() {
       <AccentColorEffect />
       <ThemeEffect />
       <FinanceProvider>
-        <Toaster theme="dark" richColors position="top-right" />
+        <ThemedToaster />
         <BrowserRouter>
           <Routes>
 
