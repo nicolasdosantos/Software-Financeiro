@@ -359,3 +359,66 @@ alter policy "select_own_transactions" on public.transactions to authenticated;
 alter policy "insert_own_transactions" on public.transactions to authenticated;
 alter policy "update_own_transactions" on public.transactions to authenticated;
 alter policy "delete_own_transactions" on public.transactions to authenticated;
+
+-- ============================================================================
+-- MIGRAÇÃO: (select auth.uid()) nas políticas de RLS (performance)
+-- ============================================================================
+
+-- Advisor de performance do Supabase (auth_rls_initplan): auth.uid() "cru"
+-- numa política de RLS é reavaliado pelo Postgres uma vez POR LINHA lida —
+-- em vez de uma vez só por consulta. Envolver em (select auth.uid()) permite
+-- o planner tratar como um valor estável (initplan), avaliado uma única vez.
+-- Mesma regra de dono, resultado idêntico — só evita trabalho repetido à
+-- toa conforme o volume de linhas cresce. recurring_transactions já usava
+-- esse padrão desde que a tabela foi criada; as outras 11 políticas
+-- (profiles, budgets, categories, goals, investments, transactions) não.
+alter policy "Users can manage own budgets" on public.budgets
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
+
+alter policy "Users can manage own categories" on public.categories
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
+
+alter policy "Users can manage own goals" on public.goals
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
+
+alter policy "Users can manage own investments" on public.investments
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
+
+alter policy "Users can insert their own profile" on public.profiles
+  with check ((select auth.uid()) = id);
+
+alter policy "Users can update their own profile" on public.profiles
+  using ((select auth.uid()) = id)
+  with check ((select auth.uid()) = id);
+
+alter policy "Users can view their own profile" on public.profiles
+  using ((select auth.uid()) = id);
+
+alter policy "delete_own_transactions" on public.transactions
+  using ((select auth.uid()) = user_id);
+
+alter policy "insert_own_transactions" on public.transactions
+  with check ((select auth.uid()) = user_id);
+
+alter policy "select_own_transactions" on public.transactions
+  using ((select auth.uid()) = user_id);
+
+alter policy "update_own_transactions" on public.transactions
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
+
+-- ============================================================================
+-- MIGRAÇÃO: índice cobrindo a FK de recurring_transactions (performance)
+-- ============================================================================
+
+-- Advisor de performance (unindexed_foreign_keys): a FK
+-- recurring_transactions_user_id_category_id_fkey (user_id, category_id) ->
+-- categories(user_id, id) não tinha índice cobrindo ela — toda vez que uma
+-- categoria é apagada, o Postgres precisa varrer recurring_transactions
+-- inteira pra decidir o que cascatear (ON DELETE CASCADE), em vez de usar
+-- um índice.
+create index if not exists recurring_transactions_user_category_idx on public.recurring_transactions(user_id, category_id);
