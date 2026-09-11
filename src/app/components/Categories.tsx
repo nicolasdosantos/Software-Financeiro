@@ -5,6 +5,7 @@ import { Plus, Edit2, Trash2, Tag } from "lucide-react";
 import { toast } from "sonner";
 import { useFinance, getCategorySpend } from "../context/FinanceContext";
 import type { Category } from "../context/FinanceContext";
+import { useUndoableDelete } from "../hooks/useUndoableDelete";
 import { Modal } from "./shared/Modal";
 import { ConfirmDeleteDialog } from "./shared/ConfirmDeleteDialog";
 import { ColorPicker } from "./shared/ColorPicker";
@@ -110,6 +111,7 @@ export function Categories() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Category | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const { pendingIds: pendingDeleteIds, requestDelete } = useUndoableDelete(deleteCategory);
 
   if (loading) return <CategoriesSkeleton />;
 
@@ -117,7 +119,8 @@ export function Categories() {
     return getCategorySpend(transactions, catId);
   }
 
-  const maxSpend = Math.max(0, ...categories.map(cat => getSpend(cat.id)));
+  const visibleCategories = categories.filter((cat) => !pendingDeleteIds.has(cat.id));
+  const maxSpend = Math.max(0, ...visibleCategories.map(cat => getSpend(cat.id)));
 
   return (
     <div className="space-y-4 sm:space-y-5">
@@ -132,7 +135,7 @@ export function Categories() {
           </div>
           <div>
             <h1 style={{ fontSize: "clamp(1.2rem,4vw,1.5rem)", fontWeight: 700, color: "var(--foreground)" }}>Categorias</h1>
-            <p style={{ color: "var(--muted-foreground)", fontSize: "0.875rem" }}>{categories.length} categorias cadastradas</p>
+            <p style={{ color: "var(--muted-foreground)", fontSize: "0.875rem" }}>{visibleCategories.length} categorias cadastradas</p>
           </div>
         </div>
         <MotionButton
@@ -144,7 +147,7 @@ export function Categories() {
       </motion.div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-        {categories.map((cat, i) => {
+        {visibleCategories.map((cat, i) => {
           const spend = getSpend(cat.id);
           const txCount = transactions.filter(t => t.category === cat.id).length;
           const pct = maxSpend > 0 ? (spend / maxSpend) * 100 : 0;
@@ -230,10 +233,9 @@ export function Categories() {
       <ConfirmDeleteDialog
         open={deleting !== null}
         onClose={() => setDeleting(null)}
-        onConfirm={() => deleteCategory(deleting!)}
+        onConfirm={async () => requestDelete(deleting!, "Categoria excluída")}
         title="Excluir categoria?"
-        description="As transações desta categoria não serão excluídas."
-        successMessage="Categoria excluída com sucesso!"
+        description="As transações desta categoria não serão excluídas. Você tem alguns segundos pra desfazer depois de confirmar."
         errorLog="Erro ao excluir categoria:"
       />
     </div>

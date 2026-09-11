@@ -5,6 +5,7 @@ import { Plus, Edit2, Trash2, TrendingUp, TrendingDown } from "lucide-react";
 import { toast } from "sonner";
 import { useFinance, formatCurrency, getTodayDateInput } from "../context/FinanceContext";
 import type { Investment } from "../context/FinanceContext";
+import { useUndoableDelete } from "../hooks/useUndoableDelete";
 import { Modal } from "./shared/Modal";
 import { ConfirmDeleteDialog } from "./shared/ConfirmDeleteDialog";
 import { EmptyState } from "./shared/EmptyState";
@@ -147,12 +148,18 @@ function InvestForm({ initial, onAdd, onUpdate, onClose }: InvestFormProps) {
 }
 
 export function Investments() {
-  const { investments, addInvestment, updateInvestment, deleteInvestment, loading } = useFinance();
+  const { investments: allInvestments, addInvestment, updateInvestment, deleteInvestment, loading } = useFinance();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Investment | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const { pendingIds: pendingDeleteIds, requestDelete } = useUndoableDelete(deleteInvestment);
 
   if (loading) return <InvestmentsSkeleton />;
+
+  // Reatribuído (não é o array cru do context) pra "excluído com desfazer"
+  // sumir da tela na hora, sem precisar filtrar em cada lugar que usa
+  // investments — todo o resto do componente já usa essa versão filtrada.
+  const investments = allInvestments.filter((inv) => !pendingDeleteIds.has(inv.id));
 
   const totalInvested = investments.reduce((s, i) => s + i.invested, 0);
   const totalCurrent = investments.reduce((s, i) => s + i.currentValue, 0);
@@ -346,10 +353,9 @@ export function Investments() {
       <ConfirmDeleteDialog
         open={deleting !== null}
         onClose={() => setDeleting(null)}
-        onConfirm={() => deleteInvestment(deleting!)}
+        onConfirm={async () => requestDelete(deleting!, "Investimento excluído")}
         title="Excluir investimento?"
-        description="Esta ação não pode ser desfeita."
-        successMessage="Investimento excluído com sucesso!"
+        description="Você tem alguns segundos pra desfazer depois de confirmar."
         errorLog="Erro ao excluir investimento:"
       />
     </div>

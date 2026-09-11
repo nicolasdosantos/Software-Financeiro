@@ -5,6 +5,7 @@ import { Plus, Edit2, Trash2, CheckCircle, CircleDollarSign } from "lucide-react
 import { toast } from "sonner";
 import { useFinance, formatCurrency, toLocalDate, getTodayDateInput } from "../context/FinanceContext";
 import type { Goal, Category } from "../context/FinanceContext";
+import { useUndoableDelete } from "../hooks/useUndoableDelete";
 import { Modal } from "./shared/Modal";
 import { ConfirmDeleteDialog } from "./shared/ConfirmDeleteDialog";
 import { EmptyState } from "./shared/EmptyState";
@@ -229,6 +230,7 @@ export function Goals() {
   const [editing, setEditing] = useState<Goal | null>(null);
   const [contributing, setContributing] = useState<Goal | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const { pendingIds: pendingDeleteIds, requestDelete } = useUndoableDelete(deleteGoal);
 
   if (loading) return <GoalsSkeleton />;
 
@@ -249,6 +251,8 @@ export function Goals() {
     });
   }
 
+  const visibleGoals = goals.filter((goal) => !pendingDeleteIds.has(goal.id));
+
   return (
     <div className="space-y-4 sm:space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -261,13 +265,13 @@ export function Goals() {
         </Button>
       </div>
 
-      {goals.length === 0 ? (
+      {visibleGoals.length === 0 ? (
         <div className="rounded-2xl" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
           <EmptyState icon="🎯" title="Nenhuma meta criada" subtitle="Comece criando sua primeira meta financeira" />
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-          {goals.map((goal, i) => {
+          {visibleGoals.map((goal, i) => {
             const pct = Math.min(100, (goal.current / goal.target) * 100);
             const done = pct >= 100;
             const daysLeft = Math.ceil((toLocalDate(goal.deadline).getTime() - Date.now()) / 86400000);
@@ -373,10 +377,9 @@ export function Goals() {
       <ConfirmDeleteDialog
         open={deleting !== null}
         onClose={() => setDeleting(null)}
-        onConfirm={() => deleteGoal(deleting!)}
+        onConfirm={async () => requestDelete(deleting!, "Meta excluída")}
         title="Excluir meta?"
-        description="Esta ação não pode ser desfeita."
-        successMessage="Meta excluída com sucesso!"
+        description="Você tem alguns segundos pra desfazer depois de confirmar."
         errorLog="Erro ao excluir meta:"
       />
     </div>
