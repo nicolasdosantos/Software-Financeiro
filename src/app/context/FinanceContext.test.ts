@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   addMonths,
+  DEFAULT_BUDGET_MONTH,
   formatCurrency,
   getAccumulatedBalance,
+  getBudgetRolloverCarry,
+  getBudgetRolloverSince,
   getCategorySpend,
   getDistinctMonths,
+  getEffectiveBudgetLimit,
   getFinancialInsights,
   getMonthName,
   getMonthTotals,
@@ -14,7 +18,7 @@ import {
   toLocalDate,
   toLocalMonthDate,
 } from "./FinanceContext";
-import type { Category, Transaction } from "./FinanceContext";
+import type { Budget, Category, Transaction } from "./FinanceContext";
 
 function tx(overrides: Partial<Transaction> & Pick<Transaction, "type" | "amount" | "date" | "category">): Transaction {
   return {
@@ -29,6 +33,13 @@ function cat(overrides: Partial<Category> & Pick<Category, "id" | "name">): Cate
     icon: "💳",
     color: "#204bca",
     type: "custom",
+    ...overrides,
+  };
+}
+
+function budget(overrides: Partial<Budget> & Pick<Budget, "categoryId" | "limit">): Budget {
+  return {
+    month: DEFAULT_BUDGET_MONTH,
     ...overrides,
   };
 }
@@ -357,5 +368,105 @@ describe("getFinancialInsights", () => {
 
   it("retorna lista vazia sem transações", () => {
     expect(getFinancialInsights([], [], "2026-04", midMonth)).toEqual([]);
+  });
+});
+
+describe("getBudgetRolloverSince", () => {
+  it("retorna null quando a categoria não tem linha padrão de orçamento", () => {
+    expect(getBudgetRolloverSince([], "cat-1")).toBeNull();
+  });
+
+  it("retorna null quando o rollover nunca foi ativado", () => {
+    const budgets = [budget({ categoryId: "cat-1", limit: 200 })];
+    expect(getBudgetRolloverSince(budgets, "cat-1")).toBeNull();
+  });
+
+  it("retorna o mês de ativação quando o rollover está ligado", () => {
+    const budgets = [budget({ categoryId: "cat-1", limit: 200, rolloverSince: "2026-06" })];
+    expect(getBudgetRolloverSince(budgets, "cat-1")).toBe("2026-06");
+  });
+
+  it("ignora overrides de mês específico — só olha a linha padrão", () => {
+    const budgets = [
+      budget({ categoryId: "cat-1", limit: 200, rolloverSince: "2026-06" }),
+      { categoryId: "cat-1", limit: 999, month: "2026-07" }, // override sem rolloverSince
+    ];
+    expect(getBudgetRolloverSince(budgets, "cat-1")).toBe("2026-06");
+  });
+});
+
+describe("getBudgetRolloverCarry", () => {
+  it("retorna 0 quando o rollover está desativado", () => {
+    const budgets = [budget({ categoryId: "cat-1", limit: 200 })];
+    expect(getBudgetRolloverCarry([], budgets, "cat-1", "2026-08")).toBe(0);
+  });
+
+  it("retorna 0 quando o mês pedido é igual ou anterior ao mês de ativação", () => {
+    const budgets = [budget({ categoryId: "cat-1", limit: 200, rolloverSince: "2026-06" })];
+    expect(getBudgetRolloverCarry([], budgets, "cat-1", "2026-06")).toBe(0);
+    expect(getBudgetRolloverCarry([], budgets, "cat-1", "2026-05")).toBe(0);
+  });
+
+  it("acumula a sobra positiva de cada mês desde a ativação", () => {
+    const budgets = [budget({ categoryId: "cat-1", limit: 200, rolloverSince: "2026-06" })];
+    const transactions: Transaction[] = [
+      tx({ type: "expense", amount: 150, date: "2026-06-10", category: "cat-1" }), // sobrou 50
+      tx({ type: "expense", amount: 170, date: "2026-07-10", category: "cat-1" }), // sobrou 30
+    ];
+
+    expect(getBudgetRolloverCarry(transactions, budgets, "cat-1", "2026-08")).toBe(80);
+  });
+
+  it("acumula excesso como valor negativo quando estoura o limite", () => {
+    const budgets = [budget({ categoryId: "cat-1", limit: 200, rolloverSince: "2026-06" })];
+    const transactions: Transaction[] = [
+      tx({ type: "expense", amount: 250, date: "2026-06-10", category: "cat-1" }), // estourou 50
+    ];
+
+    expect(getBudgetRolloverCarry(transactions, budgets, "cat-1", "2026-07")).toBe(-50);
+  });
+
+  it("ignora meses sem limite configurado naquele momento", () => {
+    // Override zera o limite de julho — não tem o que "sobrar" nesse mês.
+    const budgets = [
+      budget({ categoryId: "cat-1", limit: 200, rolloverSince: "2026-06" }),
+      { categoryId: "cat-1", limit: 0, month: "2026-07" },
+    ];
+    const transactions: Transaction[] = [
+      tx({ type: "expense", amount: 150, date: "2026-06-10", category: "cat-1" }), // sobrou 50
+      tx({ type: "expense", amount: 999, date: "2026-07-10", category: "cat-1" }), // sem limite, não conta
+    ];
+
+    expect(getBudgetRolloverCarry(transactions, budgets, "cat-1", "2026-08")).toBe(50);
+  });
+});
+
+describe("getEffectiveBudgetLimit", () => {
+  it("sem rollover, é igual ao limite configurado", () => {
+    const budgets = [budget({ categoryId: "cat-1", limit: 200 })];
+    expect(getEffectiveBudgetLimit([], budgets, "cat-1", "2026-08")).toBe(200);
+  });
+
+  it("sem limite configurado, o rollover não se aplica (continua 0)", () => {
+    const budgets = [budget({ categoryId: "cat-1", limit: 0, rolloverSince: "2026-06" })];
+    expect(getEffectiveBudgetLimit([], budgets, "cat-1", "2026-08")).toBe(0);
+  });
+
+  it("soma a sobra acumulada ao limite do mês", () => {
+    const budgets = [budget({ categoryId: "cat-1", limit: 200, rolloverSince: "2026-06" })];
+    const transactions: Transaction[] = [
+      tx({ type: "expense", amount: 150, date: "2026-06-10", category: "cat-1" }), // sobrou 50
+    ];
+
+    expect(getEffectiveBudgetLimit(transactions, budgets, "cat-1", "2026-07")).toBe(250);
+  });
+
+  it("nunca fica negativo mesmo com excesso acumulado maior que o limite", () => {
+    const budgets = [budget({ categoryId: "cat-1", limit: 200, rolloverSince: "2026-06" })];
+    const transactions: Transaction[] = [
+      tx({ type: "expense", amount: 500, date: "2026-06-10", category: "cat-1" }), // estourou 300
+    ];
+
+    expect(getEffectiveBudgetLimit(transactions, budgets, "cat-1", "2026-07")).toBe(0);
   });
 });

@@ -85,11 +85,18 @@ export interface Investment {
 
 /** "" (DEFAULT_BUDGET_MONTH) = limite padrão, vale em qualquer mês sem
  * override específico. "YYYY-MM" = limite só daquele mês, tem prioridade
- * sobre o padrão — ver getBudgetLimit. */
+ * sobre o padrão — ver getBudgetLimit.
+ *
+ * `rolloverSince` só é lido/gravado na linha padrão de cada categoria (é uma
+ * configuração da categoria, não de um mês específico) — "YYYY-MM" a partir
+ * do qual a sobra (ou o excesso) de cada mês passa a somar no limite efetivo
+ * do mês seguinte; null/undefined = acúmulo desativado. Ver
+ * getEffectiveBudgetLimit. */
 export interface Budget {
   categoryId: string;
   limit: number;
   month: string;
+  rolloverSince?: string | null;
 }
 
 export const DEFAULT_BUDGET_MONTH = "";
@@ -131,6 +138,7 @@ interface FinanceContextType {
   deleteInvestment: (id: string) => Promise<void>;
   updateBudget: (b: Budget) => Promise<void>;
   deleteBudget: (categoryId: string, month: string) => Promise<void>;
+  updateBudgetRollover: (categoryId: string, enabled: boolean, sinceMonth: string) => Promise<void>;
   currentMonth: string;
   setCurrentMonth: (month: string) => void;
 }
@@ -158,6 +166,7 @@ type BudgetRow = {
   category_id: string;
   limit_amount: number;
   month: string;
+  rollover_since: string | null;
 };
 type RecurringTransactionRow = {
   id: string;
@@ -186,10 +195,13 @@ const DEFAULT_CATEGORIES: Category[] = [
   { id: "cat-11", name: "Outros", icon: "📦", color: "#94a3b8", type: "default" },
 ];
 
-const todayMonth = () => {
+/** Mês-calendário de hoje ("YYYY-MM"). Também é o teto do seletor de mês da
+ * navbar — não faz sentido planejar/olhar orçamento de um mês futuro que
+ * ainda nem começou. */
+export function todayMonth(): string {
   const today = new Date();
   return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
-};
+}
 
 export function getTodayDateInput(): string {
   const today = new Date();
@@ -302,6 +314,64 @@ function monthDiff(from: string, to: string): number {
   const [fy, fm] = from.split("-").map(Number);
   const [ty, tm] = to.split("-").map(Number);
   return (ty - fy) * 12 + (tm - fm);
+}
+
+/** Mês (YYYY-MM) a partir do qual o acúmulo de sobra está ativo numa
+ * categoria, ou null se estiver desativado. Vive só na linha padrão do
+ * orçamento (month = DEFAULT_BUDGET_MONTH) — é uma configuração da
+ * categoria, não de um mês específico. */
+export function getBudgetRolloverSince(budgets: Budget[], categoryId: string): string | null {
+  const defaultRow = budgets.find((b) => b.categoryId === categoryId && b.month === DEFAULT_BUDGET_MONTH);
+  return defaultRow?.rolloverSince ?? null;
+}
+
+/**
+ * Sobra (ou excesso, se negativa) acumulada de uma categoria com rollover
+ * ativo: soma "limite configurado − gasto" de cada mês desde que o acúmulo
+ * foi ligado (`rolloverSince`, inclusive) até o mês anterior a `month`
+ * (exclusive). Meses sem limite configurado não entram na soma — não tem o
+ * que "sobrar" de um limite que nunca existiu.
+ */
+export function getBudgetRolloverCarry(
+  transactions: Transaction[],
+  budgets: Budget[],
+  categoryId: string,
+  month: string,
+): number {
+  const since = getBudgetRolloverSince(budgets, categoryId);
+  if (!since || since >= month) return 0;
+
+  let carry = 0;
+  let cursor = since;
+  while (cursor < month) {
+    const limit = getBudgetLimit(budgets, categoryId, cursor);
+    if (limit > 0) {
+      carry += limit - getCategorySpend(transactions, categoryId, cursor);
+    }
+    cursor = addMonths(`${cursor}-01`, 1).slice(0, 7);
+  }
+  return carry;
+}
+
+/**
+ * Limite efetivo de uma categoria num mês, já considerando o acúmulo de
+ * sobra quando ativo. Sem limite configurado (getBudgetLimit = 0), o
+ * rollover não se aplica — nunca "inventa" um limite do nada. O resultado
+ * nunca é negativo (uma categoria não fica "devendo" limite pro mês
+ * seguinte, mesmo estourando feio) — mas o excesso real continua entrando
+ * na conta de getBudgetRolloverCarry pros meses seguintes, porque ela usa o
+ * limite configurado puro, não este valor já limitado a zero.
+ */
+export function getEffectiveBudgetLimit(
+  transactions: Transaction[],
+  budgets: Budget[],
+  categoryId: string,
+  month: string,
+): number {
+  const base = getBudgetLimit(budgets, categoryId, month);
+  if (base <= 0) return base;
+  const carry = getBudgetRolloverCarry(transactions, budgets, categoryId, month);
+  return Math.max(0, base + carry);
 }
 
 export type InsightKind = "warning" | "positive" | "neutral";
@@ -459,6 +529,7 @@ function mapBudget(row: BudgetRow): Budget {
     categoryId: row.category_id,
     limit: Number(row.limit_amount),
     month: row.month,
+    rolloverSince: row.rollover_since,
   };
 }
 
@@ -617,7 +688,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         supabase.from("categories").select("*").eq("user_id", authUser.id).order("name", { ascending: true }),
         supabase.from("goals").select("*").eq("user_id", authUser.id).order("deadline", { ascending: true }),
         supabase.from("investments").select("*").eq("user_id", authUser.id).order("start_date", { ascending: false }),
-        supabase.from("budgets").select("category_id, limit_amount, month").eq("user_id", authUser.id),
+        supabase.from("budgets").select("category_id, limit_amount, month, rollover_since").eq("user_id", authUser.id),
         supabase.from("recurring_transactions").select("*").eq("user_id", authUser.id),
       ]);
 
@@ -1064,6 +1135,40 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         return exists
           ? prev.map((item) => item.categoryId === budget.categoryId && item.month === budget.month ? budget : item)
           : [...prev, budget];
+      });
+    },
+
+    // Liga/desliga o acúmulo de sobra de uma categoria. Vive sempre na linha
+    // padrão (DEFAULT_BUDGET_MONTH) — precisa incluir `limit_amount` mesmo
+    // sem mudar o limite, porque o upsert cria a linha do zero se ela ainda
+    // não existir (categoria só com override de mês, sem limite padrão).
+    updateBudgetRollover: async (categoryId, enabled, sinceMonth) => {
+      const user = await requireUser();
+      const currentDefault = budgets.find((b) => b.categoryId === categoryId && b.month === DEFAULT_BUDGET_MONTH);
+      const rolloverSince = enabled ? sinceMonth : null;
+
+      const { error } = await supabase
+        .from("budgets")
+        .upsert({
+          user_id: user.id,
+          category_id: categoryId,
+          limit_amount: currentDefault?.limit ?? 0,
+          month: DEFAULT_BUDGET_MONTH,
+          rollover_since: rolloverSince,
+        }, { onConflict: "user_id,category_id,month" });
+
+      if (error) {
+        console.error("Erro ao atualizar acúmulo de orçamento:", error);
+        toast.error("Não foi possível atualizar o acúmulo de sobra.");
+        throw error;
+      }
+
+      setBudgets((prev) => {
+        const exists = prev.some((item) => item.categoryId === categoryId && item.month === DEFAULT_BUDGET_MONTH);
+        const updated: Budget = { categoryId, limit: currentDefault?.limit ?? 0, month: DEFAULT_BUDGET_MONTH, rolloverSince };
+        return exists
+          ? prev.map((item) => item.categoryId === categoryId && item.month === DEFAULT_BUDGET_MONTH ? updated : item)
+          : [...prev, updated];
       });
     },
 
