@@ -186,10 +186,13 @@ const DEFAULT_CATEGORIES: Category[] = [
   { id: "cat-11", name: "Outros", icon: "📦", color: "#94a3b8", type: "default" },
 ];
 
-const todayMonth = () => {
+/** Mês-calendário de hoje ("YYYY-MM"). Também é o teto do seletor de mês da
+ * navbar — não faz sentido planejar/olhar orçamento de um mês futuro que
+ * ainda nem começou. */
+export function todayMonth(): string {
   const today = new Date();
   return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
-};
+}
 
 export function getTodayDateInput(): string {
   const today = new Date();
