@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { motion } from "motion/react";
-import { AlertTriangle, CheckCircle, Edit2, Pin, X } from "lucide-react";
+import { AlertTriangle, CheckCircle, Edit2, Pin, Repeat, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   useFinance, formatCurrency, getMonthName, getShortMonthName, getCategorySpend,
-  getBudgetLimit, DEFAULT_BUDGET_MONTH,
+  getBudgetLimit, getBudgetRolloverCarry, getBudgetRolloverSince, getEffectiveBudgetLimit,
+  DEFAULT_BUDGET_MONTH,
 } from "../context/FinanceContext";
 import { Skeleton } from "./ui/skeleton";
 import { Input } from "./ui/input";
@@ -44,21 +45,27 @@ function PlanningSkeleton() {
 }
 
 export function Planning() {
-  const { transactions, categories, budgets, updateBudget, deleteBudget, currentMonth, loading } = useFinance();
+  const { transactions, categories, budgets, updateBudget, deleteBudget, updateBudgetRollover, currentMonth, loading } = useFinance();
   const [editingCat, setEditingCat] = useState<string | null>(null);
   const [newLimit, setNewLimit] = useState("");
   const [monthOnly, setMonthOnly] = useState(false);
   const [savingLimit, setSavingLimit] = useState(false);
   const [removingOverride, setRemovingOverride] = useState<string | null>(null);
+  const [togglingRollover, setTogglingRollover] = useState<string | null>(null);
 
   if (loading) return <PlanningSkeleton />;
 
   function getSpend(catId: string) {
     return getCategorySpend(transactions, catId, currentMonth);
   }
-  // Limite efetivo deste mês: usa o override de currentMonth quando existe,
-  // senão cai pro limite padrão — ver getBudgetLimit.
+  // Limite configurado deste mês: usa o override de currentMonth quando
+  // existe, senão cai pro limite padrão — ver getBudgetLimit. É o valor que
+  // se edita; getEffectiveLimit (abaixo) é o que efetivamente vale pro mês,
+  // já somando a sobra acumulada de quem tem rollover ligado.
   function getBudget(catId: string) { return getBudgetLimit(budgets, catId, currentMonth); }
+  function getEffectiveLimit(catId: string) { return getEffectiveBudgetLimit(transactions, budgets, catId, currentMonth); }
+  function getRolloverCarry(catId: string) { return getBudgetRolloverCarry(transactions, budgets, catId, currentMonth); }
+  function isRolloverActive(catId: string) { return getBudgetRolloverSince(budgets, catId) !== null; }
   function getMonthOverride(catId: string) {
     return budgets.find(b => b.categoryId === catId && b.month === currentMonth);
   }
@@ -71,10 +78,10 @@ export function Planning() {
   // isso não distorce os totais abaixo.
   const budgetCategories = categories;
 
-  const totalLimit = budgetCategories.reduce((s, c) => s + getBudget(c.id), 0);
+  const totalLimit = budgetCategories.reduce((s, c) => s + getEffectiveLimit(c.id), 0);
   const totalSpent = budgetCategories.reduce((s, c) => s + getSpend(c.id), 0);
-  const overBudget = budgetCategories.filter(c => { const l = getBudget(c.id); return l > 0 && getSpend(c.id) > l; }).length;
-  const nearLimit = budgetCategories.filter(c => { const l = getBudget(c.id); const sp = getSpend(c.id); return l > 0 && sp >= l * 0.8 && sp <= l; }).length;
+  const overBudget = budgetCategories.filter(c => { const l = getEffectiveLimit(c.id); return l > 0 && getSpend(c.id) > l; }).length;
+  const nearLimit = budgetCategories.filter(c => { const l = getEffectiveLimit(c.id); const sp = getSpend(c.id); return l > 0 && sp >= l * 0.8 && sp <= l; }).length;
 
   function startEditing(catId: string) {
     const override = getMonthOverride(catId);
@@ -116,6 +123,23 @@ export function Planning() {
       console.error("Erro ao remover limite personalizado:", err);
     } finally {
       setRemovingOverride(null);
+    }
+  }
+
+  // Liga sempre a partir do mês atual — evita "inventar" acúmulo de meses
+  // passados que o usuário nunca pediu pra contar. Desligar só para de
+  // acumular daqui pra frente; não mexe no que já foi somado até agora.
+  async function toggleRollover(catId: string) {
+    if (togglingRollover) return;
+    setTogglingRollover(catId);
+    try {
+      const enabling = !isRolloverActive(catId);
+      await updateBudgetRollover(catId, enabling, currentMonth);
+      toast.success(enabling ? "Acúmulo de sobra ativado a partir deste mês." : "Acúmulo de sobra desativado.");
+    } catch (err) {
+      console.error("Erro ao atualizar acúmulo de orçamento:", err);
+    } finally {
+      setTogglingRollover(null);
     }
   }
 
@@ -177,10 +201,13 @@ export function Planning() {
           {budgetCategories.map(cat => {
             const spend = getSpend(cat.id);
             const limit = getBudget(cat.id);
+            const effectiveLimit = getEffectiveLimit(cat.id);
+            const rolloverActive = isRolloverActive(cat.id);
+            const carry = rolloverActive ? getRolloverCarry(cat.id) : 0;
             const override = getMonthOverride(cat.id);
-            const pct = limit > 0 ? Math.min(100, (spend / limit) * 100) : 0;
-            const over = limit > 0 && spend > limit;
-            const near = limit > 0 && spend >= limit * 0.8 && spend <= limit;
+            const pct = effectiveLimit > 0 ? Math.min(100, (spend / effectiveLimit) * 100) : 0;
+            const over = effectiveLimit > 0 && spend > effectiveLimit;
+            const near = effectiveLimit > 0 && spend >= effectiveLimit * 0.8 && spend <= effectiveLimit;
             const isEditing = editingCat === cat.id;
 
             return (
@@ -211,6 +238,19 @@ export function Planning() {
                     </div>
                   ) : (
                     <div className="flex items-center gap-2">
+                      {limit > 0 && (
+                        <button onClick={() => toggleRollover(cat.id)} disabled={togglingRollover === cat.id}
+                          aria-label={rolloverActive ? `Desativar acúmulo de sobra em "${cat.name}"` : `Ativar acúmulo de sobra em "${cat.name}"`}
+                          title={rolloverActive ? "Acumula a sobra (ou o excesso) pro próximo mês — clique para desativar" : "Acumular a sobra deste mês no limite do próximo"}
+                          className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-xs"
+                          style={{
+                            background: rolloverActive ? "rgba(16,217,164,0.14)" : "var(--border)",
+                            color: rolloverActive ? "var(--success)" : "var(--muted-foreground)",
+                            opacity: togglingRollover === cat.id ? 0.6 : 1,
+                          }}>
+                          <Repeat size={10} />
+                        </button>
+                      )}
                       {override && (
                         <button onClick={() => removeOverride(cat.id)} disabled={removingOverride === cat.id}
                           aria-label={`Remover limite personalizado de ${getMonthName(currentMonth)} em "${cat.name}"`}
@@ -229,19 +269,28 @@ export function Planning() {
                   )}
                 </div>
                 <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: "var(--border)" }}>
-                  {limit > 0 && (
+                  {effectiveLimit > 0 && (
                     <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.8 }}
                       className="h-full rounded-full" style={{ background: over ? "var(--red)" : near ? "var(--warning)" : cat.color }} />
                   )}
                 </div>
                 <div className="flex justify-between mt-1.5">
                   <span style={{ color: "var(--muted-foreground)", fontSize: "0.72rem" }}>Gasto: {formatCurrency(spend)}</span>
-                  {limit > 0 && (
+                  {effectiveLimit > 0 && (
                     <span style={{ fontSize: "0.72rem", fontWeight: 500, color: over ? "var(--red)" : near ? "var(--warning)" : "var(--success)" }}>
-                      {over ? `Excedeu em ${formatCurrency(spend - limit)}` : `Restam ${formatCurrency(limit - spend)}`}
+                      {over ? `Excedeu em ${formatCurrency(spend - effectiveLimit)}` : `Restam ${formatCurrency(effectiveLimit - spend)}`}
                     </span>
                   )}
                 </div>
+                {rolloverActive && limit > 0 && carry !== 0 && (
+                  <div className="mt-1">
+                    <span style={{ fontSize: "0.7rem", color: carry > 0 ? "var(--success)" : "var(--red)" }}>
+                      {carry > 0
+                        ? `+ ${formatCurrency(carry)} de sobra acumulada`
+                        : `− ${formatCurrency(Math.abs(carry))} de excesso acumulado`}
+                    </span>
+                  </div>
+                )}
               </div>
             );
           })}
