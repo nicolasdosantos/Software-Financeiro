@@ -1,7 +1,7 @@
 import { Fragment, useState } from "react";
 import type { FormEvent } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Plus, Search, Edit2, Trash2, ChevronUp, ChevronDown, X, Copy, Ban, Upload } from "lucide-react";
+import { Plus, Search, Edit2, Trash2, ChevronUp, ChevronDown, ChevronRight, X, Copy, Ban, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useFinance, formatCurrency, getMonthName, getTodayDateInput, toLocalDate, getDistinctMonths } from "../context/FinanceContext";
 import type { Transaction, RecurringTransaction, NewRecurringTransaction, NewSplitTransaction } from "../context/FinanceContext";
@@ -95,22 +95,33 @@ function getSplitBadge(tx: Transaction, transactions: Transaction[]): string | n
 }
 
 /** Uma linha da lista: uma transação avulsa, ou um grupo de partes de uma
- * mesma compra dividida (ver `groupSplits` em Transactions). */
+ * mesma compra dividida (ver `SplitDisplayMode` em Transactions). */
 type ListRow =
   | { kind: "tx"; tx: Transaction }
   | { kind: "splitGroup"; groupId: string; parts: Transaction[] };
 
+/** "collapsed"/"expanded" agrupam as partes de uma compra dividida numa
+ * única linha (só muda se ela já nasce expandida ou não); "separated" é o
+ * comportamento de antes dessa função existir — cada parte é sua própria
+ * linha, com a etiqueta "✂️ Nx". */
+type SplitDisplayMode = "collapsed" | "expanded" | "separated";
+
+const SPLIT_DISPLAY_MODE_OPTIONS: { value: SplitDisplayMode; label: string; title: string }[] = [
+  { value: "collapsed", label: "Recolhidas", title: "Cada compra dividida vira 1 linha; clique nela pra ver as partes" },
+  { value: "expanded", label: "Mostrar", title: "Cada compra dividida já aparece com as partes visíveis" },
+  { value: "separated", label: "Separadas", title: "Cada parte é uma linha própria, sem agrupar nada" },
+];
+
 /**
  * Monta as linhas a exibir a partir da lista já filtrada/ordenada.
- * `group: false` reproduz o comportamento de sempre — uma linha por
- * transação, cada parte de uma divisão aparecendo separada com sua própria
- * etiqueta "✂️ Nx". `group: true` (padrão) junta as partes de uma mesma
- * compra dividida numa única linha, que o usuário expande pra ver o
- * detalhamento por categoria — sem isso, uma compra dividida em 4 categorias
- * "infla" a lista com 4 linhas idênticas em data/descrição.
+ * "separated" reproduz o comportamento de sempre — uma linha por transação,
+ * cada parte de uma divisão aparecendo separada. Os outros dois modos juntam
+ * as partes de uma mesma compra dividida numa única linha — sem isso, uma
+ * compra dividida em 4 categorias "infla" a lista com 4 linhas idênticas em
+ * data/descrição.
  */
-function buildListRows(list: Transaction[], group: boolean): ListRow[] {
-  if (!group) return list.map(tx => ({ kind: "tx", tx }));
+function buildListRows(list: Transaction[], mode: SplitDisplayMode): ListRow[] {
+  if (mode === "separated") return list.map(tx => ({ kind: "tx", tx }));
 
   const rows: ListRow[] = [];
   const seenGroups = new Set<string>();
@@ -426,17 +437,24 @@ export function Transactions() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<PageSize>(DEFAULT_PAGE_SIZE);
-  // Padrão agrupado: partes de uma compra dividida somem numa linha só, que o
-  // usuário expande individualmente (expandedGroups) pra ver o detalhamento.
-  const [groupSplits, setGroupSplits] = useState(true);
+  // "collapsed" (padrão): partes de uma compra dividida somem numa linha só,
+  // que o usuário expande individualmente (expandedGroups) pra ver o
+  // detalhamento. "expanded": mesma linha agrupada, mas todas já abertas de
+  // cara. "separated": comportamento de antes dessa função existir — cada
+  // parte é sua própria linha, sem nenhum agrupamento.
+  const [splitDisplayMode, setSplitDisplayMode] = useState<SplitDisplayMode>("collapsed");
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   function toggleGroupExpanded(groupId: string) {
+    if (splitDisplayMode !== "collapsed") return; // "expanded" já mostra tudo; "separated" não tem o que expandir
     setExpandedGroups(prev => {
       const next = new Set(prev);
       if (next.has(groupId)) next.delete(groupId); else next.add(groupId);
       return next;
     });
+  }
+  function isGroupExpanded(groupId: string) {
+    return splitDisplayMode === "expanded" || (splitDisplayMode === "collapsed" && expandedGroups.has(groupId));
   }
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [duplicatingTx, setDuplicatingTx] = useState<Transaction | null>(null);
@@ -492,7 +510,7 @@ export function Transactions() {
     return sortDir === "asc" ? result : -result;
   });
 
-  const rows = buildListRows(filtered, groupSplits);
+  const rows = buildListRows(filtered, splitDisplayMode);
   const totalPages = pageSize === "all" ? 1 : Math.max(1, Math.ceil(rows.length / pageSize));
   const pagedRows = pageSize === "all" ? rows : rows.slice((page - 1) * pageSize, page * pageSize);
   const months = getDistinctMonths(transactions).reverse();
@@ -503,10 +521,13 @@ export function Transactions() {
   function renderMobileTxCard(tx: Transaction, indented = false) {
     const cat = categories.find(c => c.id === tx.category);
     const recurringBadge = getRecurringBadge(tx, recurringTransactions);
-    const splitBadge = groupSplits ? null : getSplitBadge(tx, transactions);
+    const splitBadge = splitDisplayMode === "separated" ? getSplitBadge(tx, transactions) : null;
     return (
-      <div key={tx.id} className="flex items-center justify-between p-4 gap-3" style={indented ? { paddingLeft: "2.5rem", background: "var(--secondary)" } : undefined}>
+      <div key={tx.id} className="flex items-center justify-between p-4 gap-3" style={indented ? { paddingLeft: "2rem", background: "var(--secondary)" } : undefined}>
         <div className="flex items-center gap-3 min-w-0">
+          {/* Reserva o mesmo espaço da seta de uma linha-resumo, pra não
+              "puxar" o ícone mais pra esquerda que o das compras divididas. */}
+          {!indented && <span aria-hidden className="w-5 h-5 shrink-0" />}
           <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
             style={{ background: cat ? `${cat.color}20` : "var(--secondary)" }}>
             <span style={{ fontSize: "14px" }}>{cat?.icon || "💳"}</span>
@@ -564,14 +585,18 @@ export function Transactions() {
   function renderMobileSplitGroup(groupId: string, parts: Transaction[]) {
     const first = parts[0];
     const total = parts.reduce((sum, p) => sum + p.amount, 0);
-    const expanded = expandedGroups.has(groupId);
+    const expanded = isGroupExpanded(groupId);
     return (
       <div key={groupId}>
         <button type="button" onClick={() => toggleGroupExpanded(groupId)}
+          disabled={splitDisplayMode !== "collapsed"}
           aria-expanded={expanded}
           aria-label={`${expanded ? "Recolher" : "Expandir"} divisão de "${first.description}" em ${parts.length} categorias`}
-          className="w-full flex items-center justify-between p-4 gap-3 text-left">
+          className="w-full flex items-center justify-between p-4 gap-3 text-left disabled:cursor-default">
           <div className="flex items-center gap-3 min-w-0">
+            <span aria-hidden className="flex items-center justify-center w-5 h-5 shrink-0" style={{ color: "var(--muted-foreground)" }}>
+              <ChevronRight size={14} style={{ transform: expanded ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 150ms ease" }} />
+            </span>
             <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: "rgba(var(--primary-rgb),0.14)" }}>
               <span style={{ fontSize: "14px" }}>✂️</span>
             </div>
@@ -587,12 +612,9 @@ export function Transactions() {
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <span style={{ color: first.type === "income" ? "var(--success)" : "var(--red)", fontWeight: 600, fontSize: "0.875rem", fontFamily: "var(--font-mono)" }}>
-              {first.type === "income" ? "+" : "-"}{formatCurrency(total)}
-            </span>
-            {expanded ? <ChevronUp size={16} style={{ color: "var(--muted-foreground)" }} /> : <ChevronDown size={16} style={{ color: "var(--muted-foreground)" }} />}
-          </div>
+          <span style={{ color: first.type === "income" ? "var(--success)" : "var(--red)", fontWeight: 600, fontSize: "0.875rem", fontFamily: "var(--font-mono)" }} className="shrink-0">
+            {first.type === "income" ? "+" : "-"}{formatCurrency(total)}
+          </span>
         </button>
         {expanded && (
           <div className="divide-y" style={{ borderColor: "var(--border)" }}>
@@ -608,14 +630,24 @@ export function Transactions() {
   function renderDesktopTxRow(tx: Transaction, i: number, indented = false) {
     const cat = categories.find(c => c.id === tx.category);
     const recurringBadge = getRecurringBadge(tx, recurringTransactions);
-    const splitBadge = groupSplits ? null : getSplitBadge(tx, transactions);
+    const splitBadge = splitDisplayMode === "separated" ? getSplitBadge(tx, transactions) : null;
     return (
       <motion.tr key={tx.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
         transition={{ delay: i * 0.04 }}
         className="hover:bg-[var(--secondary)]"
         style={{ borderBottom: "1px solid var(--border)", background: indented ? "var(--secondary)" : undefined }}>
-        <td style={{ padding: "12px 16px", paddingLeft: indented ? "3rem" : "16px" }}>
-          <div className="flex items-center gap-3">
+        <td style={{ padding: "12px 16px", position: "relative" }}>
+          <div className="flex items-center gap-2.5" style={{ paddingLeft: indented ? "1.875rem" : 0 }}>
+            {/* Guia vertical "de árvore" ligando a parte à linha-resumo acima, no
+                mesmo espírito de uma lista de subtarefas — o traço vertical
+                sai do centro da seta da linha-resumo (26px) até a metade
+                desta linha, com um tracinho horizontal encontrando o ícone. */}
+            {indented && <span aria-hidden style={{ position: "absolute", left: "26px", top: 0, bottom: "50%", width: "1px", background: "var(--border)" }} />}
+            {indented && <span aria-hidden style={{ position: "absolute", left: "26px", top: "50%", width: "4px", height: "1px", background: "var(--border)" }} />}
+            {/* Nas linhas sem divisão, reserva o mesmo espaço que a seta ocupa
+                na linha-resumo — sem isso, o ícone ficaria mais à esquerda
+                que o de uma compra dividida, com tudo "desalinhado". */}
+            {!indented && <span aria-hidden className="w-5 h-5 shrink-0" />}
             <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
               style={{ background: cat ? `${cat.color}20` : "var(--secondary)" }}>
               <span style={{ fontSize: "13px" }}>{cat?.icon || "💳"}</span>
@@ -673,27 +705,37 @@ export function Transactions() {
   function renderDesktopSplitGroup(groupId: string, parts: Transaction[], i: number) {
     const first = parts[0];
     const total = parts.reduce((sum, p) => sum + p.amount, 0);
-    const expanded = expandedGroups.has(groupId);
+    const expanded = isGroupExpanded(groupId);
     return (
       <Fragment key={groupId}>
         <motion.tr initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           transition={{ delay: i * 0.04 }}
           className="hover:bg-[var(--secondary)] cursor-pointer" onClick={() => toggleGroupExpanded(groupId)}
           style={{ borderBottom: "1px solid var(--border)" }}>
-          <td style={{ padding: "12px 16px" }} colSpan={2}>
-            <button type="button" onClick={(e) => { e.stopPropagation(); toggleGroupExpanded(groupId); }}
-              aria-expanded={expanded}
-              aria-label={`${expanded ? "Recolher" : "Expandir"} divisão de "${first.description}" em ${parts.length} categorias`}
-              className="flex items-center gap-3 text-left">
-              {expanded ? <ChevronUp size={14} style={{ color: "var(--muted-foreground)" }} /> : <ChevronDown size={14} style={{ color: "var(--muted-foreground)" }} />}
+          {/* Seta + ícone + descrição na mesma célula/posição de uma linha
+              normal — uma transação sem divisão reserva o mesmo espaço da
+              seta (vazio), então a coluna Descrição nunca "pula" de lugar
+              entre um tipo de linha e outro. */}
+          <td style={{ padding: "12px 16px" }}>
+            <div className="flex items-center gap-2.5">
+              <button type="button" onClick={(e) => { e.stopPropagation(); toggleGroupExpanded(groupId); }}
+                disabled={splitDisplayMode !== "collapsed"}
+                aria-expanded={expanded}
+                aria-label={`${expanded ? "Recolher" : "Expandir"} divisão de "${first.description}" em ${parts.length} categorias`}
+                className="flex items-center justify-center w-5 h-5 rounded-md shrink-0 transition-colors enabled:hover:bg-[var(--border)] disabled:cursor-default"
+                style={{ color: "var(--muted-foreground)" }}>
+                <ChevronRight size={13} style={{ transform: expanded ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 150ms ease" }} />
+              </button>
               <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: "rgba(var(--primary-rgb),0.14)" }}>
                 <span style={{ fontSize: "13px" }}>✂️</span>
               </div>
               <span style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--foreground)" }}>{first.description}</span>
-              <span className="px-2 py-1 rounded-full text-xs" style={{ background: "rgba(var(--primary-rgb),0.14)", color: "var(--primary)" }}>
-                Dividida em {parts.length} categorias
-              </span>
-            </button>
+            </div>
+          </td>
+          <td style={{ padding: "12px 16px" }}>
+            <span className="px-2 py-1 rounded-full text-xs" style={{ background: "rgba(var(--primary-rgb),0.14)", color: "var(--primary)" }}>
+              Dividida em {parts.length} categorias
+            </span>
           </td>
           <td style={{ padding: "12px 16px", color: "var(--muted-foreground)", fontSize: "0.8rem", whiteSpace: "nowrap" }}>
             {toLocalDate(first.date).toLocaleDateString("pt-BR")}
@@ -794,19 +836,45 @@ export function Transactions() {
             </Button>
           )}
         </div>
-        {/* Só aparece pra quem já usa "dividir entre categorias" — em vez de
-            uma linha por parte (poluindo a lista), o padrão junta tudo numa
-            linha só que dá pra expandir; aqui dá pra já deixar tudo separado
-            de novo, como era antes dessa mudança. */}
-        {hasSplitTransactions && (
-          <label className="flex items-center gap-2 cursor-pointer" htmlFor="tx-show-splits-separate">
-            <Checkbox id="tx-show-splits-separate" checked={!groupSplits}
-              onCheckedChange={c => { setGroupSplits(c !== true); setPage(1); }} />
-            <Label htmlFor="tx-show-splits-separate" className="cursor-pointer" style={{ fontWeight: 400, color: "var(--muted-foreground)", fontSize: "0.8rem" }}>
-              Mostrar partes de compras divididas separadas, em vez de agrupadas
-            </Label>
-          </label>
-        )}
+        {/* Fica aqui em cima (não lá embaixo, perto da paginação) de propósito
+            — com a lista podendo crescer bastante, um controle lá embaixo
+            exigiria rolar a tela toda vez que quisesse mudar de novo. */}
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2.5 pt-2.5" style={{ borderTop: "1px solid var(--border)" }}>
+          {/* Só aparece pra quem já usa "dividir entre categorias" — em vez de
+              uma linha por parte (poluindo a lista), o padrão junta tudo numa
+              linha só que dá pra expandir. */}
+          {hasSplitTransactions ? (
+            <div className="flex items-center gap-2">
+              <span style={{ color: "var(--muted-foreground)", fontSize: "0.78rem" }}>Divisões:</span>
+              <div className="inline-flex items-center rounded-full p-[3px]" style={{ background: "var(--secondary)" }}>
+                {SPLIT_DISPLAY_MODE_OPTIONS.map(opt => (
+                  <button key={opt.value} type="button" title={opt.title}
+                    onClick={() => { setSplitDisplayMode(opt.value); setPage(1); }}
+                    aria-pressed={splitDisplayMode === opt.value}
+                    className="px-3 py-1 rounded-full text-xs font-medium transition-all duration-150"
+                    style={{
+                      background: splitDisplayMode === opt.value ? "var(--card)" : "transparent",
+                      color: splitDisplayMode === opt.value ? "var(--foreground)" : "var(--muted-foreground)",
+                      boxShadow: splitDisplayMode === opt.value ? "0 1px 3px rgba(0,0,0,0.12)" : "none",
+                    }}>
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : <div />}
+          <div className="flex items-center gap-2">
+            <span style={{ color: "var(--muted-foreground)", fontSize: "0.78rem" }}>Mostrar</span>
+            <Select value={String(pageSize)} onValueChange={(value) => { setPageSize(value === "all" ? "all" : Number(value) as PageSize); setPage(1); }}>
+              <SelectTrigger className="h-7 w-[76px] text-xs px-2.5"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {PAGE_SIZE_OPTIONS.map(size => <SelectItem key={size} value={String(size)}>{size}</SelectItem>)}
+                <SelectItem value="all">Todas</SelectItem>
+              </SelectContent>
+            </Select>
+            <span style={{ color: "var(--muted-foreground)", fontSize: "0.78rem" }}>por página</span>
+          </div>
+        </div>
       </div>
 
       {/* Transactions — cards on mobile, table on desktop */}
@@ -868,33 +936,21 @@ export function Transactions() {
           </table>
         </div>
 
-        {/* Pagination */}
-        {filtered.length > 0 && (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 px-4 py-3" style={{ borderTop: "1px solid var(--border)" }}>
-            <div className="flex items-center gap-2">
-              <span style={{ color: "var(--muted-foreground)", fontSize: "0.8rem" }}>
-                {totalPages > 1 ? `Página ${page} de ${totalPages} — ` : ""}Mostrar
-              </span>
-              <Select value={String(pageSize)} onValueChange={(value) => { setPageSize(value === "all" ? "all" : Number(value) as PageSize); setPage(1); }}>
-                <SelectTrigger className="h-8 w-[90px] text-sm"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {PAGE_SIZE_OPTIONS.map(size => <SelectItem key={size} value={String(size)}>{size}</SelectItem>)}
-                  <SelectItem value="all">Todas</SelectItem>
-                </SelectContent>
-              </Select>
+        {/* Pagination — o seletor de "quantos por página" fica lá em cima,
+            junto dos filtros; aqui só o indicador e os números de página. */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-4 py-3" style={{ borderTop: "1px solid var(--border)" }}>
+            <span style={{ color: "var(--muted-foreground)", fontSize: "0.8rem" }}>Página {page} de {totalPages}</span>
+            <div className="flex gap-1 flex-wrap">
+              {Array.from({ length: totalPages }, (_, i) => (
+                <button key={i} onClick={() => setPage(i + 1)}
+                  aria-label={`Ir para página ${i + 1}`} aria-current={page === i + 1 ? "page" : undefined}
+                  className="w-8 h-8 rounded-lg text-sm font-medium transition-colors"
+                  style={{ background: page === i + 1 ? "var(--primary)" : "var(--secondary)", color: page === i + 1 ? "#fff" : "var(--muted-foreground)" }}>
+                  {i + 1}
+                </button>
+              ))}
             </div>
-            {totalPages > 1 && (
-              <div className="flex gap-1 flex-wrap">
-                {Array.from({ length: totalPages }, (_, i) => (
-                  <button key={i} onClick={() => setPage(i + 1)}
-                    aria-label={`Ir para página ${i + 1}`} aria-current={page === i + 1 ? "page" : undefined}
-                    className="w-8 h-8 rounded-lg text-sm font-medium transition-colors"
-                    style={{ background: page === i + 1 ? "var(--primary)" : "var(--secondary)", color: page === i + 1 ? "#fff" : "var(--muted-foreground)" }}>
-                    {i + 1}
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
         )}
       </motion.div>
