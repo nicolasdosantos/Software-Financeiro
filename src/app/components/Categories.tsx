@@ -3,7 +3,7 @@ import type { FormEvent } from "react";
 import { motion } from "motion/react";
 import { Plus, Edit2, Trash2, Tag } from "lucide-react";
 import { toast } from "sonner";
-import { useFinance, getCategorySpend } from "../context/FinanceContext";
+import { useFinance, getCategorySpend, getShortMonthName } from "../context/FinanceContext";
 import type { Category } from "../context/FinanceContext";
 import { useUndoableDelete } from "../hooks/useUndoableDelete";
 import { Modal } from "./shared/Modal";
@@ -107,7 +107,7 @@ function CategoryForm({ initial, onAdd, onUpdate, onClose }: CategoryFormProps) 
 }
 
 export function Categories() {
-  const { categories, transactions, addCategory, updateCategory, deleteCategory, loading } = useFinance();
+  const { categories, transactions, addCategory, updateCategory, deleteCategory, currentMonth, loading } = useFinance();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Category | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -115,8 +115,11 @@ export function Categories() {
 
   if (loading) return <CategoriesSkeleton />;
 
+  // Escopado ao mês selecionado na navbar — antes somava o histórico inteiro,
+  // o que destoava do resto do site (Dashboard, Planejamento) já respeitando
+  // o mês escolhido.
   function getSpend(catId: string) {
-    return getCategorySpend(transactions, catId);
+    return getCategorySpend(transactions, catId, currentMonth);
   }
 
   const visibleCategories = categories.filter((cat) => !pendingDeleteIds.has(cat.id));
@@ -149,7 +152,7 @@ export function Categories() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
         {visibleCategories.map((cat, i) => {
           const spend = getSpend(cat.id);
-          const txCount = transactions.filter(t => t.category === cat.id).length;
+          const txCount = transactions.filter(t => t.category === cat.id && t.date.startsWith(currentMonth)).length;
           const pct = maxSpend > 0 ? (spend / maxSpend) * 100 : 0;
           return (
             <motion.div
@@ -192,7 +195,7 @@ export function Categories() {
               </div>
               <div className="relative mt-3 pt-3" style={{ borderTop: "1px solid var(--border)" }}>
                 <div className="flex justify-between items-center mb-1.5">
-                  <span style={{ color: "var(--muted-foreground)", fontSize: "0.75rem" }}>Total gasto</span>
+                  <span style={{ color: "var(--muted-foreground)", fontSize: "0.75rem" }}>Gasto em {getShortMonthName(currentMonth)}</span>
                   <span style={{ color: cat.color, fontWeight: 600, fontSize: "0.85rem", fontFamily: "var(--font-mono)" }}>
                     R$ {spend.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                   </span>
