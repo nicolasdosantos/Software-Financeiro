@@ -523,11 +523,8 @@ export function Transactions() {
     const recurringBadge = getRecurringBadge(tx, recurringTransactions);
     const splitBadge = splitDisplayMode === "separated" ? getSplitBadge(tx, transactions) : null;
     return (
-      <div key={tx.id} className="flex items-center justify-between p-4 gap-3" style={indented ? { paddingLeft: "2rem", background: "var(--secondary)" } : undefined}>
+      <div key={tx.id} className="flex items-center justify-between p-4 gap-3" style={indented ? { paddingLeft: "3.25rem", background: "var(--secondary)" } : undefined}>
         <div className="flex items-center gap-3 min-w-0">
-          {/* Reserva o mesmo espaço da seta de uma linha-resumo, pra não
-              "puxar" o ícone mais pra esquerda que o das compras divididas. */}
-          {!indented && <span aria-hidden className="w-5 h-5 shrink-0" />}
           <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
             style={{ background: cat ? `${cat.color}20` : "var(--secondary)" }}>
             <span style={{ fontSize: "14px" }}>{cat?.icon || "💳"}</span>
@@ -637,17 +634,13 @@ export function Transactions() {
         className="hover:bg-[var(--secondary)]"
         style={{ borderBottom: "1px solid var(--border)", background: indented ? "var(--secondary)" : undefined }}>
         <td style={{ padding: "12px 16px", position: "relative" }}>
-          <div className="flex items-center gap-2.5" style={{ paddingLeft: indented ? "1.875rem" : 0 }}>
+          <div className="flex items-center gap-2.5" style={{ paddingLeft: indented ? "2.25rem" : 0 }}>
             {/* Guia vertical "de árvore" ligando a parte à linha-resumo acima, no
                 mesmo espírito de uma lista de subtarefas — o traço vertical
                 sai do centro da seta da linha-resumo (26px) até a metade
                 desta linha, com um tracinho horizontal encontrando o ícone. */}
             {indented && <span aria-hidden style={{ position: "absolute", left: "26px", top: 0, bottom: "50%", width: "1px", background: "var(--border)" }} />}
-            {indented && <span aria-hidden style={{ position: "absolute", left: "26px", top: "50%", width: "4px", height: "1px", background: "var(--border)" }} />}
-            {/* Nas linhas sem divisão, reserva o mesmo espaço que a seta ocupa
-                na linha-resumo — sem isso, o ícone ficaria mais à esquerda
-                que o de uma compra dividida, com tudo "desalinhado". */}
-            {!indented && <span aria-hidden className="w-5 h-5 shrink-0" />}
+            {indented && <span aria-hidden style={{ position: "absolute", left: "26px", top: "50%", width: "10px", height: "1px", background: "var(--border)" }} />}
             <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
               style={{ background: cat ? `${cat.color}20` : "var(--secondary)" }}>
               <span style={{ fontSize: "13px" }}>{cat?.icon || "💳"}</span>
