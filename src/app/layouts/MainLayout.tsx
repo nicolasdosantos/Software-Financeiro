@@ -5,6 +5,7 @@ import { Menu } from "lucide-react";
 import { Sidebar } from "../components/Sidebar";
 import { NotificationsBell } from "../components/NotificationsBell";
 import { ThemeToggle } from "../components/ThemeToggle";
+import { MonthSelector } from "../components/MonthSelector";
 import { useAuth } from "../context/AuthContext";
 import { useNotifications } from "../hooks/useNotifications";
 import { useDismissedNotifications } from "../hooks/useDismissedNotifications";
@@ -116,10 +117,12 @@ export default function MainLayout() {
               </button>
             )}
 
+            <MonthSelector />
+
             {/* Escondido em telas muito estreitas (<640px): junto com o
-                hambúrguer, sino, tema e o badge "Online", não cabem todos
-                numa única linha sem quebrar — cada página já tem seu
-                próprio título (h1), então esse texto é só um extra. */}
+                hambúrguer, seletor de mês, sino, tema e o badge "Online",
+                não cabem todos numa única linha sem quebrar — cada página já
+                tem seu próprio título (h1), então esse texto é só um extra. */}
             <span
               className="hidden sm:block truncate"
               style={{

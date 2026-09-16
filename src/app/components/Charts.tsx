@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import {
   PieChart, Pie, Cell, BarChart, Bar, LineChart, Line,
@@ -28,10 +28,13 @@ export function Charts() {
   const { transactions, categories, currentMonth, loading } = useFinance();
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [hoveredCategoryId, setHoveredCategoryId] = useState<string | null>(null);
-  // Mês exibido aqui é independente do mês "oficial" usado em Dashboard/
-  // Planejamento — trocar o mês só pra olhar um gráfico não deve mudar o que
-  // aparece nas outras telas. Começa igual ao mês atual, mas vive só aqui.
+  // Mês exibido aqui é independente do mês global (currentMonth) — dá pra
+  // navegar entre meses só pra olhar um gráfico sem mudar o que aparece nas
+  // outras telas. Mas quando o usuário troca o mês no seletor da navbar,
+  // essa navegação local "reseta" pra acompanhar — do contrário, trocar o
+  // mês lá em cima pareceria não fazer nada aqui.
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+  useEffect(() => setSelectedMonth(currentMonth), [currentMonth]);
 
   const safeTransactions = transactions ?? [];
 

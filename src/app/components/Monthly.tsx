@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -43,10 +43,12 @@ export function Monthly() {
 
   const { transactions, categories, currentMonth, loading } = useFinance();
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
-  // Navegar pelo histórico de meses aqui é local a esta tela — não deve mudar
-  // o mês "oficial" usado em Dashboard/Planejamento/Relatórios. Começa igual
-  // ao mês atual, mas anterior/próximo só afetam esta visualização.
+  // Navegar pelo histórico de meses aqui é local a esta tela — anterior/
+  // próximo não mudam o mês global. Mas quando o usuário troca o mês no
+  // seletor da navbar, essa navegação local "reseta" pra acompanhar — do
+  // contrário, trocar o mês lá em cima pareceria não fazer nada aqui.
   const [viewMonth, setViewMonth] = useState(currentMonth);
+  useEffect(() => setViewMonth(currentMonth), [currentMonth]);
 
   if (loading) return <MonthlySkeleton />;
 

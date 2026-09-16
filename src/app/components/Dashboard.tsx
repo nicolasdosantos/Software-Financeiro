@@ -161,6 +161,10 @@ export function Dashboard() {
 
   const pieMonths = getDistinctMonths(transactions, [currentMonth]);
   const [pieMonth, setPieMonth] = useState(currentMonth);
+  // Ao trocar o mês no seletor global da navbar, o gráfico de categorias
+  // acompanha — do contrário pareceria travado no mês antigo mesmo com o
+  // resto do Dashboard já atualizado.
+  useEffect(() => setPieMonth(currentMonth), [currentMonth]);
 
   const prevMonthIndex = months.indexOf(currentMonth) - 1;
   const prevMonth = months[prevMonthIndex] ?? currentMonth;
