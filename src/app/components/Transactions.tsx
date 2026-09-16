@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import type { FormEvent } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Plus, Search, Edit2, Trash2, ChevronUp, ChevronDown, X, Copy, Ban, Upload } from "lucide-react";
@@ -47,7 +47,10 @@ function TransactionsSkeleton() {
   );
 }
 
-const ITEMS_PER_PAGE = 8;
+const PAGE_SIZE_OPTIONS = [5, 10, 15] as const;
+/** "all" = sem paginação, mostra tudo que passou nos filtros de uma vez. */
+type PageSize = typeof PAGE_SIZE_OPTIONS[number] | "all";
+const DEFAULT_PAGE_SIZE: PageSize = 10;
 
 type SortKey = "date" | "amount" | "description" | "category";
 
@@ -89,6 +92,46 @@ function getSplitBadge(tx: Transaction, transactions: Transaction[]): string | n
   // sentido rotular como "dividida" — virou uma transação avulsa normal.
   if (partCount < 2) return null;
   return `✂️ ${partCount}x`;
+}
+
+/** Uma linha da lista: uma transação avulsa, ou um grupo de partes de uma
+ * mesma compra dividida (ver `groupSplits` em Transactions). */
+type ListRow =
+  | { kind: "tx"; tx: Transaction }
+  | { kind: "splitGroup"; groupId: string; parts: Transaction[] };
+
+/**
+ * Monta as linhas a exibir a partir da lista já filtrada/ordenada.
+ * `group: false` reproduz o comportamento de sempre — uma linha por
+ * transação, cada parte de uma divisão aparecendo separada com sua própria
+ * etiqueta "✂️ Nx". `group: true` (padrão) junta as partes de uma mesma
+ * compra dividida numa única linha, que o usuário expande pra ver o
+ * detalhamento por categoria — sem isso, uma compra dividida em 4 categorias
+ * "infla" a lista com 4 linhas idênticas em data/descrição.
+ */
+function buildListRows(list: Transaction[], group: boolean): ListRow[] {
+  if (!group) return list.map(tx => ({ kind: "tx", tx }));
+
+  const rows: ListRow[] = [];
+  const seenGroups = new Set<string>();
+  for (const tx of list) {
+    if (!tx.split_group_id) {
+      rows.push({ kind: "tx", tx });
+      continue;
+    }
+    if (seenGroups.has(tx.split_group_id)) continue;
+    // Só agrupa partes que também passaram nos filtros ativos — um filtro de
+    // categoria, por exemplo, pode deixar só 1 parte visível, e nesse caso
+    // não faz sentido mostrar como "grupo".
+    const parts = list.filter(t => t.split_group_id === tx.split_group_id);
+    if (parts.length < 2) {
+      rows.push({ kind: "tx", tx });
+      continue;
+    }
+    seenGroups.add(tx.split_group_id);
+    rows.push({ kind: "splitGroup", groupId: tx.split_group_id, parts });
+  }
+  return rows;
 }
 
 interface TransactionFormProps {
@@ -382,6 +425,19 @@ export function Transactions() {
   const [sortBy, setSortBy] = useState<SortKey>("date");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<PageSize>(DEFAULT_PAGE_SIZE);
+  // Padrão agrupado: partes de uma compra dividida somem numa linha só, que o
+  // usuário expande individualmente (expandedGroups) pra ver o detalhamento.
+  const [groupSplits, setGroupSplits] = useState(true);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+
+  function toggleGroupExpanded(groupId: string) {
+    setExpandedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(groupId)) next.delete(groupId); else next.add(groupId);
+      return next;
+    });
+  }
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [duplicatingTx, setDuplicatingTx] = useState<Transaction | null>(null);
   const [showAdd, setShowAdd] = useState(false);
@@ -402,6 +458,7 @@ export function Transactions() {
   }
 
   const hasCustomFilters = search !== "" || filterType !== "all" || filterCategory !== "all" || filterMonth !== "all" || dateFrom !== "" || dateTo !== "";
+  const hasSplitTransactions = transactions.some(t => t.split_group_id);
 
   function clearFilters() {
     setSearch("");
@@ -435,9 +492,229 @@ export function Transactions() {
     return sortDir === "asc" ? result : -result;
   });
 
-  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
-  const paged = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+  const rows = buildListRows(filtered, groupSplits);
+  const totalPages = pageSize === "all" ? 1 : Math.max(1, Math.ceil(rows.length / pageSize));
+  const pagedRows = pageSize === "all" ? rows : rows.slice((page - 1) * pageSize, page * pageSize);
   const months = getDistinctMonths(transactions).reverse();
+
+  // Card de uma transação avulsa na lista mobile — também usado pra cada
+  // parte de um grupo dividido quando expandido (`indented`), então o visual
+  // de uma parte expandida é idêntico ao de uma transação normal.
+  function renderMobileTxCard(tx: Transaction, indented = false) {
+    const cat = categories.find(c => c.id === tx.category);
+    const recurringBadge = getRecurringBadge(tx, recurringTransactions);
+    const splitBadge = groupSplits ? null : getSplitBadge(tx, transactions);
+    return (
+      <div key={tx.id} className="flex items-center justify-between p-4 gap-3" style={indented ? { paddingLeft: "2.5rem", background: "var(--secondary)" } : undefined}>
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+            style={{ background: cat ? `${cat.color}20` : "var(--secondary)" }}>
+            <span style={{ fontSize: "14px" }}>{cat?.icon || "💳"}</span>
+          </div>
+          <div className="min-w-0">
+            <p className="truncate" style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--foreground)" }}>{tx.description}</p>
+            <div className="flex items-center gap-2 flex-wrap mt-0.5">
+              <span className="px-1.5 py-0.5 rounded-full text-xs"
+                style={{ background: cat ? `${cat.color}20` : "var(--secondary)", color: cat?.color || "var(--muted-foreground)" }}>
+                {cat?.name}
+              </span>
+              {recurringBadge && (
+                <span className="px-1.5 py-0.5 rounded-full text-xs" style={{ background: "rgba(var(--primary-rgb),0.14)", color: "var(--primary)" }}>
+                  {recurringBadge}
+                </span>
+              )}
+              {splitBadge && (
+                <span className="px-1.5 py-0.5 rounded-full text-xs" style={{ background: "rgba(var(--primary-rgb),0.14)", color: "var(--primary)" }}>
+                  {splitBadge}
+                </span>
+              )}
+              <span style={{ color: "var(--muted-foreground)", fontSize: "0.7rem" }}>
+                {toLocalDate(tx.date).toLocaleDateString("pt-BR")}
+              </span>
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-col items-end gap-2 shrink-0">
+          <span style={{ color: tx.type === "income" ? "var(--success)" : "var(--red)", fontWeight: 600, fontSize: "0.875rem", fontFamily: "var(--font-mono)" }}>
+            {tx.type === "income" ? "+" : "-"}{formatCurrency(tx.amount)}
+          </span>
+          <div className="flex gap-1">
+            {canCancelRecurring(tx, recurringTransactions) && (
+              <button onClick={() => setCancelingRecurringId(tx.recurring_id!)} aria-label={`Cancelar recorrência de "${tx.description}"`} className="p-1.5 rounded-lg" style={{ color: "var(--muted-foreground)", background: "var(--secondary)" }}>
+                <Ban size={13} />
+              </button>
+            )}
+            <button onClick={() => setDuplicatingTx(tx)} aria-label={`Duplicar transação "${tx.description}"`} className="p-1.5 rounded-lg" style={{ color: "var(--muted-foreground)", background: "var(--secondary)" }}>
+              <Copy size={13} />
+            </button>
+            <button onClick={() => setEditingTx(tx)} aria-label={`Editar transação "${tx.description}"`} className="p-1.5 rounded-lg" style={{ color: "var(--muted-foreground)", background: "var(--secondary)" }}>
+              <Edit2 size={13} />
+            </button>
+            <button onClick={() => setDeletingId(tx.id)} aria-label={`Excluir transação "${tx.description}"`} className="p-1.5 rounded-lg" style={{ color: "var(--destructive)", background: "rgba(239,68,68,0.1)" }}>
+              <Trash2 size={13} />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Linha resumo de um grupo de partes divididas na lista mobile — some com
+  // "N linhas iguais" na lista, mostrando só uma, expansível.
+  function renderMobileSplitGroup(groupId: string, parts: Transaction[]) {
+    const first = parts[0];
+    const total = parts.reduce((sum, p) => sum + p.amount, 0);
+    const expanded = expandedGroups.has(groupId);
+    return (
+      <div key={groupId}>
+        <button type="button" onClick={() => toggleGroupExpanded(groupId)}
+          aria-expanded={expanded}
+          aria-label={`${expanded ? "Recolher" : "Expandir"} divisão de "${first.description}" em ${parts.length} categorias`}
+          className="w-full flex items-center justify-between p-4 gap-3 text-left">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: "rgba(var(--primary-rgb),0.14)" }}>
+              <span style={{ fontSize: "14px" }}>✂️</span>
+            </div>
+            <div className="min-w-0">
+              <p className="truncate" style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--foreground)" }}>{first.description}</p>
+              <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                <span className="px-1.5 py-0.5 rounded-full text-xs" style={{ background: "rgba(var(--primary-rgb),0.14)", color: "var(--primary)" }}>
+                  Dividida em {parts.length} categorias
+                </span>
+                <span style={{ color: "var(--muted-foreground)", fontSize: "0.7rem" }}>
+                  {toLocalDate(first.date).toLocaleDateString("pt-BR")}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <span style={{ color: first.type === "income" ? "var(--success)" : "var(--red)", fontWeight: 600, fontSize: "0.875rem", fontFamily: "var(--font-mono)" }}>
+              {first.type === "income" ? "+" : "-"}{formatCurrency(total)}
+            </span>
+            {expanded ? <ChevronUp size={16} style={{ color: "var(--muted-foreground)" }} /> : <ChevronDown size={16} style={{ color: "var(--muted-foreground)" }} />}
+          </div>
+        </button>
+        {expanded && (
+          <div className="divide-y" style={{ borderColor: "var(--border)" }}>
+            {parts.map(part => renderMobileTxCard(part, true))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Linha de uma transação avulsa na tabela desktop — também usada pra cada
+  // parte de um grupo dividido quando expandido (`indented`).
+  function renderDesktopTxRow(tx: Transaction, i: number, indented = false) {
+    const cat = categories.find(c => c.id === tx.category);
+    const recurringBadge = getRecurringBadge(tx, recurringTransactions);
+    const splitBadge = groupSplits ? null : getSplitBadge(tx, transactions);
+    return (
+      <motion.tr key={tx.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        transition={{ delay: i * 0.04 }}
+        className="hover:bg-[var(--secondary)]"
+        style={{ borderBottom: "1px solid var(--border)", background: indented ? "var(--secondary)" : undefined }}>
+        <td style={{ padding: "12px 16px", paddingLeft: indented ? "3rem" : "16px" }}>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+              style={{ background: cat ? `${cat.color}20` : "var(--secondary)" }}>
+              <span style={{ fontSize: "13px" }}>{cat?.icon || "💳"}</span>
+            </div>
+            <span style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--foreground)" }}>{tx.description}</span>
+          </div>
+        </td>
+        <td style={{ padding: "12px 16px" }}>
+          <div className="flex items-center gap-1.5">
+            <span className="px-2 py-1 rounded-full text-xs" style={{ background: cat ? `${cat.color}20` : "var(--secondary)", color: cat?.color || "var(--muted-foreground)" }}>
+              {cat?.name || "-"}
+            </span>
+            {recurringBadge && (
+              <span className="px-2 py-1 rounded-full text-xs" style={{ background: "rgba(var(--primary-rgb),0.14)", color: "var(--primary)" }}>
+                {recurringBadge}
+              </span>
+            )}
+            {splitBadge && (
+              <span className="px-2 py-1 rounded-full text-xs" style={{ background: "rgba(var(--primary-rgb),0.14)", color: "var(--primary)" }}>
+                {splitBadge}
+              </span>
+            )}
+          </div>
+        </td>
+        <td style={{ padding: "12px 16px", color: "var(--muted-foreground)", fontSize: "0.8rem", whiteSpace: "nowrap" }}>
+          {toLocalDate(tx.date).toLocaleDateString("pt-BR")}
+        </td>
+        <td style={{ padding: "12px 16px" }}>
+          <span className="px-2 py-1 rounded-full text-xs font-medium" style={{
+            background: tx.type === "income" ? "rgba(16,217,164,0.12)" : "rgba(239,68,68,0.12)",
+            color: tx.type === "income" ? "var(--success)" : "var(--red)"
+          }}>
+            {tx.type === "income" ? "Receita" : "Despesa"}
+          </span>
+        </td>
+        <td style={{ padding: "12px 16px", fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: "0.875rem", color: tx.type === "income" ? "var(--success)" : "var(--red)", whiteSpace: "nowrap" }}>
+          {tx.type === "income" ? "+" : "-"}{formatCurrency(tx.amount)}
+        </td>
+        <td style={{ padding: "12px 16px" }}>
+          <div className="flex items-center gap-1.5">
+            {canCancelRecurring(tx, recurringTransactions) && (
+              <button onClick={() => setCancelingRecurringId(tx.recurring_id!)} aria-label={`Cancelar recorrência de "${tx.description}"`} className="p-1.5 rounded-lg hover:bg-[var(--secondary)]" style={{ color: "var(--muted-foreground)" }}><Ban size={14} /></button>
+            )}
+            <button onClick={() => setDuplicatingTx(tx)} aria-label={`Duplicar transação "${tx.description}"`} className="p-1.5 rounded-lg hover:bg-[var(--secondary)]" style={{ color: "var(--muted-foreground)" }}><Copy size={14} /></button>
+            <button onClick={() => setEditingTx(tx)} aria-label={`Editar transação "${tx.description}"`} className="p-1.5 rounded-lg hover:bg-blue-500/10" style={{ color: "var(--muted-foreground)" }}><Edit2 size={14} /></button>
+            <button onClick={() => setDeletingId(tx.id)} aria-label={`Excluir transação "${tx.description}"`} className="p-1.5 rounded-lg hover:bg-red-500/10" style={{ color: "var(--muted-foreground)" }}><Trash2 size={14} /></button>
+          </div>
+        </td>
+      </motion.tr>
+    );
+  }
+
+  // Linha resumo de um grupo de partes divididas na tabela desktop, com as
+  // partes reais logo abaixo (indentadas) quando expandido.
+  function renderDesktopSplitGroup(groupId: string, parts: Transaction[], i: number) {
+    const first = parts[0];
+    const total = parts.reduce((sum, p) => sum + p.amount, 0);
+    const expanded = expandedGroups.has(groupId);
+    return (
+      <Fragment key={groupId}>
+        <motion.tr initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          transition={{ delay: i * 0.04 }}
+          className="hover:bg-[var(--secondary)] cursor-pointer" onClick={() => toggleGroupExpanded(groupId)}
+          style={{ borderBottom: "1px solid var(--border)" }}>
+          <td style={{ padding: "12px 16px" }} colSpan={2}>
+            <button type="button" onClick={(e) => { e.stopPropagation(); toggleGroupExpanded(groupId); }}
+              aria-expanded={expanded}
+              aria-label={`${expanded ? "Recolher" : "Expandir"} divisão de "${first.description}" em ${parts.length} categorias`}
+              className="flex items-center gap-3 text-left">
+              {expanded ? <ChevronUp size={14} style={{ color: "var(--muted-foreground)" }} /> : <ChevronDown size={14} style={{ color: "var(--muted-foreground)" }} />}
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: "rgba(var(--primary-rgb),0.14)" }}>
+                <span style={{ fontSize: "13px" }}>✂️</span>
+              </div>
+              <span style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--foreground)" }}>{first.description}</span>
+              <span className="px-2 py-1 rounded-full text-xs" style={{ background: "rgba(var(--primary-rgb),0.14)", color: "var(--primary)" }}>
+                Dividida em {parts.length} categorias
+              </span>
+            </button>
+          </td>
+          <td style={{ padding: "12px 16px", color: "var(--muted-foreground)", fontSize: "0.8rem", whiteSpace: "nowrap" }}>
+            {toLocalDate(first.date).toLocaleDateString("pt-BR")}
+          </td>
+          <td style={{ padding: "12px 16px" }}>
+            <span className="px-2 py-1 rounded-full text-xs font-medium" style={{
+              background: first.type === "income" ? "rgba(16,217,164,0.12)" : "rgba(239,68,68,0.12)",
+              color: first.type === "income" ? "var(--success)" : "var(--red)"
+            }}>
+              {first.type === "income" ? "Receita" : "Despesa"}
+            </span>
+          </td>
+          <td style={{ padding: "12px 16px", fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: "0.875rem", color: first.type === "income" ? "var(--success)" : "var(--red)", whiteSpace: "nowrap" }}>
+            {first.type === "income" ? "+" : "-"}{formatCurrency(total)}
+          </td>
+          <td />
+        </motion.tr>
+        {expanded && parts.map((part, partIndex) => renderDesktopTxRow(part, i + partIndex * 0.01, true))}
+      </Fragment>
+    );
+  }
 
   return (
     <div className="space-y-4 sm:space-y-5">
@@ -517,6 +794,19 @@ export function Transactions() {
             </Button>
           )}
         </div>
+        {/* Só aparece pra quem já usa "dividir entre categorias" — em vez de
+            uma linha por parte (poluindo a lista), o padrão junta tudo numa
+            linha só que dá pra expandir; aqui dá pra já deixar tudo separado
+            de novo, como era antes dessa mudança. */}
+        {hasSplitTransactions && (
+          <label className="flex items-center gap-2 cursor-pointer" htmlFor="tx-show-splits-separate">
+            <Checkbox id="tx-show-splits-separate" checked={!groupSplits}
+              onCheckedChange={c => { setGroupSplits(c !== true); setPage(1); }} />
+            <Label htmlFor="tx-show-splits-separate" className="cursor-pointer" style={{ fontWeight: 400, color: "var(--muted-foreground)", fontSize: "0.8rem" }}>
+              Mostrar partes de compras divididas separadas, em vez de agrupadas
+            </Label>
+          </label>
+        )}
       </div>
 
       {/* Transactions — cards on mobile, table on desktop */}
@@ -525,7 +815,7 @@ export function Transactions() {
 
         {/* Mobile card list */}
         <div className="block sm:hidden">
-          {paged.length === 0 ? (
+          {pagedRows.length === 0 ? (
             transactions.length === 0 ? (
               <EmptyState icon="📭" title="Nenhuma transação ainda" subtitle="Adicione a primeira pra começar a acompanhar suas finanças" />
             ) : (
@@ -533,64 +823,9 @@ export function Transactions() {
             )
           ) : (
             <div className="divide-y" style={{ borderColor: "var(--border)" }}>
-              {paged.map(tx => {
-                const cat = categories.find(c => c.id === tx.category);
-                const recurringBadge = getRecurringBadge(tx, recurringTransactions);
-                const splitBadge = getSplitBadge(tx, transactions);
-                return (
-                  <div key={tx.id} className="flex items-center justify-between p-4 gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                        style={{ background: cat ? `${cat.color}20` : "var(--secondary)" }}>
-                        <span style={{ fontSize: "14px" }}>{cat?.icon || "💳"}</span>
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate" style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--foreground)" }}>{tx.description}</p>
-                        <div className="flex items-center gap-2 flex-wrap mt-0.5">
-                          <span className="px-1.5 py-0.5 rounded-full text-xs"
-                            style={{ background: cat ? `${cat.color}20` : "var(--secondary)", color: cat?.color || "var(--muted-foreground)" }}>
-                            {cat?.name}
-                          </span>
-                          {recurringBadge && (
-                            <span className="px-1.5 py-0.5 rounded-full text-xs" style={{ background: "rgba(var(--primary-rgb),0.14)", color: "var(--primary)" }}>
-                              {recurringBadge}
-                            </span>
-                          )}
-                          {splitBadge && (
-                            <span className="px-1.5 py-0.5 rounded-full text-xs" style={{ background: "rgba(var(--primary-rgb),0.14)", color: "var(--primary)" }}>
-                              {splitBadge}
-                            </span>
-                          )}
-                          <span style={{ color: "var(--muted-foreground)", fontSize: "0.7rem" }}>
-                            {toLocalDate(tx.date).toLocaleDateString("pt-BR")}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-end gap-2 shrink-0">
-                      <span style={{ color: tx.type === "income" ? "var(--success)" : "var(--red)", fontWeight: 600, fontSize: "0.875rem", fontFamily: "var(--font-mono)" }}>
-                        {tx.type === "income" ? "+" : "-"}{formatCurrency(tx.amount)}
-                      </span>
-                      <div className="flex gap-1">
-                        {canCancelRecurring(tx, recurringTransactions) && (
-                          <button onClick={() => setCancelingRecurringId(tx.recurring_id!)} aria-label={`Cancelar recorrência de "${tx.description}"`} className="p-1.5 rounded-lg" style={{ color: "var(--muted-foreground)", background: "var(--secondary)" }}>
-                            <Ban size={13} />
-                          </button>
-                        )}
-                        <button onClick={() => setDuplicatingTx(tx)} aria-label={`Duplicar transação "${tx.description}"`} className="p-1.5 rounded-lg" style={{ color: "var(--muted-foreground)", background: "var(--secondary)" }}>
-                          <Copy size={13} />
-                        </button>
-                        <button onClick={() => setEditingTx(tx)} aria-label={`Editar transação "${tx.description}"`} className="p-1.5 rounded-lg" style={{ color: "var(--muted-foreground)", background: "var(--secondary)" }}>
-                          <Edit2 size={13} />
-                        </button>
-                        <button onClick={() => setDeletingId(tx.id)} aria-label={`Excluir transação "${tx.description}"`} className="p-1.5 rounded-lg" style={{ color: "var(--destructive)", background: "rgba(239,68,68,0.1)" }}>
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+              {pagedRows.map(row => row.kind === "tx"
+                ? renderMobileTxCard(row.tx)
+                : renderMobileSplitGroup(row.groupId, row.parts))}
             </div>
           )}
         </div>
@@ -616,70 +851,11 @@ export function Transactions() {
             </thead>
             <tbody>
               <AnimatePresence>
-                {paged.map((tx, i) => {
-                  const cat = categories.find(c => c.id === tx.category);
-                  const recurringBadge = getRecurringBadge(tx, recurringTransactions);
-                  const splitBadge = getSplitBadge(tx, transactions);
-                  return (
-                    <motion.tr key={tx.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                      transition={{ delay: i * 0.04 }}
-                      className="hover:bg-[var(--secondary)]"
-                      style={{ borderBottom: "1px solid var(--border)" }}>
-                      <td style={{ padding: "12px 16px" }}>
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                            style={{ background: cat ? `${cat.color}20` : "var(--secondary)" }}>
-                            <span style={{ fontSize: "13px" }}>{cat?.icon || "💳"}</span>
-                          </div>
-                          <span style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--foreground)" }}>{tx.description}</span>
-                        </div>
-                      </td>
-                      <td style={{ padding: "12px 16px" }}>
-                        <div className="flex items-center gap-1.5">
-                          <span className="px-2 py-1 rounded-full text-xs" style={{ background: cat ? `${cat.color}20` : "var(--secondary)", color: cat?.color || "var(--muted-foreground)" }}>
-                            {cat?.name || "-"}
-                          </span>
-                          {recurringBadge && (
-                            <span className="px-2 py-1 rounded-full text-xs" style={{ background: "rgba(var(--primary-rgb),0.14)", color: "var(--primary)" }}>
-                              {recurringBadge}
-                            </span>
-                          )}
-                          {splitBadge && (
-                            <span className="px-2 py-1 rounded-full text-xs" style={{ background: "rgba(var(--primary-rgb),0.14)", color: "var(--primary)" }}>
-                              {splitBadge}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td style={{ padding: "12px 16px", color: "var(--muted-foreground)", fontSize: "0.8rem", whiteSpace: "nowrap" }}>
-                        {toLocalDate(tx.date).toLocaleDateString("pt-BR")}
-                      </td>
-                      <td style={{ padding: "12px 16px" }}>
-                        <span className="px-2 py-1 rounded-full text-xs font-medium" style={{
-                          background: tx.type === "income" ? "rgba(16,217,164,0.12)" : "rgba(239,68,68,0.12)",
-                          color: tx.type === "income" ? "var(--success)" : "var(--red)"
-                        }}>
-                          {tx.type === "income" ? "Receita" : "Despesa"}
-                        </span>
-                      </td>
-                      <td style={{ padding: "12px 16px", fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: "0.875rem", color: tx.type === "income" ? "var(--success)" : "var(--red)", whiteSpace: "nowrap" }}>
-                        {tx.type === "income" ? "+" : "-"}{formatCurrency(tx.amount)}
-                      </td>
-                      <td style={{ padding: "12px 16px" }}>
-                        <div className="flex items-center gap-1.5">
-                          {canCancelRecurring(tx, recurringTransactions) && (
-                            <button onClick={() => setCancelingRecurringId(tx.recurring_id!)} aria-label={`Cancelar recorrência de "${tx.description}"`} className="p-1.5 rounded-lg hover:bg-[var(--secondary)]" style={{ color: "var(--muted-foreground)" }}><Ban size={14} /></button>
-                          )}
-                          <button onClick={() => setDuplicatingTx(tx)} aria-label={`Duplicar transação "${tx.description}"`} className="p-1.5 rounded-lg hover:bg-[var(--secondary)]" style={{ color: "var(--muted-foreground)" }}><Copy size={14} /></button>
-                          <button onClick={() => setEditingTx(tx)} aria-label={`Editar transação "${tx.description}"`} className="p-1.5 rounded-lg hover:bg-blue-500/10" style={{ color: "var(--muted-foreground)" }}><Edit2 size={14} /></button>
-                          <button onClick={() => setDeletingId(tx.id)} aria-label={`Excluir transação "${tx.description}"`} className="p-1.5 rounded-lg hover:bg-red-500/10" style={{ color: "var(--muted-foreground)" }}><Trash2 size={14} /></button>
-                        </div>
-                      </td>
-                    </motion.tr>
-                  );
-                })}
+                {pagedRows.map((row, i) => row.kind === "tx"
+                  ? renderDesktopTxRow(row.tx, i)
+                  : renderDesktopSplitGroup(row.groupId, row.parts, i))}
               </AnimatePresence>
-              {paged.length === 0 && (
+              {pagedRows.length === 0 && (
                 <tr><td colSpan={6}>
                   {transactions.length === 0 ? (
                     <EmptyState icon="📭" title="Nenhuma transação ainda" subtitle="Adicione a primeira pra começar a acompanhar suas finanças" />
@@ -693,19 +869,32 @@ export function Transactions() {
         </div>
 
         {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3" style={{ borderTop: "1px solid var(--border)" }}>
-            <p style={{ color: "var(--muted-foreground)", fontSize: "0.8rem" }}>Página {page} de {totalPages}</p>
-            <div className="flex gap-1 flex-wrap">
-              {Array.from({ length: totalPages }, (_, i) => (
-                <button key={i} onClick={() => setPage(i + 1)}
-                  aria-label={`Ir para página ${i + 1}`} aria-current={page === i + 1 ? "page" : undefined}
-                  className="w-8 h-8 rounded-lg text-sm font-medium transition-colors"
-                  style={{ background: page === i + 1 ? "var(--primary)" : "var(--secondary)", color: page === i + 1 ? "#fff" : "var(--muted-foreground)" }}>
-                  {i + 1}
-                </button>
-              ))}
+        {filtered.length > 0 && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 px-4 py-3" style={{ borderTop: "1px solid var(--border)" }}>
+            <div className="flex items-center gap-2">
+              <span style={{ color: "var(--muted-foreground)", fontSize: "0.8rem" }}>
+                {totalPages > 1 ? `Página ${page} de ${totalPages} — ` : ""}Mostrar
+              </span>
+              <Select value={String(pageSize)} onValueChange={(value) => { setPageSize(value === "all" ? "all" : Number(value) as PageSize); setPage(1); }}>
+                <SelectTrigger className="h-8 w-[90px] text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {PAGE_SIZE_OPTIONS.map(size => <SelectItem key={size} value={String(size)}>{size}</SelectItem>)}
+                  <SelectItem value="all">Todas</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+            {totalPages > 1 && (
+              <div className="flex gap-1 flex-wrap">
+                {Array.from({ length: totalPages }, (_, i) => (
+                  <button key={i} onClick={() => setPage(i + 1)}
+                    aria-label={`Ir para página ${i + 1}`} aria-current={page === i + 1 ? "page" : undefined}
+                    className="w-8 h-8 rounded-lg text-sm font-medium transition-colors"
+                    style={{ background: page === i + 1 ? "var(--primary)" : "var(--secondary)", color: page === i + 1 ? "#fff" : "var(--muted-foreground)" }}>
+                    {i + 1}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </motion.div>
