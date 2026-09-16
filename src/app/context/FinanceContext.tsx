@@ -132,6 +132,7 @@ interface FinanceContextType {
   updateBudget: (b: Budget) => Promise<void>;
   deleteBudget: (categoryId: string, month: string) => Promise<void>;
   currentMonth: string;
+  setCurrentMonth: (month: string) => void;
 }
 
 type GoalRow = {
@@ -472,13 +473,14 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [recurringTransactions, setRecurringTransactions] = useState<RecurringTransaction[]>([]);
   const [loading, setLoading] = useState(true);
-  // "Mês atual" é só o mês-calendário de hoje — nada na UI deve poder mudá-lo
-  // globalmente. Dashboard, Planejamento e Relatórios usam esse valor pra
-  // saber "o que está acontecendo agora"; Gráficos e Controle Mensal, que
-  // deixam o usuário navegar por outros meses, mantêm esse estado localmente
-  // em vez de escrever aqui, senão navegar num gráfico mudaria sem aviso o
-  // orçamento mostrado em Planejamento.
-  const [currentMonth] = useState(todayMonth);
+  // Mês selecionado globalmente pelo usuário no seletor da navbar — começa
+  // no mês-calendário de hoje, mas pode ser trocado livremente. Dashboard,
+  // Planejamento e Relatórios usam esse valor diretamente; Gráficos e
+  // Controle Mensal têm sua própria navegação de mês (útil pra comparar
+  // vários meses seguidos sem perder o lugar), mas sincronizam o ponto de
+  // partida com este valor sempre que ele muda — ver os efeitos em cada
+  // componente.
+  const [currentMonth, setCurrentMonth] = useState(todayMonth);
 
   // O usuário já vem resolvido pelo AuthProvider (uma única assinatura de
   // auth para o app inteiro) — não precisa de um supabase.auth.getUser()
@@ -675,6 +677,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     recurringTransactions,
     loading,
     currentMonth,
+    setCurrentMonth,
 
     addTransaction: async (transaction) => {
       const user = await requireUser();
@@ -1086,6 +1089,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     budgets,
     categories,
     currentMonth,
+    setCurrentMonth,
     requireUser,
     goals,
     investments,
