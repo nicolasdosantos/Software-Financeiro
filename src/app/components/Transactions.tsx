@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { useFinance, formatCurrency, getMonthName, getTodayDateInput, toLocalDate, getDistinctMonths } from "../context/FinanceContext";
 import type { Transaction, RecurringTransaction, NewRecurringTransaction, NewSplitTransaction } from "../context/FinanceContext";
 import { useUndoableDelete } from "../hooks/useUndoableDelete";
+import { useOpenAddFromNav } from "../hooks/useOpenAddFromNav";
 import { Modal } from "./shared/Modal";
 import { ImportTransactionsModal } from "./ImportTransactions";
 import { ConfirmDeleteDialog } from "./shared/ConfirmDeleteDialog";
@@ -494,6 +495,7 @@ export function Transactions() {
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [duplicatingTx, setDuplicatingTx] = useState<Transaction | null>(null);
   const [showAdd, setShowAdd] = useState(false);
+  useOpenAddFromNav(setShowAdd);
   const [showImport, setShowImport] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [cancelingRecurringId, setCancelingRecurringId] = useState<string | null>(null);

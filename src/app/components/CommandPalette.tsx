@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, ArrowLeftRight, CalendarDays, Tag, BarChart3,
-  Target, PiggyBank, TrendingUp, User, FileText, Search,
+  Target, PiggyBank, TrendingUp, User, FileText, Search, Plus,
 } from "lucide-react";
 import { useFinance, formatCurrency, toLocalDate } from "../context/FinanceContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "./ui/dialog";
@@ -24,6 +24,15 @@ const PAGES = [
   { path: "/investimentos", label: "Investimentos", icon: TrendingUp },
   { path: "/relatorios", label: "Relatórios", icon: FileText },
   { path: "/perfil", label: "Perfil", icon: User },
+];
+
+// Cada ação abre a página já com o modal de "adicionar" aberto — ver
+// useOpenAddFromNav, usado nas 4 telas de destino.
+const QUICK_ACTIONS = [
+  { path: "/transacoes", label: "Nova Transação", icon: ArrowLeftRight },
+  { path: "/categorias", label: "Nova Categoria", icon: Tag },
+  { path: "/metas", label: "Nova Meta", icon: Target },
+  { path: "/investimentos", label: "Novo Investimento", icon: TrendingUp },
 ];
 
 const MAX_TX_RESULTS = 6;
@@ -71,10 +80,20 @@ export function CommandPalette() {
     setOpen(false);
   }
 
+  function runQuickAction(path: string) {
+    navigate(path, { state: { openAdd: true } });
+    setOpen(false);
+  }
+
   const q = query.trim().toLowerCase();
 
   const filteredPages = useMemo(
     () => PAGES.filter((p) => p.label.toLowerCase().includes(q)),
+    [q],
+  );
+
+  const filteredActions = useMemo(
+    () => QUICK_ACTIONS.filter((a) => a.label.toLowerCase().includes(q)),
     [q],
   );
 
@@ -113,6 +132,16 @@ export function CommandPalette() {
             />
             <CommandList>
               <CommandEmpty>Nada encontrado.</CommandEmpty>
+              {filteredActions.length > 0 && (
+                <CommandGroup heading="Ações rápidas">
+                  {filteredActions.map((a) => (
+                    <CommandItem key={a.path} value={`action-${a.path}`} onSelect={() => runQuickAction(a.path)}>
+                      <Plus size={16} />
+                      <span>{a.label}</span>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              )}
               {filteredPages.length > 0 && (
                 <CommandGroup heading="Páginas">
                   {filteredPages.map((p) => (
