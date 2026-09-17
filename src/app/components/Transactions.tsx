@@ -189,6 +189,11 @@ function TransactionForm({ initial, prefill, onAdd, onUpdate, onAddRecurring, on
     { categoryId: categories[0]?.id || "", amount: "" },
     { categoryId: categories[1]?.id || categories[0]?.id || "", amount: "" },
   ]);
+  // Opcional — "" = sem categoria principal (a lista de Transações mostra um
+  // ícone genérico ✂️ pra ela). Não precisa ser a categoria de nenhuma parte
+  // (ex: cinema + pipoca dividido entre "Lazer" e "Alimentação", com "Lazer"
+  // como a categoria que resume a compra inteira).
+  const [splitMainCategoryId, setSplitMainCategoryId] = useState("");
   const splitTotal = splitParts.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
 
   function updateSplitPart(index: number, patch: Partial<SplitPartInput>) {
@@ -226,6 +231,7 @@ function TransactionForm({ initial, prefill, onAdd, onUpdate, onAddRecurring, on
           date: form.date,
           notes: form.notes || undefined,
           parts,
+          mainCategoryId: splitMainCategoryId || null,
         });
         toast.success("Transação dividida criada com sucesso!");
         onClose();
@@ -316,7 +322,20 @@ function TransactionForm({ initial, prefill, onAdd, onUpdate, onAddRecurring, on
           onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Ex: Supermercado" />
       </div>
       {isSplitting ? (
-        <div className="space-y-2">
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="tx-split-main-category">Categoria principal <span style={{ fontWeight: 400, color: "var(--muted-foreground)" }}>(opcional)</span></Label>
+            <Select value={splitMainCategoryId || "none"} onValueChange={(value) => setSplitMainCategoryId(value === "none" ? "" : value)}>
+              <SelectTrigger id="tx-split-main-category" className="w-full"><SelectValue placeholder="Nenhuma" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Nenhuma — mostra um ícone genérico</SelectItem>
+                {categories.map(c => <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <p style={{ color: "var(--muted-foreground)", fontSize: "0.72rem" }}>
+              A categoria que melhor resume a compra inteira — não precisa ser nenhuma das de baixo (ex: ingresso de cinema + pipoca, com "Lazer" como principal).
+            </p>
+          </div>
           <Label>Dividir entre categorias</Label>
           {splitParts.map((part, i) => (
             <div key={i} className="flex gap-2 items-center">
@@ -583,6 +602,9 @@ export function Transactions() {
     const first = parts[0];
     const total = parts.reduce((sum, p) => sum + p.amount, 0);
     const expanded = isGroupExpanded(groupId);
+    // Categoria "guarda-chuva" da compra, se definida na criação — dá um
+    // ícone/cor coerente à linha-resumo em vez da tesourinha genérica.
+    const mainCat = categories.find(c => c.id === first.split_main_category);
     return (
       <div key={groupId}>
         <button type="button" onClick={() => toggleGroupExpanded(groupId)}
@@ -594,14 +616,19 @@ export function Transactions() {
             <span aria-hidden className="flex items-center justify-center w-5 h-5 shrink-0" style={{ color: "var(--muted-foreground)" }}>
               <ChevronRight size={14} style={{ transform: expanded ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 150ms ease" }} />
             </span>
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: "rgba(var(--primary-rgb),0.14)" }}>
-              <span style={{ fontSize: "14px" }}>✂️</span>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: mainCat ? `${mainCat.color}20` : "rgba(var(--primary-rgb),0.14)" }}>
+              <span style={{ fontSize: "14px" }}>{mainCat?.icon || "✂️"}</span>
             </div>
             <div className="min-w-0">
               <p className="truncate" style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--foreground)" }}>{first.description}</p>
               <div className="flex items-center gap-2 flex-wrap mt-0.5">
-                <span className="px-1.5 py-0.5 rounded-full text-xs" style={{ background: "rgba(var(--primary-rgb),0.14)", color: "var(--primary)" }}>
-                  Dividida em {parts.length} categorias
+                {mainCat && (
+                  <span className="px-1.5 py-0.5 rounded-full text-xs" style={{ background: `${mainCat.color}20`, color: mainCat.color }}>
+                    {mainCat.name}
+                  </span>
+                )}
+                <span className="px-1.5 py-0.5 rounded-full text-xs whitespace-nowrap" style={{ background: "rgba(var(--primary-rgb),0.14)", color: "var(--primary)" }}>
+                  <span className="hidden sm:inline">Dividida em </span>{parts.length} categorias
                 </span>
                 <span style={{ color: "var(--muted-foreground)", fontSize: "0.7rem" }}>
                   {toLocalDate(first.date).toLocaleDateString("pt-BR")}
@@ -645,7 +672,7 @@ export function Transactions() {
               style={{ background: cat ? `${cat.color}20` : "var(--secondary)" }}>
               <span style={{ fontSize: "13px" }}>{cat?.icon || "💳"}</span>
             </div>
-            <span style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--foreground)" }}>{tx.description}</span>
+            <span style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--foreground)", whiteSpace: "nowrap" }}>{tx.description}</span>
           </div>
         </td>
         <td style={{ padding: "12px 16px" }}>
@@ -699,6 +726,9 @@ export function Transactions() {
     const first = parts[0];
     const total = parts.reduce((sum, p) => sum + p.amount, 0);
     const expanded = isGroupExpanded(groupId);
+    // Categoria "guarda-chuva" da compra, se definida na criação — dá um
+    // ícone/cor coerente à linha-resumo em vez da tesourinha genérica.
+    const mainCat = categories.find(c => c.id === first.split_main_category);
     return (
       <Fragment key={groupId}>
         <motion.tr initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -719,16 +749,23 @@ export function Transactions() {
                 style={{ color: "var(--muted-foreground)" }}>
                 <ChevronRight size={13} style={{ transform: expanded ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 150ms ease" }} />
               </button>
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: "rgba(var(--primary-rgb),0.14)" }}>
-                <span style={{ fontSize: "13px" }}>✂️</span>
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: mainCat ? `${mainCat.color}20` : "rgba(var(--primary-rgb),0.14)" }}>
+                <span style={{ fontSize: "13px" }}>{mainCat?.icon || "✂️"}</span>
               </div>
-              <span style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--foreground)" }}>{first.description}</span>
+              <span style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--foreground)", whiteSpace: "nowrap" }}>{first.description}</span>
             </div>
           </td>
           <td style={{ padding: "12px 16px" }}>
-            <span className="px-2 py-1 rounded-full text-xs" style={{ background: "rgba(var(--primary-rgb),0.14)", color: "var(--primary)" }}>
-              Dividida em {parts.length} categorias
-            </span>
+            <div className="flex items-center gap-1.5">
+              {mainCat && (
+                <span className="px-2 py-1 rounded-full text-xs" style={{ background: `${mainCat.color}20`, color: mainCat.color }}>
+                  {mainCat.name}
+                </span>
+              )}
+              <span className="px-2 py-1 rounded-full text-xs" style={{ background: "rgba(var(--primary-rgb),0.14)", color: "var(--primary)" }}>
+                Dividida em {parts.length} categorias
+              </span>
+            </div>
           </td>
           <td style={{ padding: "12px 16px", color: "var(--muted-foreground)", fontSize: "0.8rem", whiteSpace: "nowrap" }}>
             {toLocalDate(first.date).toLocaleDateString("pt-BR")}
@@ -837,14 +874,14 @@ export function Transactions() {
               uma linha por parte (poluindo a lista), o padrão junta tudo numa
               linha só que dá pra expandir. */}
           {hasSplitTransactions ? (
-            <div className="flex items-center gap-2">
-              <span style={{ color: "var(--muted-foreground)", fontSize: "0.78rem" }}>Divisões:</span>
-              <div className="inline-flex items-center rounded-full p-[3px]" style={{ background: "var(--secondary)" }}>
+            <div className="flex items-center gap-2 min-w-0 max-w-full">
+              <span className="shrink-0" style={{ color: "var(--muted-foreground)", fontSize: "0.78rem" }}>Divisões:</span>
+              <div className="inline-flex items-center rounded-full p-[3px] min-w-0 max-w-full overflow-x-auto" style={{ background: "var(--secondary)" }}>
                 {SPLIT_DISPLAY_MODE_OPTIONS.map(opt => (
                   <button key={opt.value} type="button" title={opt.title}
                     onClick={() => { setSplitDisplayMode(opt.value); setPage(1); }}
                     aria-pressed={splitDisplayMode === opt.value}
-                    className="px-3 py-1 rounded-full text-xs font-medium transition-all duration-150"
+                    className="px-2 sm:px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-all duration-150"
                     style={{
                       background: splitDisplayMode === opt.value ? "var(--card)" : "transparent",
                       color: splitDisplayMode === opt.value ? "var(--foreground)" : "var(--muted-foreground)",
