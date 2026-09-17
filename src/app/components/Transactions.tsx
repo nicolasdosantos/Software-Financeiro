@@ -1,5 +1,6 @@
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import type { FormEvent } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { Plus, Search, Edit2, Trash2, ChevronUp, ChevronDown, ChevronRight, X, Copy, Ban, Upload } from "lucide-react";
 import { toast } from "sonner";
@@ -443,7 +444,22 @@ export function Transactions() {
     addRecurringTransaction, cancelRecurringTransaction, addSplitTransaction,
     loading,
   } = useFinance();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
+
+  // Chegando aqui pela busca rápida (Ctrl+K) com uma transação escolhida —
+  // preenche o filtro de busca com a mesma descrição, pra já cair filtrado
+  // nela. Limpa o state da navegação em seguida (replace), senão um F5 ou
+  // voltar pra essa rota de novo reaplicaria a busca sem o usuário pedir.
+  useEffect(() => {
+    const incomingSearch = (location.state as { search?: string } | null)?.search;
+    if (incomingSearch) {
+      setSearch(incomingSearch);
+      navigate(location.pathname, { replace: true, state: null });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [filterType, setFilterType] = useState<"all" | "income" | "expense">("all");
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterMonth, setFilterMonth] = useState("all");
