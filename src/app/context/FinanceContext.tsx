@@ -23,6 +23,11 @@ export interface Transaction {
   /** IDs iguais = partes da mesma transação dividida entre categorias (mesma
    * data/descrição, valor e categoria próprios cada). null = transação avulsa. */
   split_group_id?: string | null;
+  /** Categoria "guarda-chuva" de uma compra dividida (ex: Lazer, pro exemplo
+   * cinema+pipoca), gravada igual em todas as partes do grupo — não precisa
+   * ser a categoria de nenhuma parte individual. null = sem categoria
+   * principal definida (mostra um ícone genérico na lista). */
+  split_main_category?: string | null;
 }
 
 export interface SplitPart {
@@ -37,6 +42,9 @@ export interface NewSplitTransaction {
   notes?: string;
   /** Pelo menos 2 partes — cada uma vira uma transação real independente. */
   parts: SplitPart[];
+  /** Categoria "guarda-chuva" da compra inteira — opcional, só pra dar um
+   * ícone/cor coerente à linha-resumo na lista de Transações. */
+  mainCategoryId?: string | null;
 }
 
 /** null = recorrente indefinida (repete todo mês até ser cancelada);
@@ -921,6 +929,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         date: input.date,
         notes: input.notes || null,
         split_group_id: splitGroupId,
+        split_main_category: input.mainCategoryId || null,
         user_id: user.id,
       }));
 

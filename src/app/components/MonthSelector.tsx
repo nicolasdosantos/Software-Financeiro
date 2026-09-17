@@ -24,15 +24,15 @@ export function MonthSelector() {
       <button
         onClick={() => step(-1)}
         aria-label="Mês anterior"
-        className="p-1.5 rounded-lg transition-colors hover:text-[var(--foreground)]"
+        className="p-1 sm:p-1.5 rounded-lg transition-colors hover:text-[var(--foreground)] shrink-0"
         style={{ color: "var(--muted-foreground)" }}
       >
-        <ChevronLeft size={15} />
+        <ChevronLeft size={14} />
       </button>
 
       <Select value={currentMonth} onValueChange={setCurrentMonth}>
         <SelectTrigger
-          className="h-7 border-0 shadow-none px-1 sm:px-1.5 w-[92px] sm:w-[150px] bg-transparent dark:bg-transparent dark:hover:bg-transparent"
+          className="h-7 border-0 shadow-none px-1 sm:px-1.5 w-[64px] sm:w-[150px] bg-transparent dark:bg-transparent dark:hover:bg-transparent"
           style={{ color: "var(--foreground)", fontSize: "0.8rem" }}
         >
           <SelectValue />
@@ -49,10 +49,10 @@ export function MonthSelector() {
       <button
         onClick={() => step(1)}
         aria-label="Próximo mês"
-        className="p-1.5 rounded-lg transition-colors hover:text-[var(--foreground)]"
+        className="p-1 sm:p-1.5 rounded-lg transition-colors hover:text-[var(--foreground)] shrink-0"
         style={{ color: "var(--muted-foreground)" }}
       >
-        <ChevronRight size={15} />
+        <ChevronRight size={14} />
       </button>
     </div>
   );
