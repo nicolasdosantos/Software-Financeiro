@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useFinance, formatCurrency, toLocalDate, getTodayDateInput } from "../context/FinanceContext";
 import type { Goal, Category } from "../context/FinanceContext";
 import { useUndoableDelete } from "../hooks/useUndoableDelete";
+import { useOpenAddFromNav } from "../hooks/useOpenAddFromNav";
 import { Modal } from "./shared/Modal";
 import { ConfirmDeleteDialog } from "./shared/ConfirmDeleteDialog";
 import { EmptyState } from "./shared/EmptyState";
@@ -231,6 +232,7 @@ export function Goals() {
   const [contributing, setContributing] = useState<Goal | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const { pendingIds: pendingDeleteIds, requestDelete } = useUndoableDelete(deleteGoal);
+  useOpenAddFromNav(setShowForm);
 
   if (loading) return <GoalsSkeleton />;
 

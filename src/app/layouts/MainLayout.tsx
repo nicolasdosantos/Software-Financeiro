@@ -6,6 +6,7 @@ import { Sidebar } from "../components/Sidebar";
 import { NotificationsBell } from "../components/NotificationsBell";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { MonthSelector } from "../components/MonthSelector";
+import { CommandPalette } from "../components/CommandPalette";
 import { useAuth } from "../context/AuthContext";
 import { useNotifications } from "../hooks/useNotifications";
 import { useDismissedNotifications } from "../hooks/useDismissedNotifications";
@@ -136,6 +137,7 @@ export default function MainLayout() {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            <CommandPalette />
             <ThemeToggle />
             <NotificationsBell notifications={visibleNotifications} onDismiss={dismiss} />
 

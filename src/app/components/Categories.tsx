@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useFinance, getCategorySpend, getShortMonthName } from "../context/FinanceContext";
 import type { Category } from "../context/FinanceContext";
 import { useUndoableDelete } from "../hooks/useUndoableDelete";
+import { useOpenAddFromNav } from "../hooks/useOpenAddFromNav";
 import { Modal } from "./shared/Modal";
 import { ConfirmDeleteDialog } from "./shared/ConfirmDeleteDialog";
 import { ColorPicker } from "./shared/ColorPicker";
@@ -112,6 +113,7 @@ export function Categories() {
   const [editing, setEditing] = useState<Category | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const { pendingIds: pendingDeleteIds, requestDelete } = useUndoableDelete(deleteCategory);
+  useOpenAddFromNav(setShowForm);
 
   if (loading) return <CategoriesSkeleton />;
 

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useFinance, formatCurrency, getTodayDateInput } from "../context/FinanceContext";
 import type { Investment } from "../context/FinanceContext";
 import { useUndoableDelete } from "../hooks/useUndoableDelete";
+import { useOpenAddFromNav } from "../hooks/useOpenAddFromNav";
 import { Modal } from "./shared/Modal";
 import { ConfirmDeleteDialog } from "./shared/ConfirmDeleteDialog";
 import { EmptyState } from "./shared/EmptyState";
@@ -153,6 +154,7 @@ export function Investments() {
   const [editing, setEditing] = useState<Investment | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const { pendingIds: pendingDeleteIds, requestDelete } = useUndoableDelete(deleteInvestment);
+  useOpenAddFromNav(setShowForm);
 
   if (loading) return <InvestmentsSkeleton />;
 
