@@ -143,6 +143,19 @@ interface FinanceContextType {
   addRecurringTransaction: (r: NewRecurringTransaction) => Promise<void>;
   cancelRecurringTransaction: (id: string) => Promise<void>;
   addSplitTransaction: (s: NewSplitTransaction) => Promise<void>;
+  /** Atualiza os campos "de grupo" de uma compra dividida — a descrição da
+   * compra inteira e a categoria principal — em todas as partes de uma vez.
+   * Não mexe em categoria/valor/nome de item de nenhuma parte individual:
+   * isso continua se editando com updateTransaction, uma parte por vez,
+   * igual a qualquer transação avulsa. */
+  updateSplitGroup: (groupId: string, patch: { description: string; mainCategoryId: string | null }) => Promise<void>;
+  /** Apaga TODAS as partes de uma compra dividida de uma vez — diferente de
+   * deleteTransaction (que apaga uma parte isolada, deixando as outras).
+   * Sem undo de propósito: é uma ação de várias linhas de uma vez, então
+   * pede confirmação explícita antes (ver ConfirmDeleteDialog em
+   * Transactions), em vez do toast com "desfazer" de 5s usado pra uma
+   * transação avulsa. */
+  deleteSplitGroup: (groupId: string) => Promise<void>;
   addCategory: (c: Omit<Category, "id">) => Promise<void>;
   updateCategory: (c: Category) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
@@ -956,6 +969,44 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       }
 
       setTransactions((prev) => [...(data as Transaction[]), ...prev]);
+    },
+
+    updateSplitGroup: async (groupId, patch) => {
+      const user = await requireUser();
+
+      const { error } = await supabase
+        .from("transactions")
+        .update({ description: patch.description, split_main_category: patch.mainCategoryId })
+        .eq("split_group_id", groupId)
+        .eq("user_id", user.id);
+
+      if (error) {
+        console.error("Erro ao atualizar compra dividida:", error);
+        toast.error("Não foi possível salvar as alterações da compra dividida.");
+        throw error;
+      }
+
+      setTransactions((prev) => prev.map((t) => t.split_group_id === groupId
+        ? { ...t, description: patch.description, split_main_category: patch.mainCategoryId }
+        : t));
+    },
+
+    deleteSplitGroup: async (groupId) => {
+      const user = await requireUser();
+
+      const { error } = await supabase
+        .from("transactions")
+        .delete()
+        .eq("split_group_id", groupId)
+        .eq("user_id", user.id);
+
+      if (error) {
+        console.error("Erro ao excluir compra dividida:", error);
+        toast.error("Não foi possível excluir a compra dividida.");
+        throw error;
+      }
+
+      setTransactions((prev) => prev.filter((t) => t.split_group_id !== groupId));
     },
 
     addCategory: async (category) => {
