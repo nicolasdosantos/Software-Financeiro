@@ -33,6 +33,14 @@ export interface Transaction {
 export interface SplitPart {
   categoryId: string;
   amount: number;
+  /** Nome do item em si (ex: "Ingresso" numa parte de Lazer, "Pipoca" numa de
+   * Alimentação) — opcional. Guardado em `notes` da transação (não em
+   * `description`): a descrição continua sendo sempre a da compra inteira,
+   * igual em toda parte, pra a linha-resumo agrupada na lista continuar
+   * fazendo sentido como "1 compra só". Sem um nome de item, a parte cai de
+   * volta na observação geral da compra (`NewSplitTransaction.notes`), se
+   * houver. */
+  description?: string;
 }
 
 export interface NewSplitTransaction {
@@ -924,10 +932,16 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       const rows = input.parts.map((part) => ({
         type: input.type,
         amount: part.amount,
+        // A descrição é sempre a da compra inteira, igual em toda parte —
+        // é o que a linha-resumo (agrupada) mostra na lista, e ela precisa
+        // ser a mesma nas partes pra continuar fazendo sentido como "1
+        // compra". O nome do item em si (o que essa parte específica foi)
+        // vai em `notes`, com a observação geral como último fallback —
+        // reaproveita a coluna existente em vez de criar mais uma só pra isso.
         description: input.description,
+        notes: part.description?.trim() || input.notes || null,
         category: part.categoryId,
         date: input.date,
-        notes: input.notes || null,
         split_group_id: splitGroupId,
         split_main_category: input.mainCategoryId || null,
         user_id: user.id,
