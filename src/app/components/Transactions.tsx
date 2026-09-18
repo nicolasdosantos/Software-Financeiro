@@ -449,11 +449,73 @@ function TransactionForm({ initial, prefill, onAdd, onUpdate, onAddRecurring, on
   );
 }
 
+interface EditSplitGroupFormProps {
+  initial: { groupId: string; description: string; mainCategoryId: string };
+  onSave: (groupId: string, patch: { description: string; mainCategoryId: string | null }) => Promise<void>;
+  onClose: () => void;
+}
+
+/** Editar só os campos "de grupo" de uma compra dividida — a descrição da
+ * compra inteira e a categoria principal. Categoria/valor/nome de item de
+ * cada parte continuam se editando individualmente, expandindo a compra e
+ * abrindo a parte como qualquer transação avulsa. */
+function EditSplitGroupForm({ initial, onSave, onClose }: EditSplitGroupFormProps) {
+  const { categories } = useFinance();
+  const [description, setDescription] = useState(initial.description);
+  const [mainCategoryId, setMainCategoryId] = useState(initial.mainCategoryId);
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (submitting) return;
+    if (!description.trim()) {
+      toast.error("Informe uma descrição pra compra.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await onSave(initial.groupId, { description: description.trim(), mainCategoryId: mainCategoryId || null });
+      toast.success("Compra dividida atualizada!");
+      onClose();
+    } catch (err) {
+      console.error("Erro ao salvar edição da compra dividida:", err);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-1.5">
+        <Label htmlFor="split-group-description">Descrição da compra</Label>
+        <Input id="split-group-description" required value={description} onChange={e => setDescription(e.target.value)} />
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="split-group-main-category">Categoria principal <span style={{ fontWeight: 400, color: "var(--muted-foreground)" }}>(opcional)</span></Label>
+        <Select value={mainCategoryId || "none"} onValueChange={(value) => setMainCategoryId(value === "none" ? "" : value)}>
+          <SelectTrigger id="split-group-main-category" className="w-full"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">Nenhuma — mostra um ícone genérico</SelectItem>
+            {categories.map(c => <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+      <p style={{ color: "var(--muted-foreground)", fontSize: "0.72rem" }}>
+        Pra mudar a categoria, o valor ou o nome de um item específico, expanda a compra na lista e edite aquela parte.
+      </p>
+      <div className="flex gap-3 pt-1">
+        <Button type="button" variant="secondary" onClick={onClose} disabled={submitting} className="flex-1">Cancelar</Button>
+        <Button type="submit" disabled={submitting} className="flex-1">{submitting ? "Salvando..." : "Salvar"}</Button>
+      </div>
+    </form>
+  );
+}
+
 export function Transactions() {
   const {
     transactions, categories, recurringTransactions,
     addTransaction, updateTransaction, deleteTransaction,
-    addRecurringTransaction, cancelRecurringTransaction, addSplitTransaction,
+    addRecurringTransaction, cancelRecurringTransaction, addSplitTransaction, updateSplitGroup, deleteSplitGroup,
     loading,
   } = useFinance();
   const location = useLocation();
@@ -505,6 +567,13 @@ export function Transactions() {
   }
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [duplicatingTx, setDuplicatingTx] = useState<Transaction | null>(null);
+  // Edita só os campos "de grupo" de uma compra dividida (descrição da
+  // compra + categoria principal) — categoria/valor/nome de item de cada
+  // parte continuam se editando individualmente, abrindo a parte expandida
+  // como qualquer transação avulsa.
+  const [editingGroup, setEditingGroup] = useState<{ groupId: string; description: string; mainCategoryId: string } | null>(null);
+  // Sem undo de propósito — ver deleteSplitGroup em FinanceContext.
+  const [deletingGroup, setDeletingGroup] = useState<{ groupId: string; description: string; partsCount: number } | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   useOpenAddFromNav(setShowAdd);
   const [showImport, setShowImport] = useState(false);
@@ -641,11 +710,12 @@ export function Transactions() {
     const mainCat = categories.find(c => c.id === first.split_main_category);
     return (
       <div key={groupId}>
-        <button type="button" onClick={() => toggleGroupExpanded(groupId)}
-          disabled={splitDisplayMode !== "collapsed"}
-          aria-expanded={expanded}
+        <div onClick={() => splitDisplayMode === "collapsed" && toggleGroupExpanded(groupId)}
+          onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && splitDisplayMode === "collapsed") { e.preventDefault(); toggleGroupExpanded(groupId); } }}
+          role="button" tabIndex={0} aria-expanded={expanded}
           aria-label={`${expanded ? "Recolher" : "Expandir"} divisão de "${first.description}" em ${parts.length} categorias`}
-          className="w-full flex items-center justify-between p-4 gap-3 text-left disabled:cursor-default">
+          className="w-full flex items-center justify-between p-4 gap-3 text-left"
+          style={{ cursor: splitDisplayMode === "collapsed" ? "pointer" : "default" }}>
           <div className="flex items-center gap-3 min-w-0">
             <span aria-hidden className="flex items-center justify-center w-5 h-5 shrink-0" style={{ color: "var(--muted-foreground)" }}>
               <ChevronRight size={14} style={{ transform: expanded ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 150ms ease" }} />
@@ -670,10 +740,30 @@ export function Transactions() {
               </div>
             </div>
           </div>
-          <span style={{ color: first.type === "income" ? "var(--success)" : "var(--red)", fontWeight: 600, fontSize: "0.875rem", fontFamily: "var(--font-mono)" }} className="shrink-0">
-            {first.type === "income" ? "+" : "-"}{formatCurrency(total)}
-          </span>
-        </button>
+          {/* Mesmo padrão "valor em cima, ações embaixo" dos cards normais
+              (ver renderMobileTxCard) — com 2 botões a mais que uma linha
+              comum, colocar tudo numa fileira só espremia o resto do card em
+              telas estreitas. */}
+          <div className="flex flex-col items-end gap-2 shrink-0">
+            <span style={{ color: first.type === "income" ? "var(--success)" : "var(--red)", fontWeight: 600, fontSize: "0.875rem", fontFamily: "var(--font-mono)" }}>
+              {first.type === "income" ? "+" : "-"}{formatCurrency(total)}
+            </span>
+            <div className="flex gap-1">
+              <button onClick={(e) => { e.stopPropagation(); setEditingGroup({ groupId, description: first.description, mainCategoryId: first.split_main_category || "" }); }}
+                aria-label={`Editar descrição e categoria principal de "${first.description}"`}
+                title="Editar descrição e categoria principal da compra"
+                className="p-1.5 rounded-lg" style={{ color: "var(--muted-foreground)", background: "var(--secondary)" }}>
+                <Edit2 size={13} />
+              </button>
+              <button onClick={(e) => { e.stopPropagation(); setDeletingGroup({ groupId, description: first.description, partsCount: parts.length }); }}
+                aria-label={`Excluir compra dividida "${first.description}"`}
+                title="Excluir a compra dividida inteira"
+                className="p-1.5 rounded-lg" style={{ color: "var(--destructive)", background: "rgba(239,68,68,0.1)" }}>
+                <Trash2 size={13} />
+              </button>
+            </div>
+          </div>
+        </div>
         {expanded && (
           <div className="divide-y" style={{ borderColor: "var(--border)" }}>
             {parts.map(part => renderMobileTxCard(part, true))}
@@ -817,7 +907,22 @@ export function Transactions() {
           <td style={{ padding: "12px 16px", fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: "0.875rem", color: first.type === "income" ? "var(--success)" : "var(--red)", whiteSpace: "nowrap" }}>
             {first.type === "income" ? "+" : "-"}{formatCurrency(total)}
           </td>
-          <td />
+          <td style={{ padding: "12px 16px" }}>
+            <div className="flex items-center gap-1.5">
+              <button onClick={(e) => { e.stopPropagation(); setEditingGroup({ groupId, description: first.description, mainCategoryId: first.split_main_category || "" }); }}
+                aria-label={`Editar descrição e categoria principal de "${first.description}"`}
+                title="Editar descrição e categoria principal da compra"
+                className="p-1.5 rounded-lg hover:bg-blue-500/10" style={{ color: "var(--muted-foreground)" }}>
+                <Edit2 size={14} />
+              </button>
+              <button onClick={(e) => { e.stopPropagation(); setDeletingGroup({ groupId, description: first.description, partsCount: parts.length }); }}
+                aria-label={`Excluir compra dividida "${first.description}"`}
+                title="Excluir a compra dividida inteira"
+                className="p-1.5 rounded-lg hover:bg-red-500/10" style={{ color: "var(--muted-foreground)" }}>
+                <Trash2 size={14} />
+              </button>
+            </div>
+          </td>
         </motion.tr>
         {expanded && parts.map((part, partIndex) => renderDesktopTxRow(part, i + partIndex * 0.01, true))}
       </Fragment>
@@ -1033,6 +1138,12 @@ export function Transactions() {
         )}
       </Modal>
 
+      <Modal open={editingGroup !== null} onClose={() => setEditingGroup(null)} title="Editar Compra Dividida">
+        {editingGroup && (
+          <EditSplitGroupForm initial={editingGroup} onSave={updateSplitGroup} onClose={() => setEditingGroup(null)} />
+        )}
+      </Modal>
+
       <Modal open={duplicatingTx !== null} onClose={() => setDuplicatingTx(null)} title="Duplicar Transação">
         {duplicatingTx && (
           <TransactionForm
@@ -1066,6 +1177,16 @@ export function Transactions() {
         title="Excluir transação?"
         description="Você tem alguns segundos pra desfazer depois de confirmar."
         errorLog="Erro ao excluir transação:"
+      />
+
+      <ConfirmDeleteDialog
+        open={deletingGroup !== null}
+        onClose={() => setDeletingGroup(null)}
+        onConfirm={() => deleteSplitGroup(deletingGroup!.groupId)}
+        title="Excluir compra dividida?"
+        description={`Isso apaga as ${deletingGroup?.partsCount ?? 0} partes de "${deletingGroup?.description}" de uma vez — sem "desfazer" depois, diferente de uma transação avulsa.`}
+        successMessage="Compra dividida excluída."
+        errorLog="Erro ao excluir compra dividida:"
       />
     </div>
   );

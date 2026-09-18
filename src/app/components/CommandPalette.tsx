@@ -5,6 +5,7 @@ import {
   Target, PiggyBank, TrendingUp, User, FileText, Search, Plus,
 } from "lucide-react";
 import { useFinance, formatCurrency, toLocalDate } from "../context/FinanceContext";
+import type { TransactionType } from "../context/FinanceContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "./ui/dialog";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem, CommandShortcut } from "./ui/command";
 
@@ -97,13 +98,42 @@ export function CommandPalette() {
     [q],
   );
 
+  // Cada resultado é ou uma transação avulsa, ou uma compra dividida inteira
+  // resumida (ícone/categoria principal, total, descrição da compra) — sem
+  // isso, uma compra dividida em 3 categorias apareceria como 3 resultados
+  // idênticos na busca, um por parte.
   const matchingTransactions = useMemo(() => {
     if (q.length < MIN_QUERY_FOR_TRANSACTIONS) return [];
-    return transactions
-      .filter((t) => t.description.toLowerCase().includes(q))
-      .sort((a, b) => b.date.localeCompare(a.date))
-      .slice(0, MAX_TX_RESULTS);
-  }, [transactions, q]);
+    // Busca pela descrição da compra E pelo nome de cada item (`notes`) —
+    // "Pipoca" precisa achar a compra mesmo que só o nome do item bata.
+    const matches = transactions
+      .filter((t) => t.description.toLowerCase().includes(q) || t.notes?.toLowerCase().includes(q))
+      .sort((a, b) => b.date.localeCompare(a.date));
+
+    const results: { id: string; description: string; date: string; type: TransactionType; amount: number; icon: string }[] = [];
+    const seenGroups = new Set<string>();
+    for (const t of matches) {
+      if (results.length >= MAX_TX_RESULTS) break;
+      if (t.split_group_id) {
+        if (seenGroups.has(t.split_group_id)) continue;
+        seenGroups.add(t.split_group_id);
+        const parts = transactions.filter((p) => p.split_group_id === t.split_group_id);
+        const mainCat = categories.find((c) => c.id === t.split_main_category);
+        results.push({
+          id: t.split_group_id,
+          description: t.description,
+          date: t.date,
+          type: t.type,
+          amount: parts.reduce((sum, p) => sum + p.amount, 0),
+          icon: mainCat?.icon || "✂️",
+        });
+      } else {
+        const cat = categories.find((c) => c.id === t.category);
+        results.push({ id: t.id, description: t.description, date: t.date, type: t.type, amount: t.amount, icon: cat?.icon || "💳" });
+      }
+    }
+    return results;
+  }, [transactions, categories, q]);
 
   return (
     <>
@@ -154,21 +184,18 @@ export function CommandPalette() {
               )}
               {matchingTransactions.length > 0 && (
                 <CommandGroup heading="Transações">
-                  {matchingTransactions.map((t) => {
-                    const cat = categories.find((c) => c.id === t.category);
-                    return (
-                      <CommandItem key={t.id} value={t.id} onSelect={() => goToTransaction(t.description)}>
-                        <span>{cat?.icon || "💳"}</span>
-                        <span className="truncate">{t.description}</span>
-                        <span className="text-xs" style={{ color: "var(--muted-foreground)" }}>
-                          {toLocalDate(t.date).toLocaleDateString("pt-BR")}
-                        </span>
-                        <CommandShortcut>
-                          {t.type === "income" ? "+" : "-"}{formatCurrency(t.amount)}
-                        </CommandShortcut>
-                      </CommandItem>
-                    );
-                  })}
+                  {matchingTransactions.map((t) => (
+                    <CommandItem key={t.id} value={t.id} onSelect={() => goToTransaction(t.description)}>
+                      <span>{t.icon}</span>
+                      <span className="truncate">{t.description}</span>
+                      <span className="text-xs" style={{ color: "var(--muted-foreground)" }}>
+                        {toLocalDate(t.date).toLocaleDateString("pt-BR")}
+                      </span>
+                      <CommandShortcut>
+                        {t.type === "income" ? "+" : "-"}{formatCurrency(t.amount)}
+                      </CommandShortcut>
+                    </CommandItem>
+                  ))}
                 </CommandGroup>
               )}
               {q.length > 0 && q.length < MIN_QUERY_FOR_TRANSACTIONS && filteredPages.length === 0 && (

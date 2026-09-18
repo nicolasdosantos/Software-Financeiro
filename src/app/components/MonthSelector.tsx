@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { addMonths, getDistinctMonths, getMonthName, useFinance } from "../context/FinanceContext";
+import { addMonths, getDistinctMonths, getMonthName, todayMonth, useFinance } from "../context/FinanceContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
 /**
@@ -7,13 +7,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
  * FinanceContext, que Dashboard e Planejamento usam diretamente (e Gráficos
  * / Controle Mensal usam como ponto de partida da própria navegação). Trocar
  * o mês aqui é a forma de "ver o site inteiro como se fosse aquele mês".
+ *
+ * Limitado ao mês de hoje pra frente: não tem gasto nem receita lançados
+ * ainda pra um mês futuro, então "planejar" um orçamento pra depois estando
+ * em setembro não mostraria nada de útil — só confundiria.
  */
 export function MonthSelector() {
   const { transactions, currentMonth, setCurrentMonth } = useFinance();
-  const months = getDistinctMonths(transactions, [currentMonth]);
+  const maxMonth = todayMonth();
+  const months = getDistinctMonths(transactions, [currentMonth, maxMonth]).filter((m) => m <= maxMonth);
+  const isAtMax = currentMonth >= maxMonth;
 
   function step(delta: number) {
-    setCurrentMonth(addMonths(`${currentMonth}-01`, delta).slice(0, 7));
+    const next = addMonths(`${currentMonth}-01`, delta).slice(0, 7);
+    if (next > maxMonth) return;
+    setCurrentMonth(next);
   }
 
   return (
@@ -48,9 +56,11 @@ export function MonthSelector() {
 
       <button
         onClick={() => step(1)}
+        disabled={isAtMax}
         aria-label="Próximo mês"
-        className="p-1 sm:p-1.5 rounded-lg transition-colors hover:text-[var(--foreground)] shrink-0"
-        style={{ color: "var(--muted-foreground)" }}
+        title={isAtMax ? "Este já é o mês atual" : "Próximo mês"}
+        className="p-1 sm:p-1.5 rounded-lg transition-colors enabled:hover:text-[var(--foreground)] disabled:cursor-not-allowed shrink-0"
+        style={{ color: "var(--muted-foreground)", opacity: isAtMax ? 0.4 : 1 }}
       >
         <ChevronRight size={14} />
       </button>
