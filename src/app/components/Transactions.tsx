@@ -164,6 +164,9 @@ type RepeatMode = "none" | "monthly" | "installments";
 interface SplitPartInput {
   categoryId: string;
   amount: string;
+  /** Nome do item em si (opcional) — sem ele, a parte herda a descrição
+   * da compra inteira (o campo "Descrição" lá em cima). */
+  description: string;
 }
 
 function TransactionForm({ initial, prefill, onAdd, onUpdate, onAddRecurring, onAddSplit, onClose }: TransactionFormProps) {
@@ -188,8 +191,8 @@ function TransactionForm({ initial, prefill, onAdd, onUpdate, onAddRecurring, on
   // depois, é bem mais complexo de acertar.
   const [isSplitting, setIsSplitting] = useState(false);
   const [splitParts, setSplitParts] = useState<SplitPartInput[]>([
-    { categoryId: categories[0]?.id || "", amount: "" },
-    { categoryId: categories[1]?.id || categories[0]?.id || "", amount: "" },
+    { categoryId: categories[0]?.id || "", amount: "", description: "" },
+    { categoryId: categories[1]?.id || categories[0]?.id || "", amount: "", description: "" },
   ]);
   // Opcional — "" = sem categoria principal (a lista de Transações mostra um
   // ícone genérico ✂️ pra ela). Não precisa ser a categoria de nenhuma parte
@@ -202,7 +205,7 @@ function TransactionForm({ initial, prefill, onAdd, onUpdate, onAddRecurring, on
     setSplitParts(prev => prev.map((p, i) => i === index ? { ...p, ...patch } : p));
   }
   function addSplitPart() {
-    setSplitParts(prev => [...prev, { categoryId: categories[0]?.id || "", amount: "" }]);
+    setSplitParts(prev => [...prev, { categoryId: categories[0]?.id || "", amount: "", description: "" }]);
   }
   function removeSplitPart(index: number) {
     setSplitParts(prev => prev.filter((_, i) => i !== index));
@@ -219,7 +222,7 @@ function TransactionForm({ initial, prefill, onAdd, onUpdate, onAddRecurring, on
         toast.error("Adicione pelo menos 2 categorias pra dividir.");
         return;
       }
-      const parts = splitParts.map(p => ({ categoryId: p.categoryId, amount: parseFloat(p.amount) }));
+      const parts = splitParts.map(p => ({ categoryId: p.categoryId, amount: parseFloat(p.amount), description: p.description.trim() || undefined }));
       if (parts.some(p => !p.categoryId || Number.isNaN(p.amount) || p.amount <= 0)) {
         toast.error("Escolha uma categoria e informe um valor válido (maior que zero) em cada parte.");
         return;
@@ -340,21 +343,29 @@ function TransactionForm({ initial, prefill, onAdd, onUpdate, onAddRecurring, on
           </div>
           <Label>Dividir entre categorias</Label>
           {splitParts.map((part, i) => (
-            <div key={i} className="flex gap-2 items-center">
-              <Select value={part.categoryId} onValueChange={(value) => updateSplitPart(i, { categoryId: value })}>
-                <SelectTrigger className="flex-1"><SelectValue placeholder="Categoria" /></SelectTrigger>
-                <SelectContent>
-                  {categories.map(c => <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Input type="number" step="0.01" min="0" className="w-28 shrink-0" placeholder="0,00"
-                value={part.amount} onChange={e => updateSplitPart(i, { amount: e.target.value })} />
-              {splitParts.length > 2 && (
-                <button type="button" onClick={() => removeSplitPart(i)} aria-label="Remover esta parte da divisão"
-                  className="shrink-0 p-1.5 rounded-lg" style={{ color: "var(--muted-foreground)" }}>
-                  <Trash2 size={14} />
-                </button>
-              )}
+            <div key={i} className="space-y-1.5 p-2.5 rounded-xl" style={{ background: "var(--secondary)" }}>
+              <div className="flex gap-2 items-center">
+                <Input
+                  className="flex-1"
+                  placeholder={`O que foi isso? (opcional — sem nome, usa "${form.description || "a descrição da compra"}")`}
+                  value={part.description} onChange={e => updateSplitPart(i, { description: e.target.value })} />
+                {splitParts.length > 2 && (
+                  <button type="button" onClick={() => removeSplitPart(i)} aria-label="Remover esta parte da divisão"
+                    className="shrink-0 p-1.5 rounded-lg" style={{ color: "var(--muted-foreground)" }}>
+                    <Trash2 size={14} />
+                  </button>
+                )}
+              </div>
+              <div className="flex gap-2 items-center">
+                <Select value={part.categoryId} onValueChange={(value) => updateSplitPart(i, { categoryId: value })}>
+                  <SelectTrigger className="flex-1"><SelectValue placeholder="Categoria" /></SelectTrigger>
+                  <SelectContent>
+                    {categories.map(c => <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Input type="number" step="0.01" min="0" className="w-28 shrink-0" placeholder="0,00"
+                  value={part.amount} onChange={e => updateSplitPart(i, { amount: e.target.value })} />
+              </div>
             </div>
           ))}
           <div className="flex items-center justify-between pt-0.5">
@@ -559,6 +570,11 @@ export function Transactions() {
     const cat = categories.find(c => c.id === tx.category);
     const recurringBadge = getRecurringBadge(tx, recurringTransactions);
     const splitBadge = splitDisplayMode === "separated" ? getSplitBadge(tx, transactions) : null;
+    // Uma parte de compra dividida com nome de item próprio (guardado em
+    // `notes`) mostra ele em vez da descrição — que é sempre a da compra
+    // inteira, repetida em toda parte. Sem nome de item, cai de volta na
+    // descrição, igual antes dessa opção existir.
+    const label = tx.split_group_id && tx.notes ? tx.notes : tx.description;
     return (
       <div key={tx.id} className="flex items-center justify-between p-4 gap-3" style={indented ? { paddingLeft: "3.25rem", background: "var(--secondary)" } : undefined}>
         <div className="flex items-center gap-3 min-w-0">
@@ -567,7 +583,7 @@ export function Transactions() {
             <span style={{ fontSize: "14px" }}>{cat?.icon || "💳"}</span>
           </div>
           <div className="min-w-0">
-            <p className="truncate" style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--foreground)" }}>{tx.description}</p>
+            <p className="truncate" style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--foreground)" }}>{label}</p>
             <div className="flex items-center gap-2 flex-wrap mt-0.5">
               <span className="px-1.5 py-0.5 rounded-full text-xs"
                 style={{ background: cat ? `${cat.color}20` : "var(--secondary)", color: cat?.color || "var(--muted-foreground)" }}>
@@ -673,6 +689,8 @@ export function Transactions() {
     const cat = categories.find(c => c.id === tx.category);
     const recurringBadge = getRecurringBadge(tx, recurringTransactions);
     const splitBadge = splitDisplayMode === "separated" ? getSplitBadge(tx, transactions) : null;
+    // Ver mesmo comentário em renderMobileTxCard.
+    const label = tx.split_group_id && tx.notes ? tx.notes : tx.description;
     return (
       <motion.tr key={tx.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
         transition={{ delay: i * 0.04 }}
@@ -690,7 +708,7 @@ export function Transactions() {
               style={{ background: cat ? `${cat.color}20` : "var(--secondary)" }}>
               <span style={{ fontSize: "13px" }}>{cat?.icon || "💳"}</span>
             </div>
-            <span style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--foreground)", whiteSpace: "nowrap" }}>{tx.description}</span>
+            <span style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--foreground)", whiteSpace: "nowrap" }}>{label}</span>
           </div>
         </td>
         <td style={{ padding: "12px 16px" }}>
