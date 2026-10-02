@@ -102,12 +102,14 @@ npm run dev
 
 ### Variáveis de ambiente
 
-Crie um arquivo `.env` na raiz com:
+Copie o `.env.example` para `.env` na raiz e preencha:
 
 ```env
 VITE_SUPABASE_URL=sua-url-do-projeto
 VITE_SUPABASE_ANON_KEY=sua-chave-anon
 ```
+
+> **Sobre a chave no front-end:** a chave *anon/publishable* do Supabase é pública por design — todo app que roda no navegador precisa embuti-la no bundle, e ela só permite o que as policies de RLS liberam. A proteção dos dados vem do banco: sem sessão nenhuma linha é visível, e um usuário autenticado só lê e escreve registros com o próprio `user_id`. A chave `service_role`, que ignora RLS, nunca é usada no app.
 
 ### Build de produção
 
