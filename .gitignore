@@ -16,3 +16,5 @@ yarn-error.log*
 
 # Sistema
 .DS_Store
+# Vídeos gerados pelo /brag
+brag-output/
