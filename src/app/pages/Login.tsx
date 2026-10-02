@@ -49,7 +49,7 @@ export function Login() {
 
   return (
     <AuthCard
-      title="Bem-vindo a Nexos!"
+      title="Bem-vindo ao Nexo!"
       subtitle="Faça login para continuar"
       footer={
         <>

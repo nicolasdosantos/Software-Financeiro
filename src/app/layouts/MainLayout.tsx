@@ -132,7 +132,7 @@ export default function MainLayout() {
                 fontSize: "1rem",
               }}
             >
-              Bem vindo a Nexo!
+              Bem-vindo ao Nexo!
             </span>
           </div>
 
