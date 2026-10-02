@@ -18,6 +18,7 @@ import { ProtectedRoute } from "../routes/ProtectedRoute";
 // React.lazy() exige um módulo com export default.
 const Login = lazy(() => import("./pages/Login").then((m) => ({ default: m.Login })));
 const Cadastro = lazy(() => import("./pages/Cadastro").then((m) => ({ default: m.Cadastro })));
+const NotFound = lazy(() => import("./pages/NotFound").then((m) => ({ default: m.NotFound })));
 
 const Dashboard = lazy(() => import("./components/Dashboard").then((m) => ({ default: m.Dashboard })));
 const Transactions = lazy(() => import("./components/Transactions").then((m) => ({ default: m.Transactions })));
@@ -83,6 +84,8 @@ export default function App() {
                   <Route path="/relatorios" element={<Reports />} />
                 </Route>
               </Route>
+
+              <Route path="*" element={<NotFound />} />
 
             </Routes>
           </Suspense>
